@@ -40,9 +40,19 @@ public final class AgentNotifications {
     }
 
     public void observe(String conversationId, int status, boolean fullyIdle, String stage) {
+        emit(conversationId, status, fullyIdle, stage, false);
+    }
+
+    public void observeNative(String conversationId, int status, boolean fullyIdle, String stage) {
+        emit(conversationId, status, fullyIdle, stage, true);
+    }
+
+    private void emit(String conversationId, int status, boolean fullyIdle,
+                      String stage, boolean nativeSource) {
+        synchronized (TRACKER) {
         if (notifications == null || !notifications.areNotificationsEnabled()) return;
         AgentTaskTracker.Change update = TRACKER.observe(
-                conversationId, status, fullyIdle, stage, System.currentTimeMillis());
+                conversationId, status, fullyIdle, stage, System.currentTimeMillis(), nativeSource);
         if (update.event == AgentTaskTracker.Event.NONE) return;
         AgyDiagnostics.log(context, "notification", "type=" + update.event + " id=" + shortId(update.conversationId));
         try {
@@ -55,6 +65,7 @@ public final class AgentNotifications {
         } catch (SecurityException | IllegalArgumentException exc) {
             // The system can deny notifications at any time. Never affect agent state.
             Log.w(TAG, "Notification unavailable: " + exc.getClass().getSimpleName());
+        }
         }
     }
 

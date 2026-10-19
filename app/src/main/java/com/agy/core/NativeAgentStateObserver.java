@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class NativeAgentStateObserver {
     private static final int MAX_WATCHES = 12;
+    private static final long RECENT_NATIVE_FINISH_MS = 4000;
     private static final String PREFS = "agy_native_task_observer";
     private static final String ACTIVE = "active_conversations";
     private static volatile NativeAgentStateObserver instance;
@@ -32,6 +33,7 @@ public final class NativeAgentStateObserver {
     private final Context context;
     private final ExecutorService pool;
     private final Map<String, Watch> watches = new ConcurrentHashMap<>();
+    private final Map<String, Long> recentNativeFinish = new ConcurrentHashMap<>();
     private final AgentNotifications notifications;
     private volatile boolean stopped = false;
 
@@ -82,6 +84,12 @@ public final class NativeAgentStateObserver {
         NativeAgentStateObserver observer = instance;
         if (observer == null) return;
         if (status == AgentTaskTracker.RUNNING || status == AgentTaskTracker.BUSY) {
+            // A stale WebView RUNNING snapshot must not resurrect the watcher
+            // that native Core just confirmed as completed.
+            Long finishedAt = observer.recentNativeFinish.get(id);
+            long now = System.currentTimeMillis();
+            if (finishedAt != null && now >= finishedAt &&
+                    now - finishedAt < RECENT_NATIVE_FINISH_MS) return;
             observer.watch(id);
         } else if (status == AgentTaskTracker.IDLE && fullyIdle) {
             observer.unwatch(id);
@@ -95,6 +103,14 @@ public final class NativeAgentStateObserver {
     private synchronized void watch(String id) {
         if (stopped || !valid(id) || watches.containsKey(id) ||
                 watches.size() >= MAX_WATCHES) return;
+        if (recentNativeFinish.size() > 32) {
+            long now = System.currentTimeMillis();
+            for (Map.Entry<String, Long> item : recentNativeFinish.entrySet()) {
+                if (now - item.getValue() >= RECENT_NATIVE_FINISH_MS) {
+                    recentNativeFinish.remove(item.getKey(), item.getValue());
+                }
+            }
+        }
         Watch watch = new Watch(id);
         watches.put(id, watch);
         persist();
@@ -147,14 +163,15 @@ public final class NativeAgentStateObserver {
                     if (status == AgentTaskTracker.IDLE && fullyIdle) {
                         // Same notification tracker as the UI bridge: first arrival
                         // wins, regardless of which source saw completion first.
-                        notifications.observe(watch.id, status, true, null);
+                        recentNativeFinish.put(watch.id, System.currentTimeMillis());
+                        notifications.observeNative(watch.id, status, true, null);
                         AgyDiagnostics.log(context, "native_observer",
                                 "finished id=" + shortId(watch.id));
                         unwatch(watch.id);
                         return false;
                     }
                     if (status == AgentTaskTracker.RUNNING || status == AgentTaskTracker.BUSY) {
-                        notifications.observe(watch.id, status, false, null);
+                        notifications.observeNative(watch.id, status, false, null);
                         return true;
                     }
                     return true;
@@ -162,6 +179,7 @@ public final class NativeAgentStateObserver {
                 retries = 0;
                 lastError = "";
             } catch (Exception exc) {
+                if (stopped || watch.cancelled.get()) break;
                 String error = exc.getClass().getSimpleName();
                 if (exc instanceof java.io.IOException) {
                     String detail = exc.getMessage();

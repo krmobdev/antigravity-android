@@ -12,6 +12,8 @@ public final class AgentTaskTracker {
     public static final int RUNNING = 2;
     public static final int BUSY = 4;
     public static final int MAX_TASKS = 16;
+    // Stale WebView RUNNING updates may arrive milliseconds after native FINISHED.
+    private static final long FINISHED_GRACE_MS = 4000;
 
     public enum Event { NONE, STARTED, PROGRESS, FINISHED }
 
@@ -41,6 +43,7 @@ public final class AgentTaskTracker {
     }
 
     private final Map<String, Task> running = new LinkedHashMap<>();
+    private final Map<String, Long> recentlyFinished = new LinkedHashMap<>();
     private final long minUpdateMs;
 
     public AgentTaskTracker(long minUpdateMs) {
@@ -49,6 +52,12 @@ public final class AgentTaskTracker {
 
     public synchronized Change observe(String id, int status, boolean fullyIdle,
                                        String rawStage, long nowMs) {
+        return observe(id, status, fullyIdle, rawStage, nowMs, false);
+    }
+
+    /** A genuine native RUNNING event can start a new task without waiting for UI cooldown. */
+    public synchronized Change observe(String id, int status, boolean fullyIdle,
+                                       String rawStage, long nowMs, boolean nativeSource) {
         if (id == null || id.isEmpty() || id.length() > 128 ||
                 !id.matches("[A-Za-z0-9_+:-]+")) {
             return new Change(Event.NONE, "", "", 0);
@@ -59,6 +68,10 @@ public final class AgentTaskTracker {
                 return new Change(Event.NONE, id, "", 0);
             }
             running.remove(id);
+            recentlyFinished.put(id, nowMs);
+            if (recentlyFinished.size() > MAX_TASKS * 2) {
+                recentlyFinished.remove(recentlyFinished.keySet().iterator().next());
+            }
             return new Change(Event.FINISHED, id, existing.stage, existing.startedAt);
         }
         if (status != RUNNING && status != BUSY) {
@@ -67,11 +80,18 @@ public final class AgentTaskTracker {
 
         String stage = sanitize(rawStage);
         if (existing == null) {
+            Long lastFinish = recentlyFinished.get(id);
+            if (!nativeSource && lastFinish != null && nowMs >= lastFinish &&
+                    nowMs - lastFinish < FINISHED_GRACE_MS) {
+                // Ignore a delayed UI RUNNING snapshot from the just-finished task.
+                return new Change(Event.NONE, id, "", 0);
+            }
             if (running.size() >= MAX_TASKS) {
                 // Avoid eviction: dropping a running task could lead to a false
                 // completion alert when its old state is replayed.
                 return new Change(Event.NONE, id, "", 0);
             }
+            recentlyFinished.remove(id);
             running.put(id, new Task(nowMs, stage));
             return new Change(Event.STARTED, id, stage, nowMs);
         }
