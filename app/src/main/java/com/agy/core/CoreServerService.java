@@ -20,6 +20,7 @@ public final class CoreServerService extends Service {
     private WakeLockHolder wakeLock;
     private OpenUrlWatcher openUrlWatcher;
     private CoreProcessSupervisor supervisor;
+    private NativeAgentStateObserver taskObserver;
 
     @Override
     public void onCreate() {
@@ -47,10 +48,13 @@ public final class CoreServerService extends Service {
 
         supervisor = new CoreProcessSupervisor(this, runtime, openUrlWatcher);
         supervisor.start();
+        taskObserver = new NativeAgentStateObserver(this);
+        taskObserver.start();
     }
 
     @Override
     public void onDestroy() {
+        if (taskObserver != null) taskObserver.stop();
         // Intentional stop: the watchdog must not treat the exit as a crash.
         if (supervisor != null) {
             supervisor.stop();

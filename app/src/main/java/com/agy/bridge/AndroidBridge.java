@@ -4,6 +4,7 @@ import android.content.Context;
 import android.webkit.JavascriptInterface;
 
 import com.agy.oauth.OAuthManager;
+import com.agy.core.NativeAgentStateObserver;
 import com.agy.runtime.RuntimeManager;
 import com.agy.shell.ShizukuBridge;
 import com.agy.theme.ThemeManager;
@@ -143,6 +144,7 @@ public final class AndroidBridge {
     public void onAgentState(String conversationId, int status, boolean fullyIdle, String stage) {
         AgyDiagnostics.log(diagnosticContext, "agent_state", "id=" + safeId(conversationId) + " status=" + status + " idle=" + fullyIdle);
         agentNotifications.observe(conversationId, status, fullyIdle, stage);
+        NativeAgentStateObserver.onUiState(conversationId, status, fullyIdle);
     }
 
     @JavascriptInterface
