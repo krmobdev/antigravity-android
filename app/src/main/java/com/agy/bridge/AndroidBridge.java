@@ -164,6 +164,12 @@ public final class AndroidBridge {
         NativeAgentStateObserver.onUiState(conversationId, status, fullyIdle);
     }
 
+    /** Native completion survives WebView destruction; no prompts or chat content exposed. */
+    @JavascriptInterface
+    public boolean wasAgentRecentlyFinished(String conversationId) {
+        return NativeAgentStateObserver.wasRecentlyFinished(diagnosticContext, conversationId);
+    }
+
     @JavascriptInterface
     public void diagnosticEvent(String kind, String details) {
         AgyDiagnostics.log(diagnosticContext, kind, details);

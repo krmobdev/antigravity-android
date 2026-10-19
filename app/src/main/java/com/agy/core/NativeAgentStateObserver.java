@@ -28,6 +28,8 @@ public final class NativeAgentStateObserver {
     private static final long RECENT_NATIVE_FINISH_MS = 4000;
     private static final String PREFS = "agy_native_task_observer";
     private static final String ACTIVE = "active_conversations";
+    private static final String FINISHED_PREFIX = "native_completed_at:";
+    private static final long FINISHED_VALID_MS = 6L * 60 * 60 * 1000;
     private static volatile NativeAgentStateObserver instance;
 
     private final Context context;
@@ -94,6 +96,26 @@ public final class NativeAgentStateObserver {
         } else if (status == AgentTaskTracker.IDLE && fullyIdle) {
             observer.unwatch(id);
         }
+    }
+
+    /** Synchronous, read-only cache query used by a fresh WebView after a deep link. */
+    public static boolean wasRecentlyFinished(Context app, String id) {
+        if (!valid(id)) return false;
+        long when = app.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong(FINISHED_PREFIX + id, 0L);
+        long now = System.currentTimeMillis();
+        return when > 0 && now >= when && now - when <= FINISHED_VALID_MS;
+    }
+
+    private void setNativeFinished(String id, boolean finished) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        if (finished) {
+            editor.putLong(FINISHED_PREFIX + id, System.currentTimeMillis());
+        } else {
+            editor.remove(FINISHED_PREFIX + id);
+        }
+        editor.apply();
     }
 
     private static boolean valid(String id) {
@@ -164,6 +186,9 @@ public final class NativeAgentStateObserver {
                         // Same notification tracker as the UI bridge: first arrival
                         // wins, regardless of which source saw completion first.
                         recentNativeFinish.put(watch.id, System.currentTimeMillis());
+                        // Keep verified completion across Activity/WebView recreation.
+                        // Clear only on authoritative native RUNNING, not UI replay.
+                        setNativeFinished(watch.id, true);
                         notifications.observeNative(watch.id, status, true, null);
                         AgyDiagnostics.log(context, "native_observer",
                                 "finished id=" + shortId(watch.id));
@@ -171,6 +196,10 @@ public final class NativeAgentStateObserver {
                         return false;
                     }
                     if (status == AgentTaskTracker.RUNNING || status == AgentTaskTracker.BUSY) {
+                        if (wasRecentlyFinished(context, watch.id)) {
+                            setNativeFinished(watch.id, false);
+                            AgyDiagnostics.log(context, "native_observer", "new_run id=" + shortId(watch.id));
+                        }
                         notifications.observeNative(watch.id, status, false, null);
                         return true;
                     }
