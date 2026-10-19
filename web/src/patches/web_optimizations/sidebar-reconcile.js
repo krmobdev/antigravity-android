@@ -38,6 +38,7 @@
       effective.set(id,snapshot);
       if(effective.size > MAX) effective.delete(effective.keys().next().value);
       if(prev !== next || (before !== undefined && before !== snapshot)){
+        window.__AGY_DIAG_JS_SUBSCRIBERS__?.(id,next,listeners.size);
         for(var cb of listeners) { try { cb(); } catch (_) {} }
       }
       if(prev === next) return;
