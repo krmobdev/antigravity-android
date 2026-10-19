@@ -11,6 +11,9 @@ import android.os.Build;
 import android.util.Log;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import com.agy.ui.MainActivity;
 
@@ -51,14 +54,20 @@ public final class AgentNotifications {
                       String stage, boolean nativeSource) {
         synchronized (TRACKER) {
         if (notifications == null || !notifications.areNotificationsEnabled()) return;
+        // Record exactly when a Core/UI transition reached Android. This is
+        // an observed completion, not the agent's internal final-token time.
+        final long detectedAt = System.currentTimeMillis();
         AgentTaskTracker.Change update = TRACKER.observe(
-                conversationId, status, fullyIdle, stage, System.currentTimeMillis(), nativeSource);
+                conversationId, status, fullyIdle, stage, detectedAt, nativeSource);
         if (update.event == AgentTaskTracker.Event.NONE) return;
-        AgyDiagnostics.log(context, "notification", "type=" + update.event + " id=" + shortId(update.conversationId));
+        AgyDiagnostics.log(context, "notification", "type=" + update.event + " id=" + shortId(update.conversationId)
+                + " detected_at_ms=" + detectedAt + " source=" + (nativeSource ? "native" : "webview"));
         try {
             if (update.event == AgentTaskTracker.Event.FINISHED) {
                 notifications.cancel(update.conversationId, RUNNING_ID);
-                notifications.notify(update.conversationId, FINISHED_ID, finished(update));
+                notifications.notify(update.conversationId, FINISHED_ID, finished(update, detectedAt, nativeSource));
+                AgyDiagnostics.log(context, "notification_posted", "type=FINISHED id=" + shortId(update.conversationId)
+                        + " detected_at_ms=" + detectedAt + " posted_at_ms=" + System.currentTimeMillis());
             } else {
                 notifications.notify(update.conversationId, RUNNING_ID, working(update));
             }
@@ -153,16 +162,20 @@ public final class AgentNotifications {
         return b.build();
     }
 
-    private Notification finished(AgentTaskTracker.Change event) {
+    private Notification finished(AgentTaskTracker.Change event, long detectedAt, boolean nativeSource) {
+        // Explicit seconds remain visible even when Android shows only "Сейчас".
+        String completionTime = new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                .format(new Date(detectedAt));
+        String message = "Завершено в " + completionTime + " (" + (nativeSource ? "ядро" : "WebView") + "). Открыть диалог.";
         Notification.Builder b = builder(CHANNEL_FINISHED)
                 .setSmallIcon(notificationIcon())
                 .setContentTitle(title(event.conversationId) + " · завершена")
-                .setContentText("Агент закончил работу. Нажмите, чтобы открыть диалог.")
-                .setStyle(new Notification.BigTextStyle().bigText(
-                        "Агент закончил работу. Нажмите, чтобы открыть диалог."))
+                .setContentText(message)
+                .setStyle(new Notification.BigTextStyle().bigText(message))
                 .setContentIntent(openConversation(event.conversationId))
                 .setAutoCancel(true)
-                .setWhen(System.currentTimeMillis())
+                .setWhen(detectedAt)
+                .setShowWhen(true)
                 .setCategory(Notification.CATEGORY_EVENT);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             b.setPriority(Notification.PRIORITY_HIGH)
