@@ -18,6 +18,7 @@ import android.content.ClipData;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import org.json.JSONObject;
 import android.widget.FrameLayout;
 
 import java.util.ArrayList;
@@ -68,6 +69,13 @@ public class MainActivity extends Activity
     private SplashController splash;
     private FrameLayout rootLayout;
 
+    public static final String ACTION_OPEN_AGENT_CONVERSATION = "com.agy.action.OPEN_AGENT_CONVERSATION";
+    public static final String EXTRA_AGENT_CONVERSATION_ID = "agy_conversation_id";
+    private String pendingConversationId;
+    private boolean webUiReady = false;
+    private int notificationRouteAttempts = 0;
+    private static final int MAX_ROUTE_ATTEMPTS = 5;
+
     private boolean appLoaded = false;
     private int loadedGeneration = -1;
     private long splashDeadline;
@@ -101,6 +109,7 @@ public class MainActivity extends Activity
             if (!appLoaded || (loadedGeneration > 0 && generation != loadedGeneration)) {
                 appLoaded = true;
                 loadedGeneration = generation;
+                webUiReady = false;
                 splash.clearFatal();
                 if (generation > 1) {
                     splash.showLoading();
@@ -128,6 +137,7 @@ public class MainActivity extends Activity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AgyDiagnostics.log(this, "activity", "onCreate");
+        acceptNotificationIntent(getIntent());
         activeActivity = this;
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
@@ -206,6 +216,57 @@ public class MainActivity extends Activity
         Log.i(TAG, "onPageFinished " + url);
     }
 
+    /** Signal from WebView that it has mounted its UI and client router. */
+    public void onWebUiReady() {
+        webUiReady = true;
+        dismissSplash();
+        navigatePendingConversation();
+    }
+
+    private void acceptNotificationIntent(Intent intent) {
+        if (intent == null || !ACTION_OPEN_AGENT_CONVERSATION.equals(intent.getAction())) return;
+        String id = intent.getStringExtra(EXTRA_AGENT_CONVERSATION_ID);
+        if (id == null || id.length() > 128 || !id.matches("[a-zA-Z0-9_+:-]+")) {
+            AgyDiagnostics.log(this, "navigation", "rejected_id");
+            return;
+        }
+        pendingConversationId = id;
+        notificationRouteAttempts = 0;
+        AgyDiagnostics.log(this, "navigation", "requested");
+    }
+
+    private void navigatePendingConversation() {
+        if (!webUiReady || pendingConversationId == null || webViewHost == null) return;
+        if (notificationRouteAttempts >= MAX_ROUTE_ATTEMPTS) {
+            AgyDiagnostics.log(this, "navigation", "attempts_exhausted");
+            return;
+        }
+        final String id = pendingConversationId;
+        notificationRouteAttempts++;
+        final int attempt = notificationRouteAttempts;
+        final String js = "window.dispatchEvent(new CustomEvent('agy:open-conversation'," +
+                "{detail:{conversationId:" + JSONObject.quote(id) + "}}));";
+        AgyDiagnostics.log(this, "navigation", "dispatch attempt=" + attempt);
+        webViewHost.getWebView().evaluateJavascript(js, null);
+        handler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (id.equals(pendingConversationId) && webUiReady) navigatePendingConversation();
+            }
+        }, 1500L);
+    }
+
+    /** Called after the client router accepts an exact conversation ID. */
+    public void onNotificationNavigationResult(final String id) {
+        handler.post(new Runnable() {
+            @Override public void run() {
+                if (id != null && id.equals(pendingConversationId)) {
+                    pendingConversationId = null;
+                    AgyDiagnostics.log(MainActivity.this, "navigation", "accepted");
+                }
+            }
+        });
+    }
+
     /** Idempotent; called by AndroidBridge.onUiReady() on the main thread. */
     public void dismissSplash() {
         Log.i(TAG, "dismissSplash: fading out splashView (280ms)");
@@ -244,6 +305,8 @@ public class MainActivity extends Activity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        acceptNotificationIntent(intent);
+        navigatePendingConversation();
     }
 
     @Override
@@ -279,6 +342,7 @@ public class MainActivity extends Activity
         if (webViewHost != null) {
             AppLifecycle.resume(webViewHost.getWebView());
         }
+        navigatePendingConversation();
         refreshTheme();
     }
 

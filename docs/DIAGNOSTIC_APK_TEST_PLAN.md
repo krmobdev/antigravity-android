@@ -7,6 +7,10 @@
 - App package `com.agy.dev`, port `45158`; standard `com.agy` remains intact.
 - `--region-bypass` applies the same region gate patch to the separate dev core.
 - WebView resume patch (from PR #15) and native agent notification prototype.
+- Notification deep link: a per-conversation immutable PendingIntent launches
+  the client router at `/c/$cascadeId`, even after a cold start, subject to
+  device test confirmation. Cached conversation titles appear in notification
+  headers when available.
 - Explicit sidebar summary instrumentation, without hiding the spinner or changing backend state.
 - Bounded Android logcat `AGY_DIAG` events and private rolling files
   `/data/user/0/com.agy.dev/files/logs/agy-diag.log`,
@@ -24,6 +28,7 @@
 | `sidebar <suffix> selected,summary,agent,starting=X,Y,Z,W` | Flags controlling the spinner |
 | `agent_state id=<suffix> status=N idle=true/false` | Open-chat agent stream state |
 | `notification type=STARTED/PROGRESS/FINISHED` | Native notification dispatched |
+| `navigation requested/dispatch/accepted` | PendingIntent tapped and native/JS router handshake |
 
 If `summary` stops after resuming but `agent_state` updates, the problem is
 likely the separate summary subscription. If summary reports idle but sidebar
@@ -44,7 +49,11 @@ background observer is still necessary for fully reliable completion alerts.
 5. Repeat with screen lock/unlock, then let the task complete while another app is foreground.
 6. Open the sidebar, confirm the spinner cleared. Exit and reopen the Dev app
    without force-stop; photograph any stale spinner and note the time.
-7. **Do not force-stop until logs are captured.**
+7. Tap a **working** notification: must open its own chat, not home screen.
+8. Tap a **completed** notification after going elsewhere: must open that specific
+   finished chat. Test two conversations (distinct PendingIntents), then repeat
+   after Android has killed the activity and after a regular app restart.
+9. **Do not force-stop until logs are captured.**
 
 ## Collect diagnostics
 
@@ -70,6 +79,6 @@ full unfiltered logcat: it may include secrets from other applications.
 The first notification prototype receives agent status from WebView JS.
 Therefore it **cannot guarantee** prompt completion while WebView is suspended.
 This is a diagnostic experiment to distinguish notification delivery from
-source starvation. A service-side core observer and exact conversation routing
+source starvation. A service-side core observer and verified multi-chat deep linking
 are required before a production notifications PR. No files in the real
 `com.agy` package are changed by building or installing `com.agy.dev`.

@@ -21,9 +21,12 @@ notification shade while the user uses another app or locks the screen:
 - `AgentNotifications.java` uses `NotificationManager` directly. Working
   updates are quiet, chronometer-based and ongoing; completion notifications
   use a separate user-configurable high-importance channel.
-- Android's pending intent returns to `MainActivity`. The conversation ID
-  is included for future navigation support; automatic selection of that
-  conversation is **not yet implemented**.
+- Every notification uses a unique `PendingIntent` URI with its conversation ID.
+  MainActivity queues the ID across cold starts, then the client router opens
+  `/c/$cascadeId`. There is a bounded retry until the router acknowledges
+  navigation. The code passes tests but requires **on-device tap testing**.
+- Titles come from canonical conversation summaries when available, helping
+  identify the relevant chat among dozens of conversations.
 - `web/src/patches/web_optimizations/agent-notifications.js` extracts a
   sanitized stage label from decoded agent state (not DOM parsing).
 - `web/patch_agent_notifications.py` adds a small, version-checked callback
@@ -49,8 +52,8 @@ Before shipping / submitting a PR:
 2. Handle completion, errors, interrupted tasks, waiting-for-user-action,
    and multiple concurrent conversations from the backend. Avoid phantom
    completions after reconnect/restart.
-3. Implement reliable opening of the targeted conversation (instead of only
-   foregrounding the app).
+3. Verify opening the targeted conversation on-device via an ongoing and a
+   completion notification, both warm and cold; test multiple distinct chats.
 4. Verify Android 13+ notification permission and manufacturer/DND behavior;
    heads-up alerts are subject to user notification settings.
 5. Verify integration with the independent WebView resume fix PR #15 and
@@ -69,4 +72,4 @@ bash web/tests/test_staged_notification.sh
 
 **Do not push this feature as a production fix or merge to `main` until
 backend-independent completion is verified.** Current implementation is an
-isolated work-in-progress branch, not installed into the user's Antigravity.
+isolated work-in-progress branch, deployed only to `com.agy.dev` for testing.

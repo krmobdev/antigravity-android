@@ -6,8 +6,11 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.agy.ui.MainActivity;
 
@@ -28,6 +31,7 @@ public final class AgentNotifications {
 
     private final Context context;
     private final NotificationManager notifications;
+    private static final Map<String, String> TITLES = new LinkedHashMap<>();
 
     public AgentNotifications(Context ctx) {
         context = ctx.getApplicationContext();
@@ -54,6 +58,25 @@ public final class AgentNotifications {
         }
     }
 
+    /** Display title from the canonical sidebar summary, never from chat text. */
+    public void updateTitle(String id, String title) {
+        if (id == null || !id.matches("[a-zA-Z0-9_+:-]{1,128}") || title == null) return;
+        String cleaned = title.replaceAll("[\\r\\n\\t]", " ").trim();
+        if (cleaned.isEmpty()) return;
+        if (cleaned.length() > 72) cleaned = cleaned.substring(0, 72);
+        synchronized (TITLES) {
+            TITLES.put(id, cleaned);
+            if (TITLES.size() > 128) TITLES.remove(TITLES.keySet().iterator().next());
+        }
+    }
+
+    private String title(String id) {
+        synchronized (TITLES) {
+            String known = TITLES.get(id);
+            return known == null ? "Antigravity" : known;
+        }
+    }
+
     private static String shortId(String id) {
         return id.substring(Math.max(0, id.length() - 6));
     }
@@ -77,8 +100,9 @@ public final class AgentNotifications {
 
     private PendingIntent openConversation(String id) {
         Intent launch = new Intent(context, MainActivity.class);
-        launch.setAction("com.agy.action.OPEN_AGENT_CONVERSATION");
-        launch.putExtra("agy_conversation_id", id);
+        launch.setAction(MainActivity.ACTION_OPEN_AGENT_CONVERSATION);
+        launch.setData(Uri.parse("agy://conversation/" + Uri.encode(id)));
+        launch.putExtra(MainActivity.EXTRA_AGENT_CONVERSATION_ID, id);
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
                 | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -101,7 +125,7 @@ public final class AgentNotifications {
     private Notification working(AgentTaskTracker.Change event) {
         Notification.Builder b = builder(CHANNEL_WORKING)
                 .setSmallIcon(notificationIcon())
-                .setContentTitle("Antigravity · задача выполняется")
+                .setContentTitle(title(event.conversationId) + " · выполняется")
                 .setContentText(event.stage)
                 .setStyle(new Notification.BigTextStyle().bigText(event.stage))
                 .setContentIntent(openConversation(event.conversationId))
@@ -121,10 +145,10 @@ public final class AgentNotifications {
     private Notification finished(AgentTaskTracker.Change event) {
         Notification.Builder b = builder(CHANNEL_FINISHED)
                 .setSmallIcon(notificationIcon())
-                .setContentTitle("Antigravity · задача завершена")
-                .setContentText("Агент закончил работу. Нажмите, чтобы открыть Antigravity.")
+                .setContentTitle(title(event.conversationId) + " · завершена")
+                .setContentText("Агент закончил работу. Нажмите, чтобы открыть диалог.")
                 .setStyle(new Notification.BigTextStyle().bigText(
-                        "Агент закончил работу. Нажмите, чтобы открыть Antigravity."))
+                        "Агент закончил работу. Нажмите, чтобы открыть диалог."))
                 .setContentIntent(openConversation(event.conversationId))
                 .setAutoCancel(true)
                 .setWhen(System.currentTimeMillis())

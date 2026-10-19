@@ -151,6 +151,17 @@ public final class AndroidBridge {
     }
 
     @JavascriptInterface
+    public void onConversationSummary(String conversationId, String title) {
+        agentNotifications.updateTitle(conversationId, title);
+    }
+
+    @JavascriptInterface
+    public void onNotificationNavigationResult(String conversationId) {
+        final MainActivity host = MainActivity.activeActivity;
+        if (host != null) host.onNotificationNavigationResult(conversationId);
+    }
+
+    @JavascriptInterface
     public String listNotifications() {
         return notification.list();
     }

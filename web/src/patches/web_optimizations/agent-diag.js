@@ -14,7 +14,13 @@
   window.__AGY_DIAG_SUMMARY_UPDATE__ = function(updates, deletes) {
     try {
       for (var item of (updates || [])) {
-        var id = shortId(item[0]), s = item[1] || {};
+        var fullId = item[0], id = shortId(fullId), s = item[1] || {};
+        try {
+          if (typeof fullId === 'string' && typeof s.summary === 'string'
+              && window.Android?.onConversationSummary) {
+            window.Android.onConversationSummary(fullId, s.summary.slice(0,72));
+          }
+        } catch (_) {}
         var state = [Number(s.status)||0, s.notFullyIdle===true ? 1 : 0,
                      (s.waitingSteps||[]).length].join(',');
         if (summarySeen.get(id) !== state) {
