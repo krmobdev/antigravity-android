@@ -74,6 +74,26 @@ If the dev app cannot run normally, inspect `adb logcat` via connected ADB
 or Shizuku and share only the AGY_DIAG / crash sections. Do not share
 full unfiltered logcat: it may include secrets from other applications.
 
+## Confirmed stale sidebar status (2026-10-19)
+
+Two independent sources disagreed for the same conversation. The agent stream
+reported `status=1, fullyIdle=true` at 21:47:22 local, and Android posted the
+`FINISHED` notification. The sidebar's summary provider still returned
+`notFullyIdle=true` (`sidebar selected,summary,agent,starting=0,1,0,0`),
+including minutes after completion. Device screenshots showed a continuous
+spinner instead of a completion timestamp. The log was exported to
+`Download/AGY-Diagnostics-20261019/agy-diag-snapshot.txt`.
+
+The new WIP `sidebar-reconcile` uses a React external subscription to the
+actual agent stream (not a timer). It suppresses **only** the stale summary
+component of the spinner after `IDLE + fullyIdle`; it preserves separate
+active-agent and optimistic-start indicators, and restores the spinner as
+soon as a new `RUNNING/BUSY` event arrives. No backend writes or cancellation.
+
+Limitations: sidebar entries without a currently observed agent state can
+still reflect stale backend summaries after cold boot. This requires
+independent service-side state observations and testing with concurrent chats.
+
 ## Known limitations
 
 The first notification prototype receives agent status from WebView JS.

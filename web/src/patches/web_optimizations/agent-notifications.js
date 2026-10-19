@@ -24,6 +24,7 @@
       if (!state || typeof state.conversationId !== 'string') return;
       // CascadeRunStatus.IDLE=1, RUNNING=2, BUSY=4.
       if (state.status !== 1 && state.status !== 2 && state.status !== 4) return;
+      window.__AGY_VERIFIED_AGENT_OBSERVE__?.(state);
       bridge.onAgentState(
         state.conversationId, state.status, state.fullyIdle === true, compactStage(state));
     } catch (_) {

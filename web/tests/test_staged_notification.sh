@@ -18,9 +18,11 @@ original, stage = (Path(p) for p in sys.argv[1:])
 assert "AGY_NATIVE_NOTIFY_V1" not in (original / "main.js").read_text()
 assert (stage / "main.js").read_text().count("AGY_NATIVE_NOTIFY_V1") == 1
 assert (stage / "main.js").read_text().count("AGY_CONVERSATION_DEEPLINK_V1") == 1
+assert (stage / "main.js").read_text().count("AGY_SIDEBAR_RECONCILE_V1") == 1
 assert "AGY_NOTIFY_AGENT_STATE" in (stage / "generated/patches/web_optimizations.js").read_text()
 assert not (stage / "patch_agent_notifications.py").exists()
 assert not (stage / "patch_notification_navigation.py").exists()
+assert not (stage / "patch_sidebar_reconcile.py").exists()
 assert not (stage / "tests").exists()
 print("PASS: packaged JavaScript hook in staged assets only")
 PY
