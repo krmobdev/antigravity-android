@@ -24,11 +24,13 @@ public final class AndroidBridge {
     private final ShellBridge shell;
     private final NotificationBridge notification;
     private final AgentNotifications agentNotifications;
+    private final Context diagnosticContext;
 
     public AndroidBridge(Context context, RuntimeManager runtime,
                          ShizukuBridge shizuku, OAuthManager oauth,
                          ThemeManager theme) {
         Context appContext = context.getApplicationContext();
+        this.diagnosticContext = appContext;
         this.themeBridge = new ThemeBridge(theme);
         this.engine = new EngineBridge(runtime);
         this.config = new EngineConfigJson(appContext, runtime, engine, shizuku, themeBridge);
@@ -139,12 +141,23 @@ public final class AndroidBridge {
     /** Receives decoded core state transitions; never reads chat content. */
     @JavascriptInterface
     public void onAgentState(String conversationId, int status, boolean fullyIdle, String stage) {
+        AgyDiagnostics.log(diagnosticContext, "agent_state", "id=" + safeId(conversationId) + " status=" + status + " idle=" + fullyIdle);
         agentNotifications.observe(conversationId, status, fullyIdle, stage);
+    }
+
+    @JavascriptInterface
+    public void diagnosticEvent(String kind, String details) {
+        AgyDiagnostics.log(diagnosticContext, kind, details);
     }
 
     @JavascriptInterface
     public String listNotifications() {
         return notification.list();
+    }
+
+    private static String safeId(String id) {
+        if (id == null) return "-";
+        return id.substring(Math.max(0, id.length() - 6)).replaceAll("[^a-zA-Z0-9]", "_");
     }
 
     @JavascriptInterface

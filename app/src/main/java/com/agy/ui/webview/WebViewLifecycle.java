@@ -17,8 +17,10 @@ public final class WebViewLifecycle {
             return;
         }
         try {
+            Log.i("AGY_DIAG", "webview_onResume");
             webView.onResume();
             webView.resumeTimers();
+            Log.i("AGY_DIAG", "host_resume_dispatch_attempt");
             webView.evaluateJavascript(
                     "(function(){ try { window.dispatchEvent(new CustomEvent('agy:host-resume')); } catch(e){} })();",
                     null);

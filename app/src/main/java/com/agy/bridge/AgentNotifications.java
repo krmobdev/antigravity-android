@@ -40,6 +40,7 @@ public final class AgentNotifications {
         AgentTaskTracker.Change update = TRACKER.observe(
                 conversationId, status, fullyIdle, stage, System.currentTimeMillis());
         if (update.event == AgentTaskTracker.Event.NONE) return;
+        AgyDiagnostics.log(context, "notification", "type=" + update.event + " id=" + shortId(update.conversationId));
         try {
             if (update.event == AgentTaskTracker.Event.FINISHED) {
                 notifications.cancel(update.conversationId, RUNNING_ID);
@@ -51,6 +52,10 @@ public final class AgentNotifications {
             // The system can deny notifications at any time. Never affect agent state.
             Log.w(TAG, "Notification unavailable: " + exc.getClass().getSimpleName());
         }
+    }
+
+    private static String shortId(String id) {
+        return id.substring(Math.max(0, id.length() - 6));
     }
 
     private void ensureChannels() {

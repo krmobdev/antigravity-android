@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.agy.bridge.AndroidBridge;
+import com.agy.bridge.AgyDiagnostics;
 import com.agy.core.CoreRuntimeState;
 import com.agy.core.CoreServiceLauncher;
 import com.agy.oauth.OAuthManager;
@@ -126,6 +127,7 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AgyDiagnostics.log(this, "activity", "onCreate");
         activeActivity = this;
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
@@ -224,6 +226,7 @@ public class MainActivity extends Activity
 
     @Override
     protected void onDestroy() {
+        AgyDiagnostics.log(this, "activity", "onDestroy");
         if (activeActivity == this) {
             activeActivity = null;
         }
@@ -252,6 +255,7 @@ public class MainActivity extends Activity
     @Override
     protected void onPause() {
         super.onPause();
+        AgyDiagnostics.log(this, "activity", "onPause");
         if (webViewHost != null) {
             AppLifecycle.pauseTimers(webViewHost.getWebView());
         }
@@ -260,6 +264,7 @@ public class MainActivity extends Activity
     @Override
     protected void onStop() {
         super.onStop();
+        AgyDiagnostics.log(this, "activity", "onStop");
         com.agy.theme.LauncherIconSwitcher.onAppBackgrounded(this);
         if (webViewHost != null) {
             AppLifecycle.pauseTimers(webViewHost.getWebView());
@@ -269,6 +274,7 @@ public class MainActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
+        AgyDiagnostics.log(this, "activity", "onResume");
         activeActivity = this;
         if (webViewHost != null) {
             AppLifecycle.resume(webViewHost.getWebView());
