@@ -1,0 +1,23 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const calls = [];
+const win = { Android: {onAgentState: (...args) => calls.push(args)} };
+vm.runInNewContext(fs.readFileSync(process.argv[2], 'utf8'), {window: win});
+const notify = win.__AGY_NOTIFY_AGENT_STATE__;
+notify({conversationId: 'c123', status: 2, fullyIdle: false,
+        trajectorySlice: { stepsInSlice: [{step: {metadata: {toolSummary: 'Running tests'}}}] }});
+notify({conversationId: 'c123', status: 1, fullyIdle: false});
+notify({conversationId: 'c123', status: 1, fullyIdle: true});
+notify({conversationId: 'c123', status: 3, fullyIdle: false});
+notify({conversationId: null, status: 2, fullyIdle: false});
+assert.equal(calls.length, 3);
+assert.equal(calls[0][0], 'c123');
+assert.equal(calls[0][1], 2);
+assert.equal(calls[0][3], 'Running tests');
+assert.equal(calls[1][2], false);
+assert.equal(calls[2][1], 1);
+assert.equal(calls[2][2], true);
+win.Android.onAgentState = () => {throw new Error('android gone')};
+assert.doesNotThrow(() => notify({conversationId: 'c123', status: 2}));
+console.log('PASS: browser sends decoded agent state, never crashes the stream');

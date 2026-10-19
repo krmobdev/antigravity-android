@@ -1,0 +1,133 @@
+package com.agy.bridge;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import android.util.Log;
+
+import com.agy.ui.MainActivity;
+
+/**
+ * Native task notification output. No Shizuku or WebView UI thread required to
+ * POST an already observed task transition.
+ *
+ * IMPORTANT: events currently arrive from WebView; this class alone cannot
+ * observe a completion while Chromium is completely suspended. See design doc.
+ */
+public final class AgentNotifications {
+    private static final String TAG = "AGYAgentNotify";
+    private static final String CHANNEL_WORKING = "agy_agent_working_v1";
+    private static final String CHANNEL_FINISHED = "agy_agent_finished_v1";
+    private static final int RUNNING_ID = 21001;
+    private static final int FINISHED_ID = 21002;
+    private static final AgentTaskTracker TRACKER = new AgentTaskTracker(5000);
+
+    private final Context context;
+    private final NotificationManager notifications;
+
+    public AgentNotifications(Context ctx) {
+        context = ctx.getApplicationContext();
+        notifications = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        ensureChannels();
+    }
+
+    public void observe(String conversationId, int status, boolean fullyIdle, String stage) {
+        if (notifications == null || !notifications.areNotificationsEnabled()) return;
+        AgentTaskTracker.Change update = TRACKER.observe(
+                conversationId, status, fullyIdle, stage, System.currentTimeMillis());
+        if (update.event == AgentTaskTracker.Event.NONE) return;
+        try {
+            if (update.event == AgentTaskTracker.Event.FINISHED) {
+                notifications.cancel(update.conversationId, RUNNING_ID);
+                notifications.notify(update.conversationId, FINISHED_ID, finished(update));
+            } else {
+                notifications.notify(update.conversationId, RUNNING_ID, working(update));
+            }
+        } catch (SecurityException | IllegalArgumentException exc) {
+            // The system can deny notifications at any time. Never affect agent state.
+            Log.w(TAG, "Notification unavailable: " + exc.getClass().getSimpleName());
+        }
+    }
+
+    private void ensureChannels() {
+        if (notifications == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationChannel progress = new NotificationChannel(
+                CHANNEL_WORKING, "Agent progress", NotificationManager.IMPORTANCE_LOW);
+        progress.setDescription("Тихий статус длительных задач Antigravity");
+        progress.setSound(null, null);
+        progress.enableVibration(false);
+        notifications.createNotificationChannel(progress);
+
+        NotificationChannel finished = new NotificationChannel(
+                CHANNEL_FINISHED, "Agent completed", NotificationManager.IMPORTANCE_HIGH);
+        finished.setDescription("Агент закончил работу или требует внимания");
+        finished.enableVibration(true);
+        finished.setVibrationPattern(new long[] {0, 250, 150, 250});
+        notifications.createNotificationChannel(finished);
+    }
+
+    private PendingIntent openConversation(String id) {
+        Intent launch = new Intent(context, MainActivity.class);
+        launch.setAction("com.agy.action.OPEN_AGENT_CONVERSATION");
+        launch.putExtra("agy_conversation_id", id);
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+        return PendingIntent.getActivity(context, id.hashCode(), launch, flags);
+    }
+
+    private int notificationIcon() {
+        int id = context.getResources().getIdentifier(
+                "ic_notification", "drawable", context.getPackageName());
+        return id != 0 ? id : android.R.drawable.stat_notify_sync;
+    }
+
+    private Notification.Builder builder(String channelId) {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new Notification.Builder(context, channelId)
+                : new Notification.Builder(context);
+    }
+
+    private Notification working(AgentTaskTracker.Change event) {
+        Notification.Builder b = builder(CHANNEL_WORKING)
+                .setSmallIcon(notificationIcon())
+                .setContentTitle("Antigravity · задача выполняется")
+                .setContentText(event.stage)
+                .setStyle(new Notification.BigTextStyle().bigText(event.stage))
+                .setContentIntent(openConversation(event.conversationId))
+                .setWhen(event.startedAt)
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .setOnlyAlertOnce(true)
+                .setProgress(0, 0, true)
+                .setOngoing(true)
+                .setCategory(Notification.CATEGORY_STATUS);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            b.setPriority(Notification.PRIORITY_LOW).setSound(null);
+        }
+        return b.build();
+    }
+
+    private Notification finished(AgentTaskTracker.Change event) {
+        Notification.Builder b = builder(CHANNEL_FINISHED)
+                .setSmallIcon(notificationIcon())
+                .setContentTitle("Antigravity · задача завершена")
+                .setContentText("Агент закончил работу. Нажмите, чтобы открыть Antigravity.")
+                .setStyle(new Notification.BigTextStyle().bigText(
+                        "Агент закончил работу. Нажмите, чтобы открыть Antigravity."))
+                .setContentIntent(openConversation(event.conversationId))
+                .setAutoCancel(true)
+                .setWhen(System.currentTimeMillis())
+                .setCategory(Notification.CATEGORY_EVENT);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            b.setPriority(Notification.PRIORITY_HIGH)
+                    .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+        }
+        return b.build();
+    }
+}

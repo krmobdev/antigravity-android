@@ -23,6 +23,7 @@ public final class AndroidBridge {
     private final ExternalUrlBridge external;
     private final ShellBridge shell;
     private final NotificationBridge notification;
+    private final AgentNotifications agentNotifications;
 
     public AndroidBridge(Context context, RuntimeManager runtime,
                          ShizukuBridge shizuku, OAuthManager oauth,
@@ -34,6 +35,7 @@ public final class AndroidBridge {
         this.external = new ExternalUrlBridge(appContext, oauth);
         this.shell = new ShellBridge(shizuku);
         this.notification = new NotificationBridge(appContext, shizuku);
+        this.agentNotifications = new AgentNotifications(appContext);
     }
 
     /** Host activity, used to dismiss the native splash once the UI has painted. */
@@ -132,6 +134,12 @@ public final class AndroidBridge {
     @JavascriptInterface
     public boolean postNotification(String title, String message, String tag) {
         return notification.post(title, message, tag);
+    }
+
+    /** Receives decoded core state transitions; never reads chat content. */
+    @JavascriptInterface
+    public void onAgentState(String conversationId, int status, boolean fullyIdle, String stage) {
+        agentNotifications.observe(conversationId, status, fullyIdle, stage);
     }
 
     @JavascriptInterface
