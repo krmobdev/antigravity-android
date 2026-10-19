@@ -118,6 +118,8 @@ public final class NativeAgentStreamClient {
         conn.setRequestProperty("Accept-Encoding", "identity");
         conn.setRequestProperty("x-codeium-csrf-token", token);
         conn.setDoOutput(true);
+        // Connect server-streaming requests MUST carry a length-prefixed frame.
+        // Earlier v4 mistakenly wrote bare JSON and the server rejected every subscription.
         connection = conn;
         try {
             JSONObject request = new JSONObject();
@@ -128,15 +130,15 @@ public final class NativeAgentStreamClient {
             request.put("disableRehydration", false);
             byte[] data = request.toString().getBytes(StandardCharsets.UTF_8);
             try (OutputStream out = conn.getOutputStream()) {
-                out.write(data);
+                ConnectFrameReader.writeRequest(out, data);
             }
             int http = conn.getResponseCode();
             if (http != HttpURLConnection.HTTP_OK) {
-                throw new java.io.IOException("Core ConnectRPC HTTP " + http);
+                throw new java.io.IOException("HTTP_" + http);
             }
             String type = conn.getContentType();
             if (type == null || !type.startsWith("application/connect+json")) {
-                throw new java.io.IOException("Unexpected Core stream MIME type");
+                throw new java.io.IOException("MIME_MISMATCH");
             }
             try (InputStream in = new BufferedInputStream(conn.getInputStream())) {
                 ConnectFrameReader.Frame frame;
@@ -145,7 +147,11 @@ public final class NativeAgentStreamClient {
                         JSONObject end = new JSONObject(
                                 new String(frame.payload, StandardCharsets.UTF_8));
                         if (end.has("error")) {
-                            throw new java.io.IOException("Core stream error");
+                            JSONObject error = end.optJSONObject("error");
+                            String code = error == null ? "unknown" : error.optString("code", "unknown");
+                            // Log only a protocol error code, never server diagnostics or tokens.
+                            if (!code.matches("[a-z_]{1,32}")) code = "unknown";
+                            throw new java.io.IOException("CONNECT_" + code);
                         }
                         break;
                     }

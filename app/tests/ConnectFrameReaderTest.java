@@ -30,7 +30,10 @@ public final class ConnectFrameReaderTest {
     }
     public static void main(String[] args) throws Exception {
         byte[] p="{\"update\":{\"status\":1,\"fullyIdle\":true}}".getBytes(StandardCharsets.UTF_8);
-        byte[] a=frame(0,p);
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+        ConnectFrameReader.writeRequest(encoded, p);
+        byte[] a=encoded.toByteArray();
+        expect(java.util.Arrays.equals(a,frame(0,p)),"serialized Connect request frame");
         ConnectFrameReader.Frame item=ConnectFrameReader.next(new ByteArrayInputStream(a));
         expect(item.flags==0,"data frame");
         expect(!item.isEndStream(),"data event");

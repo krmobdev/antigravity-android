@@ -2,6 +2,8 @@ package com.agy.bridge;
 
 import android.content.Context;
 import android.webkit.JavascriptInterface;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.agy.oauth.OAuthManager;
 import com.agy.core.NativeAgentStateObserver;
@@ -26,6 +28,7 @@ public final class AndroidBridge {
     private final NotificationBridge notification;
     private final AgentNotifications agentNotifications;
     private final Context diagnosticContext;
+    private final Map<String, String> lastAgentStates = new LinkedHashMap<>();
 
     public AndroidBridge(Context context, RuntimeManager runtime,
                          ShizukuBridge shizuku, OAuthManager oauth,
@@ -142,7 +145,21 @@ public final class AndroidBridge {
     /** Receives decoded core state transitions; never reads chat content. */
     @JavascriptInterface
     public void onAgentState(String conversationId, int status, boolean fullyIdle, String stage) {
-        AgyDiagnostics.log(diagnosticContext, "agent_state", "id=" + safeId(conversationId) + " status=" + status + " idle=" + fullyIdle);
+        // Diagnostic transitions only. Full stream can emit dozens of updates
+        // per second and previously flooded the rotating log with duplicates.
+        if (conversationId != null && conversationId.length() <= 128) {
+            String current = status + "/" + fullyIdle;
+            synchronized (lastAgentStates) {
+                if (!current.equals(lastAgentStates.get(conversationId))) {
+                    lastAgentStates.put(conversationId, current);
+                    if (lastAgentStates.size() > 128) {
+                        lastAgentStates.remove(lastAgentStates.keySet().iterator().next());
+                    }
+                    AgyDiagnostics.log(diagnosticContext, "agent_state",
+                            "id=" + safeId(conversationId) + " status=" + status + " idle=" + fullyIdle);
+                }
+            }
+        }
         agentNotifications.observe(conversationId, status, fullyIdle, stage);
         NativeAgentStateObserver.onUiState(conversationId, status, fullyIdle);
     }

@@ -3,6 +3,7 @@ package com.agy.core;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * Size-bounded ConnectRPC streaming envelope parser.
@@ -19,6 +20,21 @@ public final class ConnectFrameReader {
     }
 
     private ConnectFrameReader() {}
+
+    /** Every Connect server-stream request uses the same 5-byte frame envelope. */
+    public static void writeRequest(OutputStream output, byte[] payload) throws IOException {
+        if (payload == null || payload.length > MAX_MESSAGE_BYTES) {
+            throw new IOException("Connect request exceeds size limit");
+        }
+        int size = payload.length;
+        output.write(0); // uncompressed request
+        output.write((size >>> 24) & 255);
+        output.write((size >>> 16) & 255);
+        output.write((size >>> 8) & 255);
+        output.write(size & 255);
+        output.write(payload);
+        output.flush();
+    }
 
     /** Returns null ONLY when no bytes are available at a clean EOF. */
     public static Frame next(InputStream stream) throws IOException {

@@ -133,7 +133,14 @@ public final class NativeAgentStateObserver {
             try {
                 AgyDiagnostics.log(context, "native_observer",
                         "subscribe id=" + shortId(watch.id));
+                final int[] lastState = {-1};
                 client.subscribe(watch.id, (status, fullyIdle) -> {
+                    int code = status * 10 + (fullyIdle ? 1 : 0);
+                    if (lastState[0] != code) {
+                        lastState[0] = code;
+                        AgyDiagnostics.log(context, "native_observer",
+                                "state id=" + shortId(watch.id) + " status=" + status + " idle=" + fullyIdle);
+                    }
                     if (stopped || watch.cancelled.get() || watches.get(watch.id) != watch) {
                         return false;
                     }
@@ -156,6 +163,12 @@ public final class NativeAgentStateObserver {
                 lastError = "";
             } catch (Exception exc) {
                 String error = exc.getClass().getSimpleName();
+                if (exc instanceof java.io.IOException) {
+                    String detail = exc.getMessage();
+                    if (detail != null && detail.matches("(?:HTTP_[0-9]{3}|CONNECT_[a-z_]{1,32}|MIME_MISMATCH)")) {
+                        error = detail;
+                    }
+                }
                 // Do not spam private log files, leak tokens or log chat content.
                 if (!error.equals(lastError)) {
                     AgyDiagnostics.log(context, "native_observer", "stream_error=" + error);
