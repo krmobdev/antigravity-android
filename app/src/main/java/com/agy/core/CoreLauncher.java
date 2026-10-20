@@ -82,6 +82,8 @@ public final class CoreLauncher {
         pb.directory(filesDir);
         pb.redirectErrorStream(true);
         runtime.applyEnvironment(pb);
+        pb.environment().put(com.agy.gateway.GatewayAuthToken.ENV,
+                com.agy.gateway.GatewayAuthToken.getOrCreate(filesDir));
         return pb.start();
     }
 }

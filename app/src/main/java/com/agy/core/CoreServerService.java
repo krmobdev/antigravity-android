@@ -77,6 +77,8 @@ public final class CoreServerService extends Service {
                     pb.directory(getFilesDir());
                     pb.environment().put("PATH", getFilesDir().getAbsolutePath() + "/usr/bin:" + System.getenv("PATH"));
                     pb.environment().put("HOME", getFilesDir().getAbsolutePath());
+                    pb.environment().put(com.agy.gateway.GatewayAuthToken.ENV,
+                            com.agy.gateway.GatewayAuthToken.getOrCreate(getFilesDir()));
                     pb.start();
                 }
             } catch (Exception e) {

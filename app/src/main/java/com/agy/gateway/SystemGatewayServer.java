@@ -53,6 +53,8 @@ public final class SystemGatewayServer {
 
     public synchronized void start() {
         if (running) return;
+        // Create private capability before accepting any command requests.
+        GatewayAuthToken.getOrCreate(context.getFilesDir());
         running = true;
 
         acceptThread = new Thread(() -> {
@@ -123,10 +125,17 @@ public final class SystemGatewayServer {
             String path = parts[1];
 
             int contentLength = 0;
+            String capability = null;
+            int headerCount = 0;
             String line;
             while ((line = readHeaderLine(in)) != null && !line.isEmpty()) {
-                if (line.toLowerCase().startsWith("content-length:")) {
+                if (++headerCount > 80) throw new IOException("Too many HTTP headers");
+                String lower = line.toLowerCase(java.util.Locale.ROOT);
+                if (lower.startsWith("content-length:")) {
                     contentLength = Integer.parseInt(line.substring(15).trim());
+                } else if (lower.startsWith(GatewayAuthToken.HEADER + ":")) {
+                    if (capability != null) throw new IOException("Duplicate gateway capability header");
+                    capability = line.substring(line.indexOf(':') + 1).trim();
                 }
             }
 
@@ -135,6 +144,22 @@ public final class SystemGatewayServer {
             }
             if (contentLength > 4 * 1024 * 1024) {
                 throw new IOException("Payload too large: " + contentLength);
+            }
+
+            // Localhost is not an authorization boundary on Android: other
+            // apps can connect to this TCP port. Only benign status is public.
+            boolean publicStatus = "GET".equals(method) && "/gateway/status".equals(path);
+            if (!publicStatus && !GatewayAuthToken.authorized(context.getFilesDir(), capability)) {
+                byte[] denied = "{\"ok\":false,\"error\":\"unauthorized\"}"
+                        .getBytes(StandardCharsets.UTF_8);
+                String response = "HTTP/1.1 403 Forbidden\r\n"
+                        + "Content-Type: application/json; charset=utf-8\r\n"
+                        + "Content-Length: " + denied.length + "\r\n"
+                        + "Connection: close\r\n\r\n";
+                out.write(response.getBytes(StandardCharsets.UTF_8));
+                out.write(denied);
+                out.flush();
+                return;
             }
 
             JSONObject responseJson = new JSONObject();
