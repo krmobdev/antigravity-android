@@ -71,9 +71,11 @@
 
 ### Быстрый старт
 
-1. **Скачайте нашу APK:** [Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk) ([страница релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)).
-   * Это **одна опубликованная редакция** с package ID `com.krmobdev.antigravity`; она устанавливается отдельно от оригинальной `com.agy`.
-   * При желании проверьте загрузку по [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
+1. **Выберите редакцию на [странице нашего релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1):**
+   * **[Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)** — стандартная, с исходными проверками доступности учётной записи Google.
+   * **[Antigravity-Android-v2.4.0-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1-region-bypass.apk)** — *Region Bypass*, с изменёнными проверками доступности аккаунта в локальном Core. Не гарантирует авторизацию при любых серверных или региональных ограничениях.
+   * Обе редакции используют **один package ID** `com.krmobdev.antigravity` и **один сертификат подписи**. Установить их рядом друг с другом нельзя: выбранная редакция заменяет другую при установке поверх. От оригинальной `com.agy` обе устанавливаются отдельно.
+   * Проверьте хеши обеих APK по [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
 2. **Предоставьте доступ к памяти** (`Все файлы`). *(Опционально: подключите Shizuku для доступа к ADB)*.
 3. **Установите рабочее окружение** в терминале или через агента:
    ```bash
@@ -89,6 +91,9 @@
 ```bash
 # Сборка нашего релизного APK (требуются приватный ключ и зависимости):
 bash modules/builder/build_apk.sh --kr-release
+
+# Bypass-редакция того же форка с тем же приватным релизным ключом:
+bash modules/builder/build_apk.sh --kr-release --region-bypass
 
 # Запуск полного набора тестов:
 bash test_all_modules.sh
