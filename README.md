@@ -14,7 +14,7 @@
 
   [![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://android.com)
   [![Arch](https://img.shields.io/badge/ARM64-v8.0--A%2B-blue?style=flat-square)](https://arm.com)
-  [![Release](https://img.shields.io/badge/Version-2.4.0-blueviolet?style=flat-square)](https://github.com/werdio325-png/antigravity-android/releases)
+  [![Release](https://img.shields.io/badge/Version-2.4.0--kr1-blueviolet?style=flat-square)](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)
   [![License](https://img.shields.io/badge/License-Apache_2.0-orange?style=flat-square)](LICENSE)
 
   <br/>
@@ -31,13 +31,25 @@
 
 ### Overview
 
+> **Independent fork** of the [original project by werdio325-png](https://github.com/werdio325-png/antigravity-android). For installation and updates, use **[our fork's releases](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)**; links to upstream are provided explicitly for attribution only.
+
 **Antigravity for Android** brings autonomous agentic coding directly to mobile hardware.
 
 No PRoot, chroot, or virtualization overhead. Antigravity runs **bare-metal inside native Android userspace (Bionic)**, unleashing the full read/write speed of UFS storage and physical CPU cores. Driven by Gemini models, the agent inspects repositories, authors code across multiple files, compiles binaries, and runs tests completely on-device.
 
 ---
 
-### Highlights in v2.4
+### Reliability Fixes in Our v2.4.0-kr1 Release
+
+* **Native agent notifications:** Core-driven completion alerts that work independently of a suspended WebView and open the matching conversation.
+* **Hca stream recovery:** Refreshes agent state after returning from the background.
+* **NDa / Sidebar reconciliation:** Keeps `Working` indicators in sync with Core without changing unread states.
+
+[Full release notes](docs/releases/v2.4.0-kr1.en.md) · [Download APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)
+
+---
+
+### Highlights from Upstream v2.4
 
 * **Modular Core:** Clean separation into 6 standalone subsystems (`modules/*`) with independent test suites.
 * **Native Splash:** Canvas-based dot animation saving ~40 MB RAM with instant startup.
@@ -53,15 +65,15 @@ No PRoot, chroot, or virtualization overhead. Antigravity runs **bare-metal insi
 * **Elevated Control (Shizuku):** Direct ADB-level operations (`uid=2000`) without root for package installs and system diagnostics.
 * **Built-in `pkg` Manager:** Fast package manager installing development runtimes (`git`, `python`, `node`, `clang`) from Termux repos.
 * **Adaptive Viewports:** Seamless touch-first mobile UI with optional desktop layout.
-* **In-Place Upgrades:** Consistent keystore guarantees updating APKs without losing sessions or workspace data.
+* **Fork Upgrades:** Future APKs with the same `com.krmobdev.antigravity` application ID and signing certificate can update this fork in place. Data from upstream `com.agy` is not automatically migrated.
 
 ---
 
 ### Quick Start
 
-1. **Download APK** from [Releases](https://github.com/werdio325-png/antigravity-android/releases):
-   * `antigravity.apk` — standard release (original Google account checks).
-   * `antigravity-region-bypass.apk` — release with account eligibility check bypass.
+1. **Download our signed APK:** [Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk) ([release page](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)).
+   * We publish **one edition** under the `com.krmobdev.antigravity` package ID, installable alongside upstream `com.agy`.
+   * Optionally verify the download with [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
 2. **Grant Storage Permission** (`All Files Access`). *(Optional: enable Shizuku for ADB access)*.
 3. **Install Runtimes** via terminal or agent:
    ```bash
@@ -72,12 +84,11 @@ No PRoot, chroot, or virtualization overhead. Antigravity runs **bare-metal insi
 
 ### Building & Testing
 
-```bash
-# Build standard release APK (dist/antigravity.apk):
-bash build.sh
+Our signed fork release uses a dedicated build mode and private signing key. Plain `build.sh` generates upstream-style packages; it does **not** reproduce our published fork APK. See the [release signing and local build guide](docs/RELEASE_SIGNING_KR.md).
 
-# Build release APK with region bypass (dist/antigravity-region-bypass.apk):
-bash build.sh --region-bypass
+```bash
+# Build our fork release (requires private release signing key and dependencies):
+bash modules/builder/build_apk.sh --kr-release
 
 # Run all test suites:
 bash test_all_modules.sh
