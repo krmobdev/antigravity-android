@@ -2,7 +2,7 @@ const {execFileSync}=require('node:child_process');
 const vm=require('node:vm'),assert=require('node:assert/strict');
 const effect=execFileSync('python3',['-c',`import runpy; p=runpy.run_path(__import__('sys').argv[1]); print(p['CONTEXT_REPLACEMENT'].split(p['CONTEXT_MARKER'])[1].split('return null};function mMb')[0])`,process.argv[2]],{encoding:'utf8'});
 let calls=[],layout,cleanup,listeners=new Map();
-let context={window:{Android:{onVisibleConversation:id=>calls.push(id)},addEventListener:(k,f)=>listeners.set(k,f),removeEventListener:(k,f)=>{if(listeners.get(k)===f)listeners.delete(k)}},z:{useLayoutEffect:fn=>{layout=fn}},e:'/c/abc-123',g:'abc-123'};
+let context={window:{__AG_NATIVE_BRIDGE_TOKEN__:'test-token',Android:{onVisibleConversation:(token,id)=>{assert.equal(token,'test-token');calls.push(id)}},addEventListener:(k,f)=>listeners.set(k,f),removeEventListener:(k,f)=>{if(listeners.get(k)===f)listeners.delete(k)}},z:{useLayoutEffect:fn=>{layout=fn}},e:'/c/abc-123',g:'abc-123'};
 vm.createContext(context);
 vm.runInContext(effect,context);
 assert.equal(calls.length,0,'render must not report a chat');

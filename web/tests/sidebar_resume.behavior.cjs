@@ -5,7 +5,7 @@ const source = fs.readFileSync(process.argv[2], 'utf8');
 const proof = new Set();
 function page() {
   const events = new Map();
-  const window = {Android: {wasAgentRecentlyFinished: id => proof.has(id)},
+  const window = {__AG_NATIVE_BRIDGE_TOKEN__: 'test-token', Android: {wasAgentRecentlyFinished: (token,id) => token === 'test-token' && proof.has(id)},
     addEventListener(name, callback) {
       if (!events.has(name)) events.set(name, []);
       events.get(name).push(callback);

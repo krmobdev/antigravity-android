@@ -24,7 +24,7 @@
       for (var pair of updates || []) {
         var id = pair[0], summary = pair[1];
         if (typeof id === 'string' && summary && typeof summary.summary === 'string') {
-          bridge.onConversationSummary(id, summary.summary);
+          bridge.onConversationSummary(window.__AG_NATIVE_BRIDGE_TOKEN__, id, summary.summary);
         }
       }
     } catch (_) {}
@@ -40,7 +40,7 @@
       window.__AGY_DIAG_AGENT_OBSERVE__?.(state);
       window.__AGY_VERIFIED_AGENT_OBSERVE__?.(state);
       bridge.onAgentState(
-        state.conversationId, state.status, state.fullyIdle === true, compactStage(state));
+        window.__AG_NATIVE_BRIDGE_TOKEN__, state.conversationId, state.status, state.fullyIdle === true, compactStage(state));
     } catch (_) {
       // Never interrupt core agent state updates because notifications failed.
     }
