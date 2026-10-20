@@ -41,3 +41,7 @@ The `HistoricalCompletionEvidence` test read only the private device log for 20:
 This is a **positive real Core completion/notification result**, not complete user acceptance. Never post real conversation IDs, OAuth tokens or chat content to public issue logs.
 
 Run `am instrument -w -r com.agy.v24readiness/.HistoricalCompletionEvidence` on the Android device to re-evaluate the exact historical event window without starting any model.
+
+Historical observer window may be set with Android instrumentation extras:
+`am instrument -w -r -e start 21:15 -e end 21:20 com.agy.v24readiness/.HistoricalCompletionEvidence`
+(default is 21:15–21:20 local on 2026-10-20). Never returns raw IDs or message text.

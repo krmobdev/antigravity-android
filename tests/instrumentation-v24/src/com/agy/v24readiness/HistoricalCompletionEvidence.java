@@ -22,17 +22,31 @@ public final class HistoricalCompletionEvidence extends Instrumentation {
   private static String clock(long t){
     return new SimpleDateFormat("HH:mm:ss.SSS",Locale.ROOT).format(new Date(t));
   }
-  @Override public void onCreate(Bundle b){super.onCreate(b);start();}
+  private String windowStart="21:15",windowEnd="21:20";
+  @Override public void onCreate(Bundle b){
+    super.onCreate(b);
+    if(b!=null) {
+      String a=b.getString("start"), z=b.getString("end");
+      if(a!=null&&a.matches("(?:[01][0-9]|2[0-3]):[0-5][0-9]"))windowStart=a;
+      if(z!=null&&z.matches("(?:[01][0-9]|2[0-3]):[0-5][0-9]"))windowEnd=z;
+    }
+    start();
+  }
   @Override public void onStart(){
     super.onStart();
     try{
       Context ctx=getTargetContext();
       Calendar c=Calendar.getInstance();
-      c.set(2026,Calendar.OCTOBER,20,20,31,0);c.set(Calendar.MILLISECOND,0);
+      int sh=Integer.parseInt(windowStart.substring(0,2)),
+          sm=Integer.parseInt(windowStart.substring(3,5)),
+          eh=Integer.parseInt(windowEnd.substring(0,2)),
+          em=Integer.parseInt(windowEnd.substring(3,5));
+      c.set(2026,Calendar.OCTOBER,20,sh,sm,0);c.set(Calendar.MILLISECOND,0);
       long from=c.getTimeInMillis();
-      c.set(2026,Calendar.OCTOBER,20,20,35,59);
+      c.set(2026,Calendar.OCTOBER,20,eh,em,59);
       long until=c.getTimeInMillis()+999;
-      emit("WINDOW","2026-10-20 20:31:00 to 20:35:59 device local");
+      if(until<from)throw new IllegalArgumentException("End before start");
+      emit("WINDOW","2026-10-20 "+windowStart+" to "+windowEnd+" device local");
       Map<String,String> aliases=new LinkedHashMap<>();
       ArrayList<String> result=new ArrayList<>();
       int states=0,completions=0,finishTracker=0,posts=0,nav=0,errors=0;
