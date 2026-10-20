@@ -53,4 +53,12 @@ node "$ROOT/web/tests/runtime_v24.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
     "$ROOT/web/src/patches/web_optimizations/sidebar-reconcile.js" \
     "$ROOT/web/src/patches/web_optimizations/agent-notifications.js"
+# The committed generated bundles must be exactly reproducible from source.
+# Otherwise a review checkout could ship a different sidebar than local APK.
+for bundled in main.js patches/web_optimizations.js; do
+    cmp -s "$ROOT/web/generated/$bundled" "$TMP/web/generated/$bundled" || {
+        echo "Non-reproducible checked-in generated web asset: $bundled" >&2
+        exit 1
+    }
+done
 echo "web build selftest: OK"
