@@ -30,7 +30,7 @@ class ResumePatchTests(unittest.TestCase):
 
     def test_fails_closed_if_upstream_changes(self):
         before = (ROOT / "main.js").read_text(encoding="utf-8")
-        modified = before.replace(patcher.REPLACEMENTS[1][0], "/* upstream changed */", 1)
+        modified = before.replace(patcher.V24_REPLACEMENTS[1][0], "/* upstream changed */", 1)
         with self.assertRaisesRegex(ValueError, "upstream stream code changed"):
             patcher.patch_bundle(modified)
 

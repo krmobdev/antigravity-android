@@ -155,6 +155,9 @@ emit_bundle
 cp -f "$SCRIPT_DIR/main.js" "$GEN_DIR/main.js"
 python3 "$SCRIPT_DIR/patch_main.py" "$GEN_DIR/main.js" \
     || die "web/patch_main.py failed"
+[ -f "$SCRIPT_DIR/patch_stream_resume.py" ] || die "web/patch_stream_resume.py missing"
+python3 "$SCRIPT_DIR/patch_stream_resume.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
+    || die "web/patch_stream_resume.py failed"
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
     "${#bundle_names[@]}" "$src_count"

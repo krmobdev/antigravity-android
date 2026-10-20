@@ -41,18 +41,53 @@ REPLACEMENTS = (
 )
 
 
+
+# Antigravity 2.4.0: upstream minifier renamed its ConnectRPC locals. In
+# addition to host-resume, renew a stream after 90 seconds with no incoming
+# events (important for the foreground "Working" freeze).
+V24_REPLACEMENTS = (
+    (
+        'let E=Je();q?.(E);try{let F=p(te.StreamAgentStateUpdatesRequestSchema',
+        'let E=Je(),__agyRenew=!1;q?.(E);try{let F=p(te.StreamAgentStateUpdatesRequestSchema',
+    ),
+    (
+        '),G=a(F,{signal:e.signal});for await(let H of g(G)){',
+        '),' + MARKER +
+        '__agyAbort=new AbortController,__agyLastEvent=Date.now(),'
+        '__agyOnResume=()=>{__agyRenew=!0;__agyAbort.abort()},'
+        '__agyWatchdog=setInterval(()=>{if(Date.now()-__agyLastEvent>9E4)'
+        '{__agyRenew=!0;__agyAbort.abort()}},3E4);'
+        'window.addEventListener("agy:host-resume",__agyOnResume);'
+        'e.signal.addEventListener("abort",__agyOnResume,{once:!0});'
+        'try{let G=a(F,{signal:__agyAbort.signal});'
+        'for await(let H of g(G)){__agyLastEvent=Date.now();',
+    ),
+    (
+        '}finally{g()}}h()}catch(F){h();if(e.signal.aborted)break;let G=!0;',
+        '}finally{g()}}h()}finally{'
+        'clearInterval(__agyWatchdog);'
+        'window.removeEventListener("agy:host-resume",__agyOnResume);'
+        'e.signal.removeEventListener("abort",__agyOnResume)'
+        '}}catch(F){h();if(e.signal.aborted)break;'
+        'if(__agyRenew){D=0;B=ue(b);continue}'
+        'let G=!0;',
+    ),
+)
+
+
 def patch_bundle(source: str) -> str:
+    versions = (REPLACEMENTS, V24_REPLACEMENTS)
     if MARKER in source:
-        if all(new in source for _, new in REPLACEMENTS):
+        if any(all(new in source for _, new in steps) for steps in versions):
             return source
         raise ValueError("partial / inconsistent stream resume patch")
-    for old, _ in REPLACEMENTS:
-        count = source.count(old)
-        if count != 1:
-            raise ValueError(f"upstream stream code changed: anchor count {count}: {old[:100]}")
-    for old, new in REPLACEMENTS:
-        source = source.replace(old, new, 1)
-    return source
+    for steps in versions:
+        if all(source.count(old) == 1 for old, _ in steps):
+            for old, new in steps:
+                source = source.replace(old, new, 1)
+            return source
+    details = [(source.count(steps[0][0]), source.count(steps[1][0]), source.count(steps[2][0])) for steps in versions]
+    raise ValueError(f"upstream stream code changed: anchor counts {details}")
 
 
 def main(argv: list[str]) -> int:
