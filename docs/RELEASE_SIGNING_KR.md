@@ -27,6 +27,18 @@ The owner must select a trusted separate location, e.g. encrypted cloud drive/pa
 - After export, the owner must **test access/recovery** from the external location, compare the keystore SHA-256 and certificate fingerprint, and explicitly confirm this check before publication.
 - Mark external backup as confirmed **only after** successful retrieval, not merely after starting an upload.
 
+## Prepared encrypted OneDrive backup — owner confirmation required
+
+The existing release keystore plus its two independent signing passwords were packed into a **7z AES-256 encrypted archive with filename/header encryption**. I decrypted the archive privately, recovered all files, compared SHA-256 bytes and independently verified the recovered certificate with `keytool`: **PASS**. No new signing key was generated.
+
+- Encrypted file on Android: `/storage/emulated/0/Download/Antigravity-Release-Key-Backup-v2.4.0-kr1.7z`.
+- Encrypted archive SHA-256: `d8a56fc82325bf31bef4105a07992a0ed576230aaaf7741196996e7515775691`.
+- The archive's **separate random passphrase** is held in the private Termux file `~/anima-workspace/.antigravity-release-identity/backup-archive-password`, outside Git and outside the OneDrive archive.
+- The owner should inspect the passphrase locally and store it in a trusted password manager **separate from OneDrive**, not in GitHub, a chat or a diagnostic log. One command for a private Termux screen: `cat ~/anima-workspace/.antigravity-release-identity/backup-archive-password`. The command contains no secret but its output is secret; don't record or share the screen.
+- On the phone: **OneDrive → + → Upload → Files → Downloads → Antigravity-Release-Key-Backup-v2.4.0-kr1.7z**. Wait for the upload, reopen the OneDrive folder and verify that the file is present and recoverable.
+- **External backup remains NOT CONFIRMED** until the user verifies the OneDrive upload and confirms that the archive passphrase is saved separately.
+- Restoration: download the encrypted `.7z` from OneDrive, unlock it in 7-Zip with the separately saved passphrase, place the restored keystore/password files in a protected local folder, and check the certificate SHA-256 fingerprint in this document.
+
 ## Repeatable KR release build
 
 From a clean checkout of the intended fork `main` commit with locally available vendor inputs, launch:

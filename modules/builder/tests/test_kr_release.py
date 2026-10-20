@@ -24,7 +24,8 @@ class KrRelease(unittest.TestCase):
         for value in ('package com.agy;','APPLICATION_ID = "com.krmobdev.antigravity"',
                       'PORT = 45159','GATEWAY_PORT = 45162'):
             self.assertIn(value,j)
-        self.assertIn("Antigravity KR",r)
+        self.assertIn("Antigravity",r)
+        self.assertNotIn("Antigravity KR",r)
     def test_old_modes_unchanged(self):
         official,j,_=self.generate()
         dev,d,_=self.generate(dev=True)

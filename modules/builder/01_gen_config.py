@@ -58,7 +58,7 @@ def main():
     oauth_scheme = env.get("OAUTH_SCHEME", "antigravity")
     app_name = env.get("APP_NAME_DEV", "Antigravity Dev") if is_dev else env.get("APP_NAME", "Antigravity")
     if is_kr_release:
-        app_name = "Antigravity KR"
+        app_name = "Antigravity"
     min_api = env.get("MIN_API", "24")
     target_sdk = env.get("TARGET_SDK", "28")
     is_debug = "true" if is_dev else "false"
