@@ -91,6 +91,17 @@ public final class CoreReadyProbe {
         }
     }
 
+    /** Exact packaged Core identity shared by UI readiness and independent observer. */
+    public static boolean matchesBundledCertificate(Context context, X509Certificate cert) {
+        if (context == null || cert == null) return false;
+        try {
+            byte[] expected = expectedCertDigest(context);
+            return expected != null && MessageDigest.isEqual(expected, sha256(cert.getEncoded()));
+        } catch (Exception cannotValidate) {
+            return false;
+        }
+    }
+
     private static byte[] sha256(byte[] input) throws Exception {
         return MessageDigest.getInstance("SHA-256").digest(input);
     }

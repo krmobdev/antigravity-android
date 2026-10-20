@@ -14,7 +14,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.UUID;
@@ -28,13 +27,12 @@ import javax.net.ssl.X509TrustManager;
  * Read-only Core ConnectRPC subscription owned by a foreground Android service.
  *
  * Unlike the UI subscriber this continues receiving status while the WebView
- * renderer is suspended. The certificate is PINNED to the observed 2.3.0
- * bundled language_server. Never fall back to a trust-all TLS connection.
+ * renderer is suspended. Trust is pinned to the SAME packaged X.509
+ * certificate as CoreReadyProbe, instead of a stale version-specific hash.
+ * Never fall back to a trust-all TLS connection.
  */
 public final class NativeAgentStreamClient {
     private static final String TAG = "AGYNativeStream";
-    private static final String PINNED_CERT_SHA256 =
-            "f8bbabd57a2dff32992f205ede841f9ba8d95cdf45982e1d0e73aa5834e9cf94";
     private static final String METHOD =
             "/exa.language_server_pb.LanguageServerService/StreamAgentStateUpdates";
 
@@ -55,7 +53,7 @@ public final class NativeAgentStreamClient {
         if (active != null) active.disconnect();
     }
 
-    private static SSLContext pinnedLocalTls() throws Exception {
+    private SSLContext pinnedLocalTls() throws Exception {
         X509TrustManager pin = new X509TrustManager() {
             @Override public X509Certificate[] getAcceptedIssuers() {
                 return new X509Certificate[0];
@@ -71,13 +69,8 @@ public final class NativeAgentStreamClient {
                 }
                 chain[0].checkValidity();
                 try {
-                    byte[] digest = MessageDigest.getInstance("SHA-256")
-                            .digest(chain[0].getEncoded());
-                    StringBuilder h = new StringBuilder(64);
-                    for (byte b : digest) h.append(String.format(java.util.Locale.ROOT,
-                            "%02x", b & 255));
-                    if (!PINNED_CERT_SHA256.equals(h.toString())) {
-                        throw new CertificateException("Unexpected local Core certificate");
+                    if (!CoreReadyProbe.matchesBundledCertificate(context, chain[0])) {
+                        throw new CertificateException("Core certificate mismatch with packaged v2.4 identity");
                     }
                 } catch (CertificateException exc) {
                     throw exc;
