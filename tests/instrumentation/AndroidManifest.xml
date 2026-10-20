@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.agy.diagtests">
+  <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
+  <application android:label="AGY Sidebar Instrumentation" android:hasCode="true"/>
+  <instrumentation android:name="com.agy.diagtests.SidebarInstrumentation"
+    android:targetPackage="com.agy.dev" android:label="AGY sidebar real WebView test"
+    android:functionalTest="true"/>
+</manifest>
