@@ -1,41 +1,34 @@
 #!/usr/bin/env python3
-"""Reconcile stale sidebar summary only with confirmed agent state.
-
-The summary notFullyIdle flag can remain true after the agent stream
-reports IDLE and fullyIdle. Only suppress that stale summary contribution,
-never optimistic/local starting flags.
-"""
+"""Connect existing native confirmed-idle proof to actual upstream v2.4 React sidebar."""
 from pathlib import Path
 import sys
 
-MARKER="/*AGY_SIDEBAR_RECONCILE_V1*/"
-XW_MARKER="/*AGY_XW_RUNNING_RECONCILE_V1*/"
-XW_ANCHOR='m=m==="running";h=g===R.CascadeRunStatus.IDLE&&h===!1;'
-XW_REPLACEMENT='m=m==="running"&&!window.__AGY_VERIFIED_AGENT_GET__?.(a);'+XW_MARKER+'h=g===R.CascadeRunStatus.IDLE&&h===!1;'
-ANCHOR='function VW(a){var b=En(g=>Rp(g)===a),c=!bM(a),e=nz(b?a:void 0,{selector:UW}),f=ZS(a);return(b?e:c)||f}'
-REPLACEMENT='function VW(a){var b=En(g=>Rp(g)===a),c=!bM(a),e=nz(b?a:void 0,{selector:UW}),f=ZS(a),verifiedIdle=z.useSyncExternalStore(window.__AGY_VERIFIED_AGENT_SUBSCRIBE__||function(){return function(){}},()=>window.__AGY_VERIFIED_AGENT_GET__?.(a)===true,()=>false);'+MARKER+'return((b?e:c)&&!verifiedIdle)||f}'
-DIAG='window.__AGY_DIAG_SIDEBAR__?.(a,b,c,e,f);'
-DIAG_ANCHOR=ANCHOR.replace('return(b?e:c)||f}', DIAG+'return(b?e:c)||f}')
-DIAG_REPLACEMENT=REPLACEMENT.replace('return((b?e:c)&&!verifiedIdle)||f}', DIAG+'return((b?e:c)&&!verifiedIdle)||f}')
+MARKER="/*AGY_SIDEBAR_RECONCILE_V24*/"
+SECONDARY_MARKER="/*AGY_SIDEBAR_RUNNING_RECONCILE_V24*/"
+PRIMARY='function VAb(a){var b=Hm(g=>Ip(g)===a),c=!KR(a),e=tz(b?a:void 0,{selector:TAb}),f=SX(a);return(b?e:c)||f}'
+REPLACEMENT=('function VAb(a){var b=Hm(g=>Ip(g)===a),c=!KR(a),'
+    'e=tz(b?a:void 0,{selector:TAb}),f=SX(a),'
+    'verifiedIdle=A.useSyncExternalStore('
+    'window.__AGY_VERIFIED_AGENT_SUBSCRIBE__||(()=>()=>{}),'
+    '()=>window.__AGY_VERIFIED_AGENT_GET__?.(a)===true,()=>false);'
+    +MARKER+'return((b?e:c)&&!verifiedIdle)||f}')
+SECONDARY='t=t==="running";l=k===T.CascadeRunStatus.IDLE&&l===!1;'
+SECONDARY_REPLACEMENT=('t=t==="running"&&!window.__AGY_VERIFIED_AGENT_GET__?.(a);'
+    +SECONDARY_MARKER+'l=k===T.CascadeRunStatus.IDLE&&l===!1;')
 
-def patch(text):
-    if MARKER in text or XW_MARKER in text:
-        if (MARKER in text and XW_MARKER in text and
-                text.count(REPLACEMENT)+text.count(DIAG_REPLACEMENT)==1 and
-                text.count(XW_REPLACEMENT)==1): return text
-        raise ValueError("partial sidebar reconciliation patch")
-    if text.count(XW_ANCHOR)!=1:
-        raise ValueError("upstream sidebar secondary running predicate changed")
-    matches=[(old,new) for old,new in ((ANCHOR,REPLACEMENT),(DIAG_ANCHOR,DIAG_REPLACEMENT)) if text.count(old)]
-    if len(matches)!=1 or text.count(matches[0][0])!=1:
-        raise ValueError("upstream sidebar spinner helper changed")
-    text=text.replace(matches[0][0],matches[0][1],1)
-    return text.replace(XW_ANCHOR,XW_REPLACEMENT,1)
+def patch(s):
+    if MARKER in s or SECONDARY_MARKER in s:
+        if s.count(MARKER)==s.count(SECONDARY_MARKER)==s.count(REPLACEMENT)==s.count(SECONDARY_REPLACEMENT)==1:
+            return s
+        raise ValueError("partial/inconsistent v2.4 React sidebar patch")
+    if s.count(PRIMARY)!=1 or s.count(SECONDARY)!=1:
+        raise ValueError(f"v2.4 React anchors changed: primary={s.count(PRIMARY)} secondary={s.count(SECONDARY)}")
+    return s.replace(PRIMARY,REPLACEMENT,1).replace(SECONDARY,SECONDARY_REPLACEMENT,1)
 
 if __name__=="__main__":
-    if len(sys.argv)!=3: sys.exit("usage: patch_sidebar_reconcile.py INPUT OUTPUT")
-    try:
-        original=Path(sys.argv[1]).read_text(encoding="utf8")
-        Path(sys.argv[2]).write_text(patch(original),encoding="utf8")
-    except ValueError as e:
-        sys.exit("ERROR: "+str(e))
+    if len(sys.argv)!=3:raise SystemExit("usage: patch_sidebar_reconcile.py INPUT OUTPUT")
+    src,dst=map(Path,sys.argv[1:])
+    try:out=patch(src.read_text(encoding="utf8"))
+    except ValueError as err:raise SystemExit("v2.4 sidebar patch incompatible: "+str(err))
+    dst.write_text(out,encoding="utf8")
+    print("React VAb/z_ now use existing native confirmed-idle proof (v2.4)")

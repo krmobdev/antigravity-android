@@ -23,12 +23,17 @@ with ZipFile(apk) as zipf:
     aux = zipf.read(patches[0])
     for item in (b"AGY_V24_TRANSPORT_RECONNECT",
                  b"AGY_V24_SUMMARY_RECONNECT", b"AGY_V24_DEEPLINK",
+                 b"AGY_SIDEBAR_RECONCILE_V24",
+                 b"AGY_SIDEBAR_RUNNING_RECONCILE_V24",
                  b"window.__AGY_NOTIFY_AGENT_STATE__"):
         assert item in data, "missing main patch: " + item.decode()
     for item in (b"__AGY_NOTIFY_AGENT_STATE__",
                  b"__AGY_VERIFIED_AGENT_GET__",
                  b"__AG_NATIVE_BRIDGE_TOKEN__"):
         assert item in aux, "missing notification/sidebar fragment: " + item.decode()
+    assert b"AGY_V24_VISIBLE_READ_RECEIPT" not in data, "deferred readfix leaked into APK"
+    assert b"function VAb(" in data and b"useSyncExternalStore" in data, "React subscriber absent"
+    assert b"window.__AGY_VERIFIED_AGENT_GET__" in data, "native confirmed-idle never consumed"
     assert b"AGY_RESUME_STREAM_V1" not in data
     assert b"onConversationSummary(window.__AG_NATIVE_BRIDGE_TOKEN__" in aux
     # Deployment must contain upstream modular runtime and source-independent build results.

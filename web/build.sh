@@ -159,6 +159,11 @@ python3 "$SCRIPT_DIR/patch_main.py" "$GEN_DIR/main.js" \
 # after Android WebView resumes. Version-pinned anchors fail closed on changes.
 python3 "$SCRIPT_DIR/patch_runtime_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
     || die "web/patch_runtime_v24.py incompatible with upstream"
+# Connect existing native-confirmed IDLE reconciliation to the real React VAb/z_
+# sidebar components. Fail closed if v2.4 JSX changes.
+python3 "$SCRIPT_DIR/patch_sidebar_reconcile.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
+    || die "web/patch_sidebar_reconcile.py incompatible with v2.4 React"
+
 
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
