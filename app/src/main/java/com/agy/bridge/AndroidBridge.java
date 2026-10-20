@@ -2,8 +2,11 @@ package com.agy.bridge;
 
 import android.content.Context;
 import android.webkit.JavascriptInterface;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.agy.oauth.OAuthManager;
+import com.agy.core.NativeAgentStateObserver;
 import com.agy.runtime.RuntimeManager;
 import com.agy.shell.ShizukuBridge;
 import com.agy.theme.ThemeManager;
@@ -23,21 +26,28 @@ public final class AndroidBridge {
     private final ExternalUrlBridge external;
     private final ShellBridge shell;
     private final NotificationBridge notification;
+    private final AgentNotifications agentNotifications;
+    private volatile MainActivity hostActivity;
+    private final Context diagnosticContext;
+    private final Map<String, String> lastAgentStates = new LinkedHashMap<>();
 
     public AndroidBridge(Context context, RuntimeManager runtime,
                          ShizukuBridge shizuku, OAuthManager oauth,
                          ThemeManager theme) {
         Context appContext = context.getApplicationContext();
+        this.diagnosticContext = appContext;
         this.themeBridge = new ThemeBridge(theme);
         this.engine = new EngineBridge(runtime);
         this.config = new EngineConfigJson(appContext, runtime, engine, shizuku, themeBridge);
         this.external = new ExternalUrlBridge(appContext, oauth);
         this.shell = new ShellBridge(shizuku);
         this.notification = new NotificationBridge(appContext, shizuku);
+        this.agentNotifications = new AgentNotifications(appContext);
     }
 
     /** Host activity, used to dismiss the native splash once the UI has painted. */
     public void setActivity(MainActivity activity) {
+        hostActivity = activity;
         ui.setActivity(activity);
     }
 
@@ -134,9 +144,65 @@ public final class AndroidBridge {
         return notification.post(title, message, tag);
     }
 
+    /** Receives decoded core state transitions; never reads chat content. */
+    @JavascriptInterface
+    public void onAgentState(String conversationId, int status, boolean fullyIdle, String stage) {
+        // Diagnostic transitions only. Full stream can emit dozens of updates
+        // per second and previously flooded the rotating log with duplicates.
+        if (conversationId != null && conversationId.length() <= 128) {
+            String current = status + "/" + fullyIdle;
+            synchronized (lastAgentStates) {
+                if (!current.equals(lastAgentStates.get(conversationId))) {
+                    lastAgentStates.put(conversationId, current);
+                    if (lastAgentStates.size() > 128) {
+                        lastAgentStates.remove(lastAgentStates.keySet().iterator().next());
+                    }
+                    AgyDiagnostics.log(diagnosticContext, "agent_state",
+                            "id=" + safeId(conversationId) + " status=" + status + " idle=" + fullyIdle);
+                }
+            }
+        }
+        agentNotifications.observe(conversationId, status, fullyIdle, stage);
+        NativeAgentStateObserver.onUiState(conversationId, status, fullyIdle);
+    }
+
+    /** Native completion survives WebView destruction; no prompts or chat content exposed. */
+    @JavascriptInterface
+    public boolean wasAgentRecentlyFinished(String conversationId) {
+        return NativeAgentStateObserver.wasRecentlyFinished(diagnosticContext, conversationId);
+    }
+
+    @JavascriptInterface
+    public void diagnosticEvent(String kind, String details) {
+        AgyDiagnostics.log(diagnosticContext, kind, details);
+    }
+
+    @JavascriptInterface
+    public void onConversationSummary(String conversationId, String title) {
+        agentNotifications.updateTitle(conversationId, title);
+    }
+
+    @JavascriptInterface
+    public void onNotificationNavigationResult(String conversationId) {
+        final MainActivity host = hostActivity;
+        if (host != null) host.onNotificationNavigationResult(conversationId);
+    }
+
+    /** Route committed by this WebView, never inferred from a working agent ID. */
+    @JavascriptInterface
+    public void onVisibleConversation(String conversationId) {
+        final MainActivity host = hostActivity;
+        if (host != null) host.runOnUiThread(() -> host.setVisibleConversation(conversationId));
+    }
+
     @JavascriptInterface
     public String listNotifications() {
         return notification.list();
+    }
+
+    private static String safeId(String id) {
+        if (id == null) return "-";
+        return id.substring(Math.max(0, id.length() - 6)).replaceAll("[^a-zA-Z0-9]", "_");
     }
 
     @JavascriptInterface

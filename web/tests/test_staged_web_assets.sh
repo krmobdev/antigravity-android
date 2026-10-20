@@ -25,5 +25,10 @@ assert "AGY_RESUME_STREAM_V1" not in upstream, "upstream bundle unexpectedly mut
 assert packaged.count("AGY_RESUME_STREAM_V1") == 1, "staged bundle lacks resume patch"
 assert not (stage / "tests").exists(), "build-only tests accidentally packaged"
 assert not (stage / "patch_stream_resume.py").exists(), "patch tool accidentally packaged"
+for tool in ["patch_agent_notifications.py", "patch_notification_navigation.py", "patch_sidebar_reconcile.py"]:
+    assert not (stage / tool).exists(), "build-only patch tool packaged: " + tool
+for marker in ["AGY_NATIVE_NOTIFY_V1", "AGY_VISIBLE_CONVERSATION_V1", "AGY_CONVERSATION_DEEPLINK_V1"]:
+    assert packaged.count(marker) == 1, "missing staged hook: " + marker
+    assert marker not in upstream, "source bundle changed: " + marker
 print("PASS: APK staging patch exists only in assets/web/main.js")
 PY

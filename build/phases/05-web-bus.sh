@@ -13,6 +13,8 @@ cp -a "$WEB_DIR" "$STAGE_ASSETS/web"
 # prune build-only inputs from the shipped assets
 rm -rf "$STAGE_ASSETS/web/src" "$STAGE_ASSETS/web/build.sh" \
     "$STAGE_ASSETS/web/patch_main.py" "$STAGE_ASSETS/web/patch_stream_resume.py" \
+    "$STAGE_ASSETS/web/patch_agent_notifications.py" \
+    "$STAGE_ASSETS/web/patch_notification_navigation.py" "$STAGE_ASSETS/web/patch_sidebar_reconcile.py" \
     "$STAGE_ASSETS/web/tests" "$STAGE_ASSETS/web/src.manifest"
 if [ -d "$BUS_DIR" ]; then
     cp -a "$BUS_DIR" "$STAGE_ASSETS/bus"
@@ -22,7 +24,8 @@ else
 fi
 # First validate byte-for-byte equality against unmodified upstream web assets.
 if ! diff -r --exclude=src --exclude=build.sh --exclude=patch_main.py \
-        --exclude=patch_stream_resume.py --exclude=tests --exclude=src.manifest \
+        --exclude=patch_stream_resume.py --exclude=patch_agent_notifications.py \
+        --exclude=patch_notification_navigation.py --exclude=patch_sidebar_reconcile.py --exclude=tests --exclude=src.manifest \
         "$WEB_DIR" "$STAGE_ASSETS/web" >/dev/null 2>&1; then
     die "invariant failed: assets/web != web/ (excluding build-only files)"
 fi
@@ -38,3 +41,14 @@ if command -v node >/dev/null 2>&1; then
         || die "patched main.js syntax check failed"
 fi
 log "  stream resume patch: applied only to packaged assets"
+
+# Completion notifications and sidebar recovery build on the resume patch.
+for script in patch_agent_notifications.py patch_notification_navigation.py; do
+    python3 "$WEB_DIR/$script" "$STAGE_ASSETS/web/main.js" "$STAGE_ASSETS/web/main.js" \
+        || die "$script failed"
+    rm -f "$STAGE_ASSETS/web/$script"
+done
+
+if command -v node >/dev/null 2>&1; then
+    node --check "$STAGE_ASSETS/web/main.js" || die "notification/sidebar patched main.js syntax check failed"
+fi
