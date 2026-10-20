@@ -22,14 +22,18 @@ die() { printf 'build.sh: %s\n' "$*" >&2; exit 1; }
 
 [ -f "$MANIFEST" ] || die "manifest not found: $MANIFEST"
 
-if [ -f "$SCRIPT_DIR/patch_main.py" ] && [ -f "$SCRIPT_DIR/main.js" ]; then
-    python3 "$SCRIPT_DIR/patch_main.py" "$SCRIPT_DIR/main.js" || die "web/patch_main.py failed"
-fi
-
 rm -rf "$GEN_DIR"
 mkdir -p "$GEN_DIR"
 
-bundle_tmp="$(mktemp "${TMPDIR:-/tmp}/agy-web-bundle.XXXXXX")"
+if [ -n "${TMPDIR:-}" ] && [ -d "$TMPDIR" ] && [ -w "$TMPDIR" ]; then
+    TMP_DIR="$TMPDIR"
+elif [ -n "${HOME:-}" ] && [ -d "$HOME" ] && [ -w "$HOME" ]; then
+    TMP_DIR="$HOME/.tmp"
+else
+    TMP_DIR="/tmp"
+fi
+mkdir -p "$TMP_DIR" 2>/dev/null || TMP_DIR="."
+bundle_tmp="$(mktemp "$TMP_DIR/agy-web-bundle.XXXXXX")"
 trap 'rm -f "$bundle_tmp"' EXIT
 
 current_out=""
@@ -40,16 +44,55 @@ bundle_names=()
 bundle_sizes=()
 src_count=0
 
+is_already_iife() {
+    local file="$1"
+    awk '
+    BEGIN { first=""; last=""; in_block=0 }
+    {
+        line = $0
+        if (in_block) {
+            if (line ~ /\*\//) {
+                sub(/^.*\*\//, "", line)
+                in_block = 0
+            } else {
+                next
+            }
+        }
+        while (line ~ /\/\*.*\*\//) {
+            sub(/\/\*.*?\*\//, "", line)
+        }
+        if (line ~ /\/\*/) {
+            sub(/\/\*.*$/, "", line)
+            in_block = 1
+        }
+        sub(/^[ \t]+/, "", line)
+        sub(/[ \t]+$/, "", line)
+        if (line == "" || line ~ /^\/\//) next
+        if (first == "") first = line
+        last = line
+    }
+    END {
+        if ((first ~ /^\(function/ || first ~ /^!function/ || first ~ /^\(\(\)/) && (last ~ /\)\(\);?$/ || last ~ /}\)\(\);?$/)) {
+            exit 0
+        }
+        exit 1
+    }' "$file"
+}
+
 emit_bundle() {
     [ "$have_bundle" -eq 1 ] || return 0
     local dest="$GEN_DIR/$current_out"
     mkdir -p "$(dirname "$dest")"
     if [ "$current_iife" -eq 1 ]; then
-        {
-            printf '(function(){\n'
-            cat "$bundle_tmp"
-            printf '\n})();\n'
-        } > "$dest"
+        if is_already_iife "$bundle_tmp"; then
+            cat "$bundle_tmp" > "$dest"
+        else
+            {
+                printf '(function(){\n'
+                cat "$bundle_tmp"
+                printf '\n})();\n'
+            } > "$dest"
+        fi
     else
         cat "$bundle_tmp" > "$dest"
     fi
@@ -106,6 +149,13 @@ emit_bundle
 
 [ "${#bundle_names[@]}" -gt 0 ] || die "no bundles emitted"
 
+# Patch only a staged copy: never dirty the checked-in upstream main.js.
+[ -f "$SCRIPT_DIR/main.js" ] || die "main.js not found"
+[ -f "$SCRIPT_DIR/patch_main.py" ] || die "patch_main.py not found"
+cp -f "$SCRIPT_DIR/main.js" "$GEN_DIR/main.js"
+python3 "$SCRIPT_DIR/patch_main.py" "$GEN_DIR/main.js" \
+    || die "web/patch_main.py failed"
+
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
     "${#bundle_names[@]}" "$src_count"
 i=0
@@ -126,6 +176,7 @@ if command -v node >/dev/null 2>&1; then
         fi
         i=$((i + 1))
     done
+    node --check "$GEN_DIR/main.js" || die "node --check failed: generated/main.js"
 else
     printf 'node not found; skipped node --check\n'
 fi

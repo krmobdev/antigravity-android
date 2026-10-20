@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.agy"
-    android:versionCode="15"
-    android:versionName="2.3.0">
+    android:versionCode="16"
+    android:versionName="2.4.0">
 
     <!-- targetSdk 28 is REQUIRED: Android 10+ (W^X) only allows exec of a binary
          from the app data dir when the app targets API <= 28. The core + glibc
@@ -42,6 +42,10 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <permission
+        android:name="com.agy.permission.INTERNAL_BROADCAST"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="com.agy.permission.INTERNAL_BROADCAST" />
 
     <application
         android:allowBackup="false"
@@ -68,7 +72,7 @@
         -->
         <activity
             android:name="com.agy.ui.MainActivity"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/SplashTheme"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|uiMode|density"
@@ -114,7 +118,7 @@
 
         <receiver
             android:name="com.agy.runtime.TorchReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.agy.ACTION_TORCH" />
             </intent-filter>
@@ -124,5 +128,11 @@
             android:name="com.agy.core.CoreServerService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <provider
+            android:name="com.agy.util.AppFileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

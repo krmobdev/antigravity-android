@@ -127,6 +127,11 @@ public final class SplashController {
                     @Override
                     public void run() {
                         view.setVisibility(View.GONE);
+                        try {
+                            view.stopLoading();
+                            view.loadUrl("about:blank");
+                        } catch (Exception ignored) {
+                        }
                     }
                 })
                 .start();

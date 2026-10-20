@@ -1,12 +1,14 @@
 package com.agy.core;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.agy.runtime.RuntimeManager;
 import com.agy.util.CoreUrl;
 import com.agy.util.ErrorText;
 import com.agy.util.ProcessUtils;
+import com.agy.util.SensitiveDataRedactor;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -25,16 +27,22 @@ public final class CoreProcessSupervisor {
     private final Context appContext;
     private final RuntimeManager runtime;
     private final OpenUrlWatcher openUrlWatcher;
+    private final com.agy.log.LogRingBuffer logBuffer;
+    private final Runnable terminalListener;
 
     private volatile Process process;
     private volatile boolean stopping = false;
     private Thread worker;
 
     public CoreProcessSupervisor(Context context, RuntimeManager runtime,
-                                 OpenUrlWatcher openUrlWatcher) {
+                                 OpenUrlWatcher openUrlWatcher,
+                                 com.agy.log.LogRingBuffer logBuffer,
+                                 Runnable terminalListener) {
         this.appContext = context.getApplicationContext();
         this.runtime = runtime;
         this.openUrlWatcher = openUrlWatcher;
+        this.logBuffer = logBuffer;
+        this.terminalListener = terminalListener;
     }
 
     public void start() {
@@ -52,6 +60,20 @@ public final class CoreProcessSupervisor {
     }
 
     private void runCore() {
+        try {
+            runCoreLoop();
+        } finally {
+            if (!stopping && terminalListener != null) {
+                try {
+                    terminalListener.run();
+                } catch (Exception e) {
+                    Log.w(TAG, "terminal callback failed", e);
+                }
+            }
+        }
+    }
+
+    private void runCoreLoop() {
         int attempt = 0;
         while (!stopping) {
             Writer log = CoreLogWriter.open(appContext.getFilesDir());
@@ -103,6 +125,7 @@ public final class CoreProcessSupervisor {
                             + " times; giving up (last exit code " + code + ")"
                             + (tail.isEmpty() ? "" : "\n--- core.log tail ---\n" + tail);
                     CoreLogWriter.writeLine(log, CoreRuntimeState.lastError);
+                    com.agy.log.CrashRecorder.recordCrash(appContext, code, System.currentTimeMillis() - readyAt, CoreRuntimeState.lastError, logBuffer);
                     break;
                 }
                 long delay = CoreRestartPolicy.delayFor(attempt);
@@ -113,6 +136,7 @@ public final class CoreProcessSupervisor {
                         + (tail.isEmpty() ? "" : "\n--- core.log tail ---\n" + tail);
                 Log.w(TAG, CoreRuntimeState.lastError);
                 CoreLogWriter.writeLine(log, CoreRuntimeState.lastError);
+                com.agy.log.CrashRecorder.recordCrash(appContext, code, System.currentTimeMillis() - readyAt, CoreRuntimeState.lastError, logBuffer);
                 CoreLogWriter.closeQuietly(log);
                 log = null;
                 sleepInterruptible(delay);
@@ -148,13 +172,14 @@ public final class CoreProcessSupervisor {
                 CoreLogWriter.writeLine(log, CoreRuntimeState.lastError);
                 return false;
             }
-            if (CoreReadyProbe.probeOnce(port)) {
+            if (CoreReadyProbe.probeOnce(appContext, port)) {
                 CoreRuntimeState.serverUrl = CoreUrl.startUrl(port, csrf);
                 CoreRuntimeState.lastError = null;
                 CoreRuntimeState.restarting = false;
                 CoreRuntimeState.readyGeneration++;
-                Log.i(TAG, "core ready: " + CoreRuntimeState.serverUrl);
-                CoreLogWriter.writeLine(log, "core ready: " + CoreRuntimeState.serverUrl);
+                String readyStatus = "core ready on 127.0.0.1:" + port;
+                Log.i(TAG, readyStatus);
+                CoreLogWriter.writeLine(log, readyStatus);
                 return true;
             }
         }
@@ -166,8 +191,12 @@ public final class CoreProcessSupervisor {
                 new InputStreamReader(proc.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                Log.d(TAG, line);
-                CoreLogWriter.writeLine(log, line);
+                String safeLine = SensitiveDataRedactor.redactLine(line);
+                Log.d(TAG, safeLine);
+                if (logBuffer != null) {
+                    logBuffer.appendLine(safeLine);
+                }
+                CoreLogWriter.writeLine(log, safeLine);
                 openUrlWatcher.handleStreamLine(line);
             }
         } catch (Exception e) {
@@ -188,8 +217,16 @@ public final class CoreProcessSupervisor {
 
     private static void destroy(Process proc) {
         if (proc != null) {
-            proc.destroy();
+            try {
+                proc.destroy();
+            } catch (Exception ignored) {
+            }
+            try {
+                proc.destroyForcibly();
+            } catch (Exception ignored) {
+            }
         }
+        CoreLauncher.killOrphanCoreProcesses();
     }
 
     private static String getLastLinesFromLog(java.io.File filesDir, int maxLines) {
@@ -201,13 +238,13 @@ public final class CoreProcessSupervisor {
         try (BufferedReader br = new BufferedReader(new java.io.FileReader(logFile))) {
             String l;
             while ((l = br.readLine()) != null) {
-                lines.add(l);
+                lines.add(SensitiveDataRedactor.redactLine(l));
                 if (lines.size() > maxLines) {
                     lines.remove(0);
                 }
             }
         } catch (Exception ignored) {
         }
-        return String.join("\n", lines);
+        return TextUtils.join("\n", lines);
     }
 }

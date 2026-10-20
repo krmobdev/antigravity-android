@@ -41,6 +41,7 @@ import com.agy.ui.splash.SplashController;
 import com.agy.ui.webview.AgyWebChromeClient;
 import com.agy.ui.webview.DesktopModePrefs;
 import com.agy.ui.webview.WebViewHost;
+import com.agy.util.SensitiveDataRedactor;
 import com.agy.util.ViewParams;
 
 /**
@@ -54,8 +55,9 @@ public class MainActivity extends Activity
     private static final String TAG = "MainActivity";
     private static final int REQUEST_STORAGE = 100;
     private static final int REQUEST_FILE_CHOOSER = 1002;
-    private static final long SPLASH_TIMEOUT_MS = 45000;
-    private static final long POLL_INTERVAL_MS = 50;
+    private static final long SPLASH_TIMEOUT_MS = 60000;
+    private static final long POLL_STARTUP_INTERVAL_MS = 50;
+    private static final long POLL_READY_INTERVAL_MS = 1000;
 
     public static volatile MainActivity activeActivity;
     private boolean notificationUiResumed;
@@ -111,6 +113,7 @@ public class MainActivity extends Activity
     private static final int MAX_ROUTE_ATTEMPTS = 5;
 
     private boolean appLoaded = false;
+    private boolean activityResumed = false;
     private int loadedGeneration = -1;
     private long splashDeadline;
 
@@ -124,7 +127,10 @@ public class MainActivity extends Activity
         @Override
         public void run() {
             watchCore();
-            handler.postDelayed(this, POLL_INTERVAL_MS);
+            if (activityResumed) {
+                handler.postDelayed(this, appLoaded
+                        ? POLL_READY_INTERVAL_MS : POLL_STARTUP_INTERVAL_MS);
+            }
         }
     };
 
@@ -161,7 +167,7 @@ public class MainActivity extends Activity
             }
             return;
         }
-        if (CoreRuntimeState.serverUrl == null && !splash.isFatalShown()
+        if (!appLoaded && CoreRuntimeState.serverUrl == null && !splash.isFatalShown()
                 && System.currentTimeMillis() > splashDeadline) {
             splash.showFatalError("core did not start within " + (SPLASH_TIMEOUT_MS / 1000) + "s");
         }
@@ -183,7 +189,7 @@ public class MainActivity extends Activity
         oauthManager = new OAuthManager();
         runtimeManager = new RuntimeManager(this);
         shizukuBridge = new ShizukuBridge(this);
-        androidBridge = new AndroidBridge(this, runtimeManager, shizukuBridge, oauthManager, themeManager);
+        androidBridge = new AndroidBridge(this, runtimeManager, shizukuBridge, themeManager);
         androidBridge.setActivity(this);
         webViewHost = new WebViewHost(this, themeManager, oauthManager, androidBridge, this);
         webViewHost.setListener(this);
@@ -203,9 +209,8 @@ public class MainActivity extends Activity
 
         splashDeadline = System.currentTimeMillis() + SPLASH_TIMEOUT_MS;
         requestStoragePermissions();
-        startCoreService();
 
-        handler.postDelayed(pollServer, 30);
+        startCoreService();
     }
 
     private void startCoreService() {
@@ -247,7 +252,7 @@ public class MainActivity extends Activity
      */
     @Override
     public void onPageFinished(String url) {
-        Log.i(TAG, "onPageFinished " + url);
+        Log.i(TAG, "onPageFinished " + SensitiveDataRedactor.safeUrl(url));
     }
 
     /** Signal from WebView that it has mounted its UI and client router. */
@@ -321,11 +326,32 @@ public class MainActivity extends Activity
 
     @Override
     protected void onDestroy() {
+        activityResumed = false;
         AgyDiagnostics.log(this, "activity", "onDestroy");
         if (activeActivity == this) {
             activeActivity = null;
         }
         AppLifecycle.destroy(handler);
+        if (androidBridge != null) {
+            androidBridge.setActivity(null);
+        }
+        if (rootLayout != null) {
+            rootLayout.removeAllViews();
+        }
+        if (webViewHost != null) {
+            WebView wv = webViewHost.getWebView();
+            if (wv != null) {
+                try {
+                    wv.stopLoading();
+                    wv.setWebChromeClient(null);
+                    wv.setWebViewClient(null);
+                    wv.setDownloadListener(null);
+                    wv.destroy();
+                } catch (Exception e) {
+                    Log.w(TAG, "error destroying webView", e);
+                }
+            }
+        }
         super.onDestroy();
     }
 
@@ -353,11 +379,13 @@ public class MainActivity extends Activity
     protected void onPause() {
         notificationUiResumed = false;
         AgentNotifications.contextChanged();
-        super.onPause();
         AgyDiagnostics.log(this, "activity", "onPause");
+        activityResumed = false;
+        handler.removeCallbacks(pollServer);
         if (webViewHost != null) {
-            AppLifecycle.pauseTimers(webViewHost.getWebView());
+            AppLifecycle.pause(webViewHost.getWebView());
         }
+        super.onPause();
     }
 
     @Override
@@ -365,9 +393,6 @@ public class MainActivity extends Activity
         super.onStop();
         AgyDiagnostics.log(this, "activity", "onStop");
         com.agy.theme.LauncherIconSwitcher.onAppBackgrounded(this);
-        if (webViewHost != null) {
-            AppLifecycle.pauseTimers(webViewHost.getWebView());
-        }
     }
 
     @Override
@@ -375,6 +400,7 @@ public class MainActivity extends Activity
         super.onResume();
         notificationUiResumed = true;
         AgyDiagnostics.log(this, "activity", "onResume");
+        activityResumed = true;
         activeActivity = this;
         AgentNotifications.contextChanged();
         if (webViewHost != null) {
@@ -382,10 +408,15 @@ public class MainActivity extends Activity
         }
         navigatePendingConversation();
         refreshTheme();
+        handler.removeCallbacks(pollServer);
+        handler.post(pollServer);
     }
 
     private void refreshTheme() {
         ThemeRefresher.refresh(this, themeManager, rootLayout, splash, webViewHost);
+        if (themeManager != null) {
+            com.agy.theme.LauncherIconSwitcher.scheduleSwitch(themeManager.isDark());
+        }
         if (webViewHost != null && webViewHost.getWebView() != null) {
             String resolved = themeManager != null ? themeManager.getTheme() : "light";
             webViewHost.getWebView().evaluateJavascript(
@@ -503,9 +534,50 @@ public class MainActivity extends Activity
         }
     }
 
+    public static final int REQUEST_DIR_CHOOSER = 2002;
+
+    public void launchDirectoryPicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            startActivityForResult(intent, REQUEST_DIR_CHOOSER);
+        } catch (Throwable t) {
+            Log.w(TAG, "Cannot launch directory picker: " + t.getMessage());
+            if (webViewHost != null && webViewHost.getWebView() != null) {
+                webViewHost.getWebView().evaluateJavascript("window.__onDirectoryPicked && window.__onDirectoryPicked(null);", null);
+            }
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_DIR_CHOOSER) {
+            String realPath = null;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                Uri treeUri = data.getData();
+                try {
+                    grantUriPermission(getPackageName(), treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (Throwable ignored) {}
+                try {
+                    getContentResolver().takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (Throwable ignored) {}
+                realPath = com.agy.util.DocumentsContractHelper.resolveTreeUriToPath(this, treeUri);
+            }
+            if (webViewHost != null && webViewHost.getWebView() != null) {
+                final String path = realPath;
+                webViewHost.getWebView().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        String jsArg = path != null ? org.json.JSONObject.quote(path) : "null";
+                        webViewHost.getWebView().evaluateJavascript(
+                                "window.__onDirectoryPicked && window.__onDirectoryPicked(" + jsArg + ");", null);
+                    }
+                });
+            }
+            return;
+        }
         if (requestCode == REQUEST_FILE_CHOOSER) {
             if (filePathCallback != null) {
                 Uri[] results = null;
