@@ -25,6 +25,7 @@ public final class CoreServerService extends Service {
     private WakeLockHolder wakeLock;
     private OpenUrlWatcher openUrlWatcher;
     private CoreProcessSupervisor supervisor;
+    private NativeAgentStateObserver taskObserver;
     private com.agy.log.LogRingBuffer logBuffer;
     private com.agy.gateway.SystemGatewayServer gatewayServer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -58,6 +59,8 @@ public final class CoreServerService extends Service {
         supervisor = new CoreProcessSupervisor(this, runtime, openUrlWatcher, logBuffer,
                 this::onSupervisorTerminated);
         supervisor.start();
+        taskObserver = new NativeAgentStateObserver(this);
+        taskObserver.start();
 
         startBackgroundDaemon();
     }
@@ -131,6 +134,7 @@ public final class CoreServerService extends Service {
 
     @Override
     public void onDestroy() {
+        if (taskObserver != null) taskObserver.stop();
         stopBackgroundDaemon();
         if (gatewayServer != null) {
             gatewayServer.stop();

@@ -30,7 +30,7 @@ public final class UiBridge {
         host.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                host.dismissSplash();
+                host.onWebUiReady();
             }
         });
     }

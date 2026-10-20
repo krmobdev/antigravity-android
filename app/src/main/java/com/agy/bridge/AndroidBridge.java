@@ -2,6 +2,9 @@ package com.agy.bridge;
 
 import android.content.Context;
 import android.webkit.JavascriptInterface;
+import com.agy.core.NativeAgentStateObserver;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import com.agy.runtime.RuntimeManager;
 import com.agy.shell.ShizukuBridge;
@@ -20,6 +23,9 @@ import java.security.SecureRandom;
  */
 public final class AndroidBridge {
 
+    private final Context diagnosticContext;
+    private final AgentNotifications agentNotifications;
+    private final Map<String, String> lastAgentStates = new LinkedHashMap<>();
     private final UiBridge ui = new UiBridge();
     private final ThemeBridge themeBridge;
     private final EngineBridge engine;
@@ -30,6 +36,8 @@ public final class AndroidBridge {
     public AndroidBridge(Context context, RuntimeManager runtime,
                          ShizukuBridge shizuku, ThemeManager theme) {
         Context appContext = context.getApplicationContext();
+        this.diagnosticContext = appContext;
+        this.agentNotifications = new AgentNotifications(appContext);
         this.themeBridge = new ThemeBridge(theme);
         this.engine = new EngineBridge(runtime);
         this.config = new EngineConfigJson(appContext, runtime, engine, shizuku, themeBridge);
@@ -135,6 +143,75 @@ public final class AndroidBridge {
             com.agy.ui.download.FileDownloader.handleBlobData(
                     act, base64Data, filename, mimeType);
         }
+    }
+
+    /** Narrow host-only telemetry; unlike the legacy bridge this never executes shell commands. */
+    @JavascriptInterface
+    public void onAgentState(String token, String conversationId, int status, boolean fullyIdle, String stage) {
+        if (!matchesNativeBridgeToken(token) || !validConversationId(conversationId)
+                || (status != 1 && status != 2 && status != 4)) return;
+        String current = status + "/" + fullyIdle;
+        synchronized (lastAgentStates) {
+            if (!current.equals(lastAgentStates.get(conversationId))) {
+                lastAgentStates.put(conversationId, current);
+                if (lastAgentStates.size() > 128)
+                    lastAgentStates.remove(lastAgentStates.keySet().iterator().next());
+                AgyDiagnostics.log(diagnosticContext, "agent_state",
+                        "id=" + safeId(conversationId) + " status=" + status + " idle=" + fullyIdle);
+            }
+        }
+        agentNotifications.observe(conversationId, status, fullyIdle,
+                stage == null ? "" : stage.substring(0, Math.min(stage.length(), 160)));
+        NativeAgentStateObserver.onUiState(conversationId, status, fullyIdle);
+    }
+
+    @JavascriptInterface
+    public boolean wasAgentRecentlyFinished(String token, String id) {
+        return matchesNativeBridgeToken(token) && validConversationId(id)
+                && NativeAgentStateObserver.wasRecentlyFinished(diagnosticContext, id);
+    }
+
+    @JavascriptInterface
+    public void onConversationSummary(String token, String id, String title) {
+        if (matchesNativeBridgeToken(token) && validConversationId(id))
+            agentNotifications.updateTitle(id, title);
+    }
+
+    @JavascriptInterface
+    public void onVisibleConversation(String token, String id) {
+        if (!matchesNativeBridgeToken(token) || (id != null && !validConversationId(id)))
+            return;
+        MainActivity host = getActivity();
+        if (host != null) host.runOnUiThread(() -> host.setVisibleConversation(id));
+    }
+
+    @JavascriptInterface
+    public void onNotificationNavigationResult(String token, String id) {
+        if (!matchesNativeBridgeToken(token) || !validConversationId(id)) return;
+        MainActivity host = getActivity();
+        if (host != null) host.onNotificationNavigationResult(id);
+    }
+
+    @JavascriptInterface
+    public void diagnosticEvent(String token, String kind, String details) {
+        if (!matchesNativeBridgeToken(token) || kind == null
+                || !kind.matches("[a-z_]{1,32}")) return;
+        String safe = details == null ? "" : details.substring(0, Math.min(160, details.length()));
+        AgyDiagnostics.log(diagnosticContext, kind, safe);
+    }
+
+    private MainActivity getActivity() {
+        WeakReference<MainActivity> ref = activityRef;
+        return ref == null ? null : ref.get();
+    }
+
+    private static boolean validConversationId(String id) {
+        return id != null && id.matches("[A-Za-z0-9_+:-]{1,128}");
+    }
+
+    private static String safeId(String id) {
+        return id.substring(Math.max(0, id.length() - 6))
+                .replaceAll("[^A-Za-z0-9]", "_");
     }
 
     private boolean matchesNativeBridgeToken(String candidate) {

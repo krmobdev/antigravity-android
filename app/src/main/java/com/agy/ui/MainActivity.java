@@ -18,12 +18,15 @@ import android.content.ClipData;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import org.json.JSONObject;
 import android.widget.FrameLayout;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.agy.bridge.AndroidBridge;
+import com.agy.bridge.AgentNotifications;
+import com.agy.bridge.AgyDiagnostics;
 import com.agy.core.CoreRuntimeState;
 import com.agy.core.CoreServiceLauncher;
 import com.agy.oauth.OAuthManager;
@@ -57,6 +60,39 @@ public class MainActivity extends Activity
     private static final long POLL_READY_INTERVAL_MS = 1000;
 
     public static volatile MainActivity activeActivity;
+    private boolean notificationUiResumed;
+    private String visibleConversation;
+
+    public void setVisibleConversation(String id) {
+        visibleConversation = id != null && id.matches("[A-Za-z0-9_+:-]{1,128}") ? id : null;
+        AgentNotifications.contextChanged();
+    }
+
+    public boolean isConversationVisible(String id) {
+        return notificationUiResumed && hasWindowFocus() && id.equals(visibleConversation);
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        AgentNotifications.contextChanged();
+    }
+
+    /** Deliver authoritative transitions even when the sidebar has no agent stream. */
+    public static void dispatchNativeAgentState(String id, boolean finished) {
+        if (id == null || !id.matches("[A-Za-z0-9_+:-]{1,128}")) return;
+        MainActivity target = activeActivity;
+        if (target == null) return;
+        target.runOnUiThread(() -> {
+            if (target.isFinishing() || target.isDestroyed() || target.webViewHost == null) return;
+            android.webkit.WebView web = target.webViewHost.getWebView();
+            if (web != null) web.evaluateJavascript(
+                    "window.__AGY_VERIFIED_AGENT_OBSERVE__?.({conversationId:"
+                    + org.json.JSONObject.quote(id) + ",status:" + (finished ? 1 : 2)
+                    + ",fullyIdle:" + finished + "});"
+                    + "window.dispatchEvent(new CustomEvent('agy:agent-proof-changed',{detail:{fullyIdle:"
+                    + finished + "}}));", null);
+        });
+    }
 
     private ValueCallback<Uri[]> filePathCallback;
 
@@ -68,6 +104,13 @@ public class MainActivity extends Activity
     private WebViewHost webViewHost;
     private SplashController splash;
     private FrameLayout rootLayout;
+
+    public static final String ACTION_OPEN_AGENT_CONVERSATION = "com.agy.action.OPEN_AGENT_CONVERSATION";
+    public static final String EXTRA_AGENT_CONVERSATION_ID = "agy_conversation_id";
+    private String pendingConversationId;
+    private boolean webUiReady = false;
+    private int notificationRouteAttempts = 0;
+    private static final int MAX_ROUTE_ATTEMPTS = 5;
 
     private boolean appLoaded = false;
     private boolean activityResumed = false;
@@ -106,6 +149,7 @@ public class MainActivity extends Activity
             if (!appLoaded || (loadedGeneration > 0 && generation != loadedGeneration)) {
                 appLoaded = true;
                 loadedGeneration = generation;
+                webUiReady = false;
                 splash.clearFatal();
                 if (generation > 1) {
                     splash.showLoading();
@@ -132,6 +176,8 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AgyDiagnostics.log(this, "activity", "onCreate");
+        acceptNotificationIntent(getIntent());
         activeActivity = this;
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
@@ -209,6 +255,57 @@ public class MainActivity extends Activity
         Log.i(TAG, "onPageFinished " + SensitiveDataRedactor.safeUrl(url));
     }
 
+    /** Signal from WebView that it has mounted its UI and client router. */
+    public void onWebUiReady() {
+        webUiReady = true;
+        dismissSplash();
+        navigatePendingConversation();
+    }
+
+    private void acceptNotificationIntent(Intent intent) {
+        if (intent == null || !ACTION_OPEN_AGENT_CONVERSATION.equals(intent.getAction())) return;
+        String id = intent.getStringExtra(EXTRA_AGENT_CONVERSATION_ID);
+        if (id == null || id.length() > 128 || !id.matches("[a-zA-Z0-9_+:-]+")) {
+            AgyDiagnostics.log(this, "navigation", "rejected_id");
+            return;
+        }
+        pendingConversationId = id;
+        notificationRouteAttempts = 0;
+        AgyDiagnostics.log(this, "navigation", "requested");
+    }
+
+    private void navigatePendingConversation() {
+        if (!webUiReady || pendingConversationId == null || webViewHost == null) return;
+        if (notificationRouteAttempts >= MAX_ROUTE_ATTEMPTS) {
+            AgyDiagnostics.log(this, "navigation", "attempts_exhausted");
+            return;
+        }
+        final String id = pendingConversationId;
+        notificationRouteAttempts++;
+        final int attempt = notificationRouteAttempts;
+        final String js = "window.dispatchEvent(new CustomEvent('agy:open-conversation'," +
+                "{detail:{conversationId:" + JSONObject.quote(id) + "}}));";
+        AgyDiagnostics.log(this, "navigation", "dispatch attempt=" + attempt);
+        webViewHost.getWebView().evaluateJavascript(js, null);
+        handler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (id.equals(pendingConversationId) && webUiReady) navigatePendingConversation();
+            }
+        }, 1500L);
+    }
+
+    /** Called after the client router accepts an exact conversation ID. */
+    public void onNotificationNavigationResult(final String id) {
+        handler.post(new Runnable() {
+            @Override public void run() {
+                if (id != null && id.equals(pendingConversationId)) {
+                    pendingConversationId = null;
+                    AgyDiagnostics.log(MainActivity.this, "navigation", "accepted");
+                }
+            }
+        });
+    }
+
     /** Idempotent; called by AndroidBridge.onUiReady() on the main thread. */
     public void dismissSplash() {
         Log.i(TAG, "dismissSplash: fading out splashView (280ms)");
@@ -230,6 +327,7 @@ public class MainActivity extends Activity
     @Override
     protected void onDestroy() {
         activityResumed = false;
+        AgyDiagnostics.log(this, "activity", "onDestroy");
         if (activeActivity == this) {
             activeActivity = null;
         }
@@ -267,6 +365,8 @@ public class MainActivity extends Activity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        acceptNotificationIntent(intent);
+        navigatePendingConversation();
     }
 
     @Override
@@ -277,6 +377,9 @@ public class MainActivity extends Activity
 
     @Override
     protected void onPause() {
+        notificationUiResumed = false;
+        AgentNotifications.contextChanged();
+        AgyDiagnostics.log(this, "activity", "onPause");
         activityResumed = false;
         handler.removeCallbacks(pollServer);
         if (webViewHost != null) {
@@ -288,17 +391,22 @@ public class MainActivity extends Activity
     @Override
     protected void onStop() {
         super.onStop();
+        AgyDiagnostics.log(this, "activity", "onStop");
         com.agy.theme.LauncherIconSwitcher.onAppBackgrounded(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        notificationUiResumed = true;
+        AgyDiagnostics.log(this, "activity", "onResume");
         activityResumed = true;
         activeActivity = this;
+        AgentNotifications.contextChanged();
         if (webViewHost != null) {
             AppLifecycle.resume(webViewHost.getWebView());
         }
+        navigatePendingConversation();
         refreshTheme();
         handler.removeCallbacks(pollServer);
         handler.post(pollServer);
