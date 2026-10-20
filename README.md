@@ -34,6 +34,17 @@
 
 </div>
 
+## Patches in this fork
+
+This fork of [werdio325-png/antigravity-android](https://github.com/werdio325-png/antigravity-android) includes:
+
+- WebView agent-stream recovery after Android resume: [upstream PR #15](https://github.com/werdio325-png/antigravity-android/pull/15).
+- Native completion notifications, a non-banner channel for the open chat, five-second alert queuing, and retained-sidebar recovery: [upstream PR #16](https://github.com/werdio325-png/antigravity-android/pull/16).
+
+See [notification behavior and build instructions](docs/AGENT_NOTIFICATIONS.md) and [device validation](docs/NOTIFICATION_VALIDATION_2026-10-20.md). The notification policy passed 25 checks on Android using controlled native transitions and real SystemUI interactions; those tests sent no agent prompts.
+
+
+
 ---
 
 <p><font size="5"><b>Architectural Overview</b></font></p>

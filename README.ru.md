@@ -34,6 +34,17 @@
 
 </div>
 
+## Патчи этого форка
+
+В форк [werdio325-png/antigravity-android](https://github.com/werdio325-png/antigravity-android) включены:
+
+- Восстановление потока состояния агента после возвращения в Android WebView: [PR #15 автору](https://github.com/werdio325-png/antigravity-android/pull/15).
+- Нативные уведомления о завершении: без баннера в открытом чате, с очередью баннеров через 5 секунд для других чатов и фона; восстановление состояния списка: [PR #16 автору](https://github.com/werdio325-png/antigravity-android/pull/16).
+
+[Описание уведомлений и сборки](docs/AGENT_NOTIFICATIONS.md), [результаты проверки на телефоне](docs/NOTIFICATION_VALIDATION_2026-10-20.md). Политика уведомлений прошла 25 проверок с контролируемыми нативными переходами и настоящими действиями в SystemUI. Эти тесты не отправляли запросов агенту.
+
+
+
 ---
 
 <p><font size="5"><b>Архитектурный обзор</b></font></p>
