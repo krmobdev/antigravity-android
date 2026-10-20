@@ -1,27 +1,23 @@
 name: Build and Release Antigravity APKs
 
+# Manual-only: no pushes/tags trigger Actions until signing secrets are prepared.
 on:
-  push:
-    tags:
-      - 'v*'
-    branches:
-      - dev
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v2.4.0)'
+        description: 'Future manual release tag'
         required: false
-        default: 'v2.4.0'
+        default: 'v2.4.0-kr1'
       draft:
         description: 'Create Draft Release'
         type: boolean
-        default: false
+        default: true
       prerelease:
-        description: 'Mark as Pre-release'
+        description: 'Mark as pre-release'
         type: boolean
         default: false
       vendor_url:
-        description: 'Optional direct URL to download vendor inputs archive (core, glibc, certs, seed, shims)'
+        description: 'Optional vendor archive'
         required: false
 
 permissions:
@@ -29,6 +25,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ false }} # paused until secure November signing configuration
     name: Build Both Release Editions
     runs-on: ubuntu-latest
 

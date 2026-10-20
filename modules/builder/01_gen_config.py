@@ -36,17 +36,29 @@ def main():
     env = parse_env(env_file)
 
     is_dev = os.environ.get("DEV_MODE") == "1"
+    is_kr_release = os.environ.get("KR_RELEASE_MODE") == "1"
+    if is_dev and is_kr_release:
+        raise ValueError("Fork release cannot also be a dev build")
 
     pkg_base = env.get("PKG", "com.agy")
-    app_id = env.get("PKG_DEV", "com.agy.dev") if is_dev else pkg_base
+    app_id = ("com.krmobdev.antigravity" if is_kr_release else
+              env.get("PKG_DEV", "com.agy.dev") if is_dev else pkg_base)
     port = env.get("PORT_DEV", "45158") if is_dev else env.get("PORT", "45157")
+    if is_kr_release:
+        port = "45159"
     port_dev = env.get("PORT_DEV", "45158")
     gw_port = env.get("GATEWAY_PORT_DEV", "45161") if is_dev else env.get("GATEWAY_PORT", "45160")
+    if is_kr_release:
+        gw_port = "45162"
     core_version = env.get("CORE_VERSION", "2.11.0")
     app_version_name = env.get("APP_VERSION_NAME", "2.4.0")
     app_version_code = env.get("APP_VERSION_CODE", "16")
+    if is_kr_release:
+        app_version_name, app_version_code = "2.4.0-kr1", "17"
     oauth_scheme = env.get("OAUTH_SCHEME", "antigravity")
     app_name = env.get("APP_NAME_DEV", "Antigravity Dev") if is_dev else env.get("APP_NAME", "Antigravity")
+    if is_kr_release:
+        app_name = "Antigravity KR"
     min_api = env.get("MIN_API", "24")
     target_sdk = env.get("TARGET_SDK", "28")
     is_debug = "true" if is_dev else "false"
@@ -97,6 +109,16 @@ def main():
     content = re.sub(r'android:versionName="[^"]+"', f'android:versionName="{app_version_name}"', content)
     content = re.sub(r'android:versionCode="[^"]+"', f'android:versionCode="{app_version_code}"', content)
 
+    if is_kr_release:
+        # The Java namespace and class names remain com.agy. Only install ID,
+        # signature permission and private provider authority become fork-specific.
+        assert content.count('package="com.agy"') == 1
+        content = content.replace('package="com.agy"', 'package="com.krmobdev.antigravity"', 1)
+        content = content.replace('com.agy.permission.INTERNAL_BROADCAST',
+                                  'com.krmobdev.antigravity.permission.INTERNAL_BROADCAST')
+        assert content.count('<application') == 1
+        content = content.replace('<application', '<application android:debuggable="false"', 1)
+        print('[*] Configured KR release: com.krmobdev.antigravity (production sandbox, no debug)')
     if is_dev:
         content = content.replace('package="com.agy"', 'package="com.agy.dev"')
         content = content.replace('com.agy.permission.INTERNAL_BROADCAST', 'com.agy.dev.permission.INTERNAL_BROADCAST')

@@ -21,6 +21,7 @@ export LC_ALL=C.UTF-8
 
 export FAST_BUILD=0
 export DEV_MODE=0
+export KR_RELEASE_MODE=0
 export NO_BYPASS="${NO_BYPASS:-1}"
 if [ "${REGION_BYPASS:-0}" = "1" ] || [ "${BYPASS:-0}" = "1" ]; then export NO_BYPASS=0; fi
 if [ "${SKIP_GATES:-0}" = "1" ]; then export NO_BYPASS=1; fi
@@ -35,6 +36,10 @@ while [ $# -gt 0 ]; do
             ;;
         --dev|-d)
             export DEV_MODE=1
+            shift
+            ;;
+        --kr-release)
+            export KR_RELEASE_MODE=1
             shift
             ;;
         --bypass|--region-bypass)
@@ -60,11 +65,22 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+if [ "$KR_RELEASE_MODE" = "1" ] && [ "$DEV_MODE" = "1" ]; then
+    echo "[ERROR] --kr-release cannot be combined with --dev" >&2
+    exit 1
+fi
+if [ "$KR_RELEASE_MODE" = "1" ] && [ "$NO_BYPASS" != "1" ]; then
+    echo "[ERROR] --kr-release requires original eligibility gates" >&2
+    exit 1
+fi
 BASE_PREFIX="${CUSTOM_PREFIX:-antigravity}"
 
 if [ -n "$CUSTOM_OUT" ]; then
     OUT_APK="$CUSTOM_OUT"
     EDITION_LABEL="CUSTOM OUTPUT ($OUT_APK)"
+elif [ "$KR_RELEASE_MODE" = "1" ]; then
+    OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.0-kr1.apk"
+    EDITION_LABEL="KR RELEASE (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
 elif [ "$DEV_MODE" = "1" ]; then
     if [ "$NO_BYPASS" = "0" ]; then
         OUT_APK="$DIST_DIR/${BASE_PREFIX}-dev-region-bypass.apk"
@@ -144,7 +160,22 @@ python3 "$SCRIPT_DIR/align.py" "$BUILD_DIR/unaligned.apk" "$BUILD_DIR/aligned.ap
 
 # Phase 08: Sign and Verify APK
 echo -e "\n>>> [8/8] Signing and Verifying APK..."
-bash "$SCRIPT_DIR/08_sign.sh" "$BUILD_DIR/aligned.apk" "$OUT_APK" "$TOOLS_DIR/debug.keystore"
+if [ "$KR_RELEASE_MODE" = "1" ]; then
+    : "${AGY_RELEASE_KEYSTORE_PATH:?Private release keystore required}"
+    : "${AGY_RELEASE_KEY_ALIAS:?Permanent release key alias required}"
+    : "${AGY_RELEASE_STORE_PASSWORD_FILE:?Private store password file required}"
+    : "${AGY_RELEASE_KEY_PASSWORD_FILE:?Private key password file required}"
+    for material in "$AGY_RELEASE_KEYSTORE_PATH" "$AGY_RELEASE_STORE_PASSWORD_FILE" "$AGY_RELEASE_KEY_PASSWORD_FILE"; do
+        if [ ! -s "$material" ]; then echo "[ERROR] Signing material missing" >&2; exit 1; fi
+    done
+    if [ "$AGY_RELEASE_KEYSTORE_PATH" = "$TOOLS_DIR/debug.keystore" ]; then
+        echo "[ERROR] Public debug key forbidden" >&2; exit 1
+    fi
+    echo "[*] KR release signing using private permanent keystore..."
+    apksigner sign --ks "$AGY_RELEASE_KEYSTORE_PATH" --ks-key-alias "$AGY_RELEASE_KEY_ALIAS" --ks-pass "file:$AGY_RELEASE_STORE_PASSWORD_FILE" --key-pass "file:$AGY_RELEASE_KEY_PASSWORD_FILE" --out "$OUT_APK" "$BUILD_DIR/aligned.apk"
+else
+    bash "$SCRIPT_DIR/08_sign.sh" "$BUILD_DIR/aligned.apk" "$OUT_APK" "$TOOLS_DIR/debug.keystore"
+fi
 bash "$SCRIPT_DIR/09_verify.sh" "$OUT_APK"
 
 echo "============================================================"
