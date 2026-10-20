@@ -159,6 +159,9 @@ python3 "$SCRIPT_DIR/patch_main.py" "$GEN_DIR/main.js" \
 # after Android WebView resumes. Version-pinned anchors fail closed on changes.
 python3 "$SCRIPT_DIR/patch_runtime_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
     || die "web/patch_runtime_v24.py incompatible with upstream"
+# Read/unread is upstream Core metadata, independent of the Working indicator.
+python3 "$SCRIPT_DIR/patch_read_receipt_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
+    || die "web/patch_read_receipt_v24.py incompatible with upstream"
 
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \

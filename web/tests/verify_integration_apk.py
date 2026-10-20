@@ -23,6 +23,7 @@ with ZipFile(apk) as zipf:
     aux = zipf.read(patches[0])
     for item in (b"AGY_V24_TRANSPORT_RECONNECT",
                  b"AGY_V24_SUMMARY_RECONNECT", b"AGY_V24_DEEPLINK",
+                 b"AGY_V24_VISIBLE_READ_RECEIPT", b"function agyV24ReadReceipt(",
                  b"window.__AGY_NOTIFY_AGENT_STATE__"):
         assert item in data, "missing main patch: " + item.decode()
     for item in (b"__AGY_NOTIFY_AGENT_STATE__",

@@ -2539,8 +2539,70 @@ a.question,e.cascadeId=a.cascadeId,e.startTimestamp=a.startTimestamp,e.error=a.e
 b??"all"),queryFn:async({client:b})=>{var c=d,e=d;try{try{return{data:e(await c(b()))}}catch(f){return e(),{error:{message:gp(f)}}}}finally{c()}}}),getSlashCommands:a.query({providesTags:["SlashCommandSources"],serializeQueryArgs:Er(({cascadeConfig:b,cascadeId:c,workspaceUris:e,customAgentSpec:f,selectedAgentScript:g,projectId:h})=>JSON.stringify({cascadeId:c,projectId:h,workspaceUris:e,cascadeConfig:b?xt(oc(T.CascadeConfigSchema,b)):void 0,customAgentSpec:f?xt(oc(T.CustomAgentSpecSchema,f)):void 0,
 selectedAgentScript:g?xt(oc(T.AgentScriptItemSchema,g)):void 0})),queryFn:async({client:b,...c})=>{var e=d,f=d;try{try{return{data:f(await e(b(c)))}}catch(g){return f(),{error:{message:gp(g)}}}}finally{e()}}})})}),zDa=yt.useGetAllWorkflowsQuery,ADa=yt.useListMcpPromptsQuery,BDa=yt.useGetSlashCommandsQuery;var zt=yp({reducerPath:"tokenizationApi",baseQuery:vp(),refetchOnMountOrArgChange:!1,endpoints:a=>({getTokenizedLines:a.query({serializeQueryArgs:({endpointName:b,queryArgs:c})=>typeof c==="symbol"?`${b}:skip`:`${b}:${Mr(c.contents||"")}:${c.language||""}`,queryFn:async({contents:b="",language:c,tokenizationService:e})=>{var f=d,g=d;try{try{return b===""?{data:[]}:b.length>1E5?{data:b.split("\n").map((h,k)=>({lineNumber:k+1,tokens:[{text:h,type:""}]}))}:{data:g(await f(e.getTokensForContent({content:b,
 language:c})))}}catch(h){return g(),{error:gp(h)}}}finally{f()}}})})}),At=zt.useGetTokenizedLinesQuery;var Bt=yp({reducerPath:"trajectoryFileDiffsApi",baseQuery:vp(),endpoints:a=>({getConversationFileDiffs:a.query({serializeQueryArgs:Er(b=>b.conversationId),forceRefetch:({currentArg:b,previousArg:c})=>b?.fetchVersion!==c?.fetchVersion,queryFn:async({conversationId:b,fetch:c})=>{var e=d,f=d;try{try{return{data:f(await e(c({conversationId:b})))}}catch(g){return f(),{error:gp(g)}}}finally{e()}}})})}),CDa=Bt.useLazyGetConversationFileDiffsQuery;var DDa=vl("conversationViewing/start"),Ct=vl("conversationViewing/viewChanged"),EDa=vl("conversationViewing/windowFocusChanged");
-function FDa(){var a,b,c=!0,e=f=>{if(a){var g=a.updateConversationAnnotations,h=a.recordError,k=a.getStartingConversationIds,l=k();f=f.filter(m=>m!==void 0&&!l.includes(m));f.length!==0&&g(f,p(te.ConversationAnnotationsSchema,{lastUserViewTime:Xd(new Date)}),!0).catch(m=>{Gca(m)?console.warn("Conversation trajectory not found, skipping annotation update:",m):h("conversation_update_annotations_failed",m)})}};return()=>f=>g=>{if(DDa.match(g))a=g.payload;else if(EDa.match(g)){var h=c;c=g.payload;!h&&
-c&&e([b])}else if(Ct.match(g)){h=g.payload.cascadeId;let k=g.payload.battleId,l=b;l!==h&&(b=h,e([k!==void 0&&l===k?void 0:l,c?h:void 0]))}return f(g)}};async function GDa(a,b,c){var e=d,f=d;try{let g=b.filter(h=>h.status===T.CascadeRunStatus.RUNNING||h.status===T.CascadeRunStatus.BUSY||h.hasActiveChildren);for(let h of g)for(let k of h.waitingSteps){let l=h.trajectoryId+"-"+k.stepIndex;a.has(l)||(a.add(l),f(await e(c({trajectoryStepId:l,step:k,summary:h}))))}}finally{e()}}
+/* AGY_V24_VISIBLE_READ_RECEIPT */
+/**
+ * v2.4 read receipt reconciliation for a finished response in an already-open
+ * ordinary conversation. Unlike upstream's route/focus-only middleware, this
+ * reacts to the authoritative trajectory summary update.
+ *
+ * Called after the reducer committed a Core stream batch. No native bridge.
+ * Does not mark other conversations, a running agent, or a hidden/locked chat.
+ */
+function agyV24ReadReceipt(store, action, selectedId, focused, deps, journal) {
+  if (!selectedId || !focused || !rm.match(action) ||
+      typeof document === "undefined" || document.visibilityState !== "visible" ||
+      !document.hasFocus() || !deps?.updateConversationAnnotations) return;
+  const updated = action.payload?.updates;
+  if (!Array.isArray(updated) || !updated.some(entry => Array.isArray(entry) && entry[0] === selectedId)) return;
+  const state = store.getState();
+  const summary = state.trajectorySummaries?.summaries?.[selectedId];
+  if (!summary || summary.notFullyIdle || summary.waitingSteps?.length ||
+      summary.status === T.CascadeRunStatus.RUNNING ||
+      summary.status === T.CascadeRunStatus.BUSY) return;
+  const modified = summary.lastModifiedTime;
+  const stamp = Number(modified?.seconds || 0) + Number(modified?.nanos || 0)/1e9;
+  const viewed = Math.max(
+      Number(state.conversation?.localLastViewedTimes?.[selectedId] || 0),
+      Number(summary.annotations?.lastUserViewTime?.seconds || 0) +
+          Number(summary.annotations?.lastUserViewTime?.nanos || 0)/1e9);
+  if (!(stamp > viewed)) return;
+  const key = selectedId + ":" + modified.seconds + ":" + (modified.nanos || 0);
+  if (journal.seen.has(key) || journal.scheduled.has(key)) return;
+  journal.scheduled.add(key);
+  // After Redux and React have rendered the fresh Core snapshot, and only if
+  // the exact conversation is still visibly on screen.
+  requestAnimationFrame(() => {
+    journal.scheduled.delete(key);
+    if (document.visibilityState !== "visible" || !document.hasFocus()) return;
+    const current = store.getState();
+    if (current.conversation?.convoState?.type !== "active" ||
+        current.conversation.convoState.cascadeId !== selectedId) return;
+    const latest = current.trajectorySummaries?.summaries?.[selectedId];
+    if (!latest || latest.notFullyIdle || latest.waitingSteps?.length ||
+        latest.status === T.CascadeRunStatus.RUNNING ||
+        latest.status === T.CascadeRunStatus.BUSY) return;
+    if (Number(latest.lastModifiedTime?.seconds || 0) !== Number(modified.seconds) ||
+        Number(latest.lastModifiedTime?.nanos || 0) !== Number(modified.nanos || 0)) return;
+    const displayed = Array.from(document.querySelectorAll('[data-testid="conversation-view"]'))
+      .find(el => el.dataset.cascadeId === selectedId && el.isConnected);
+    if (!displayed) return;
+    const rect = displayed.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0 ||
+        rect.bottom <= 0 || rect.top >= window.innerHeight) return;
+    // Do not pretend that a completely empty conversation shell was seen.
+    if (!displayed.querySelector('[data-testid], .prose, [class*="message"], [class*="markdown"]')) return;
+    const nowViewed = Number(current.conversation?.localLastViewedTimes?.[selectedId] || 0);
+    if (nowViewed >= stamp) return;
+    journal.seen.add(key);
+    if (journal.seen.size > 128) journal.seen.delete(journal.seen.values().next().value);
+    store.dispatch(Op.actions.markViewedLocally({cascadeId:selectedId}));
+    store.dispatch(Cpb({cascadeId:selectedId,
+      agentService:{updateConversationAnnotations:deps.updateConversationAnnotations}}));
+  });
+}
+
+function FDa(){var a,b,c=!0,e=f=>{if(a){var g=a.updateConversationAnnotations,h=a.recordError,k=a.getStartingConversationIds,l=k();f=f.filter(m=>m!==void 0&&!l.includes(m));f.length!==0&&g(f,p(te.ConversationAnnotationsSchema,{lastUserViewTime:Xd(new Date)}),!0).catch(m=>{Gca(m)?console.warn("Conversation trajectory not found, skipping annotation update:",m):h("conversation_update_annotations_failed",m)})}};var readJournal={seen:new Set(),scheduled:new Set()};return store=>f=>g=>{if(DDa.match(g))a=g.payload;else if(EDa.match(g)){var h=c;c=g.payload;!h&&
+c&&e([b])}else if(Ct.match(g)){h=g.payload.cascadeId;let k=g.payload.battleId,l=b;l!==h&&(b=h,e([k!==void 0&&l===k?void 0:l,c?h:void 0]))}const result=f(g);try{agyV24ReadReceipt(store,g,b,c,a,readJournal)}catch(__readErr){console.warn('[AGY Read] reconciliation failed',__readErr?.name||'Error')}return result}};async function GDa(a,b,c){var e=d,f=d;try{let g=b.filter(h=>h.status===T.CascadeRunStatus.RUNNING||h.status===T.CascadeRunStatus.BUSY||h.hasActiveChildren);for(let h of g)for(let k of h.waitingSteps){let l=h.trajectoryId+"-"+k.stepIndex;a.has(l)||(a.add(l),f(await e(c({trajectoryStepId:l,step:k,summary:h}))))}}finally{e()}}
 function HDa(a,b,c){var e=[];for(let [f,g]of b){b=f;let h=g;h.notFullyIdle?a.add(b):a.delete(b)&&(h.trajectoryMetadata?.parentConversationId||e.push([b,h]))}for(let f of c)a.delete(f);return e};var IDa=vl("trajectorySummaries/startOsConversationNotifications",(a,b,c={},e)=>({payload:{sendNotification:a,appName:b,soundFiles:c,playSound:e}}));function JDa(a){var b=a.toLowerCase();return b.startsWith("antigravity")?"Antigravity":b.startsWith("jetski")?"Jetski":a}
 function KDa(){var a=new Set,b=new Set,c,e="Jetski",f={},g,h=l=>{var m=new Map,n=[];for(let [q,r]of l)l=r,m.set(l,q),n.push(l);GDa(a,n,q=>{var r=q.summary.workspaces?.[0]?.workspaceFolderAbsoluteUri,t=q.step.step?.metadata?.sourceTrajectoryStepInfo?.cascadeId||m.get(q.summary)||q.summary.trajectoryId;a:{q=q.step;var u=q.step;if(u){var v=Ie(u).step;if(v.case){switch(v.case){case "runCommand":u=v.value;v="Requesting your permission in Terminal:";u=`Command: ${u.commandLine}`;break;case "executeBrowserJavascript":u=
 v.value;v="Requesting your permission to execute JavaScript:";u=`Code: ${u.javascriptDescription}`;break;case "openBrowserUrl":u=v.value;v="Requesting your permission to open URL:";u=`URL: ${u.url}`;break;case "askQuestion":u=v.value;let w=u.questions?.length??0;v=w>1?"The agent has questions for you:":"The agent has a question for you:";u=u.questions?.[0]?.question||(w>1?"Click to respond to the questions.":"Click to respond to the question.");break;default:v=u.requestedInteraction?.interaction,
