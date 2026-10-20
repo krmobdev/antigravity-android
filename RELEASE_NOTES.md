@@ -2,7 +2,12 @@
 
 ## Наш релиз: v2.4.0-kr1 — Background Reliability Update
 
-**Актуальная сборка нашего форка:** [скачать Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk).
+**Две редакции нашего форка:**
+
+- [Стандартная APK — Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)
+- [Region Bypass APK — Antigravity-Android-v2.4.0-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1-region-bypass.apk)
+
+Обе APK имеют одинаковые package ID `com.krmobdev.antigravity` и релизную подпись, поэтому доступны как **альтернативные редакции**, а не две отдельные установки.
 
 - [Страница нашего релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)
 - [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt)
