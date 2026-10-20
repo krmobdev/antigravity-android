@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.webkit.WebView;
 import android.view.View;
-import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.service.notification.StatusBarNotification;
 import org.json.JSONTokener;
@@ -94,10 +93,16 @@ public final class LiveCoreSmoke extends Instrumentation {
             return notes==null?0:notes.length;
         }catch(Exception ignored){return -1;}
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);start();}
+    private boolean executeRequested;
+    @Override public void onCreate(Bundle b){
+        super.onCreate(b);
+        // Explicit opt-in only; default execution cannot burn model quota.
+        executeRequested=b!=null && "yes".equalsIgnoreCase(b.getString("execute"));
+        start();
+    }
     @Override public void onStart(){
         super.onStart();
-        boolean success=false,sent=false;
+        boolean success=false,sendClicked=false,routeObserved=false,dryRunPassed=false;
         try{
             Context context=getTargetContext();
             Intent launch=context.getPackageManager().getLaunchIntentForPackage("com.agy.dev");
@@ -129,6 +134,11 @@ public final class LiveCoreSmoke extends Instrumentation {
             String fresh=eval(host,"!/^\\/c\\//.test(location.pathname)");
             status("FRESH_CONVERSATION",fresh);
             if(!"true".equals(fresh))throw new IllegalStateException("Refusing to send into an existing conversation");
+            if(!executeRequested){
+                dryRunPassed=true;
+                status("DRY_RUN","PASS_NEW_DEV_CONVERSATION_NO_REQUEST");
+                return;
+            }
 
             // Use actual Android keystrokes, not programmatic DOM value
             // mutation: React/Lexical controls may ignore synthetic input.
@@ -140,18 +150,26 @@ public final class LiveCoreSmoke extends Instrumentation {
             SystemClock.sleep(550);
             String enabled=eval(host,"(function(){var a=[...document.querySelectorAll('button')].filter(x=>{var r=x.getBoundingClientRect();return r.width>0&&r.height>0&&!x.disabled;});return a.some(x=>/send message|send immediately/i.test([x.getAttribute('aria-label'),x.title].filter(Boolean).join(' ')))})()");
             status("SEND_CONTROL_ENABLED",enabled);
-            // Official v2.4 composer advertises Enter as the primary send shortcut.
-            sendKeyDownUpSync(KeyEvent.KEYCODE_ENTER);
-            status("SEND_ACTION","ANDROID_ENTER");
+            if(!"true".equals(enabled))
+                throw new IllegalStateException("Send control disabled; no attempt made");
+            // Execute the actual enabled React button's click handler exactly
+            // once. KEYCODE_ENTER can insert a newline / select a popup.
+            String clickSend="(function(){var a=[...document.querySelectorAll('button')].filter(x=>{var r=x.getBoundingClientRect();return r.width>0&&r.height>0&&!x.disabled;}).filter(x=>/send message|send immediately/i.test([x.getAttribute('aria-label'),x.title].filter(Boolean).join(' ')));if(a.length!==1)return 'AMBIGUOUS_SEND_'+a.length;if(window.__agyDevSmokeSendClicked)return 'DUPLICATE_REFUSED';window.__agyDevSmokeSendClicked=true;a[0].click();return 'CLICKED_SEND';})()";
+            String sendResult=eval(host,clickSend);
+            sendClicked="CLICKED_SEND".equals(sendResult);
+            status("SEND_CLICKED_ONCE",sendClicked);
+            if(!sendClicked)
+                throw new IllegalStateException("Send handler not uniquely found; no attempt made");
             String conversation=null;
             for(int i=0;i<8;i++){
                 SystemClock.sleep(1000);
                 conversation=getConversationId(host);
                 if(conversation!=null)break;
             }
-            sent=conversation!=null;
-            status("NEW_CONVERSATION_ROUTE_OBSERVED",sent);
-            if(!sent)throw new IllegalStateException("No new Core conversation route after Enter");
+            routeObserved=conversation!=null;
+            status("NEW_CONVERSATION_ROUTE_OBSERVED",routeObserved);
+            if(!routeObserved)
+                throw new IllegalStateException("No verified new conversation route after click; never re-submit");
             long expires=SystemClock.elapsedRealtime()+65000;
             boolean finished=false;
             while(SystemClock.elapsedRealtime()<expires){
@@ -172,11 +190,14 @@ public final class LiveCoreSmoke extends Instrumentation {
             status("RESULT",success?"PASS_REAL_CORE_COMPLETE":"INCOMPLETE_REAL_CORE_PROOF");
         }catch(Throwable err) {
             status("ERROR",err.getClass().getSimpleName());
-            status("NEW_CONVERSATION_ROUTE_OBSERVED",sent);
+            status("SEND_CLICKED_ONCE",sendClicked);
+            status("NEW_CONVERSATION_ROUTE_OBSERVED",routeObserved);
         }finally{
             Bundle b=new Bundle();
-            b.putString("summary",success?"liveCore=PASS":"liveCore=NOT_PROVEN");
-            finish(success?0:1,b);
+            b.putString("summary",success?"liveCore=PASS":
+                    dryRunPassed?"dryRun=PASS;liveCore=NOT_TESTED":
+                    "liveCore=NOT_PROVEN;NO_RETRY");
+            finish(success||dryRunPassed?0:1,b);
         }
     }
 }
