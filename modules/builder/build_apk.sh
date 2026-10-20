@@ -69,18 +69,19 @@ if [ "$KR_RELEASE_MODE" = "1" ] && [ "$DEV_MODE" = "1" ]; then
     echo "[ERROR] --kr-release cannot be combined with --dev" >&2
     exit 1
 fi
-if [ "$KR_RELEASE_MODE" = "1" ] && [ "$NO_BYPASS" != "1" ]; then
-    echo "[ERROR] --kr-release requires original eligibility gates" >&2
-    exit 1
-fi
 BASE_PREFIX="${CUSTOM_PREFIX:-antigravity}"
 
 if [ -n "$CUSTOM_OUT" ]; then
     OUT_APK="$CUSTOM_OUT"
     EDITION_LABEL="CUSTOM OUTPUT ($OUT_APK)"
 elif [ "$KR_RELEASE_MODE" = "1" ]; then
-    OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.0-kr1.apk"
-    EDITION_LABEL="KR RELEASE (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
+    if [ "$NO_BYPASS" = "0" ]; then
+        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.0-kr1-region-bypass.apk"
+        EDITION_LABEL="KR RELEASE REGION BYPASS (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
+    else
+        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.0-kr1.apk"
+        EDITION_LABEL="KR RELEASE STANDARD (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
+    fi
 elif [ "$DEV_MODE" = "1" ]; then
     if [ "$NO_BYPASS" = "0" ]; then
         OUT_APK="$DIST_DIR/${BASE_PREFIX}-dev-region-bypass.apk"
