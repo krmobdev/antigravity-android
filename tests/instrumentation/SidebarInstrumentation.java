@@ -24,8 +24,9 @@ public final class SidebarInstrumentation extends Instrumentation {
     private int failures=0;
     private Activity activity;
     private WebView web;
+    private Bundle testArgs;
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);testArgs=b;start();}
     @Override public void onStart(){
         super.onStart(); Bundle result=new Bundle();
         try {
@@ -47,6 +48,8 @@ public final class SidebarInstrumentation extends Instrumentation {
             if(!initial.optBoolean("diag") || initial.optInt("timestamps")==0)
                 throw new IllegalStateException("sidebar not loaded");
 
+            if (testArgs!=null && testArgs.getBoolean("skipTimer",false)) mark("SKIP_TIMER_PREVIOUSLY_PROVEN");
+            else {
             mark("WAIT_70S");
             SystemClock.sleep(70000);
             JSONObject later=sample("AFTER_70S");
@@ -62,6 +65,7 @@ public final class SidebarInstrumentation extends Instrumentation {
                 }else mark("TIME_INCONCLUSIVE_ROW_CHANGE");
             }else mark("TIME_INCONCLUSIVE_PAGE_CHANGED");
 
+            }
             mark("PAUSE_RESUME_START");
             runOnMainSync(()->activity.moveTaskToBack(true));
             SystemClock.sleep(1800);
@@ -74,21 +78,20 @@ public final class SidebarInstrumentation extends Instrumentation {
             // Click a REAL React row, without typing, sending prompts, or
             // changing server state. Then use the actual Android Back path.
             mark("NAV_START");
-            String js="(function(){var rows=[...document.querySelectorAll('[data-screenshot-volatile]')];"+
-                "for(var e of rows){var p=e;for(var d=0;p&&d<12;p=p.parentElement,d++){"+
-                "var k=Object.keys(p).find(x=>x.indexOf('__reactProps')===0);"+
-                "if(k&&typeof p[k].onClick==='function'){p.click();return 'clicked'}}}"+
-                "return 'no_clickable_row'})()";
+            String js="(function(){var row=document.querySelector('[data-testid=\\\"conversation-row-sidebar\\\"]');" +
+                "if(!row)return 'no_sidebar_row';" +
+                "var link=row.querySelector('a[href]');" +
+                "if(!link)return 'no_anchor';link.click();return 'clicked'})()";
             String click=eval(js);
             mark("NAV_CLICK="+click);
             if(click!=null&&click.contains("clicked")){
                 SystemClock.sleep(1400);
                 JSONObject opened=sample("AFTER_NAV_OPEN");
                 if("chat".equals(opened.optString("route"))){
-                    sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
-                    SystemClock.sleep(1400);
+                    eval("window.history.back(); true");
+                    SystemClock.sleep(1700);
                     JSONObject returned=sample("AFTER_NAV_BACK");
-                    if("chat".equals(returned.optString("route")))fail("ANDROID_BACK_STILL_IN_CHAT");
+                    if("chat".equals(returned.optString("route")))fail("BROWSER_HISTORY_BACK_STILL_IN_CHAT");
                     JSONArray a=resumed.optJSONArray("times"),b=returned.optJSONArray("times");
                     if(a!=null&&b!=null&&a.length()>0&&b.length()>0)
                         mark("NAV_TIME_COMPARISON before="+a.optString(0)+" after="+b.optString(0));

@@ -5,4 +5,6 @@
   <instrumentation android:name="com.agy.diagtests.SidebarInstrumentation"
     android:targetPackage="com.agy.dev" android:label="AGY sidebar real WebView test"
     android:functionalTest="true"/>
+  <instrumentation android:name="com.agy.diagtests.LifecycleInstrumentation"
+    android:targetPackage="com.agy.dev" android:label="AGY controlled RUNNING to IDLE race"/>
 </manifest>

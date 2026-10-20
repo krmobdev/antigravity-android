@@ -8,7 +8,7 @@ setup_paths
 HERE="$ROOT/tests/instrumentation"
 OUT="$HERE/out"
 mkdir -p "$OUT/classes" "$OUT/dex"
-javac -encoding UTF-8 -d "$OUT/classes" -cp "$ANDROID_JAR" "$HERE/SidebarInstrumentation.java"
+javac -encoding UTF-8 -d "$OUT/classes" -cp "$ANDROID_JAR" "$HERE/SidebarInstrumentation.java" "$HERE/LifecycleInstrumentation.java"
 mapfile -d '' CLASS_FILES < <(find "$OUT/classes" -name '*.class' -print0)
 java -cp "$R8_JAR" com.android.tools.r8.D8 --output "$OUT/dex" --lib "$ANDROID_JAR" --min-api 24 "${CLASS_FILES[@]}"
 aapt package -f -M "$HERE/AndroidManifest.xml" -I "$ANDROID_JAR" -F "$OUT/unsigned.apk"

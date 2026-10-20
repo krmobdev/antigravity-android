@@ -27,7 +27,7 @@ if ! diff -r --exclude=src --exclude=build.sh --exclude=patch_main.py \
         --exclude=patch_agent_notifications.py --exclude=patch_agent_diag.py \
         --exclude=patch_stream_resume.py --exclude=patch_sidebar_reconcile.py \
         --exclude=patch_notification_navigation.py \
-        --exclude=patch_sidebar_commit_diag.py --exclude=tests --exclude=src.manifest \
+        --exclude=patch_sidebar_commit_diag.py --exclude=patch_sidebar_e2e_fixture.py --exclude=tests --exclude=src.manifest \
         "$WEB_DIR" "$STAGE_ASSETS/web" >/dev/null 2>&1; then
     die "invariant failed: assets/web != web/ (excluding build-only files)"
 fi
@@ -52,6 +52,12 @@ python3 "$WEB_DIR/patch_sidebar_reconcile.py" \
 python3 "$WEB_DIR/patch_sidebar_commit_diag.py" \
     "$STAGE_ASSETS/web/main.js" "$STAGE_ASSETS/web/main.js" \
     || die "sidebar React commit diagnostic hook could not be applied"
+# Only explicit E2E fixture builds may dispatch synthetic summary state.
+if [ "${AGY_SIDEBAR_E2E:-0}" = "1" ]; then
+    python3 "$WEB_DIR/patch_sidebar_e2e_fixture.py" \
+        "$STAGE_ASSETS/web/main.js" "$STAGE_ASSETS/web/main.js" \
+        || die "E2E-only summary fixture hook failed"
+fi
 if command -v node >/dev/null 2>&1; then
     node --check "$STAGE_ASSETS/web/main.js" || die "notification hook JS is invalid"
 fi
