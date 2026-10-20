@@ -80,7 +80,7 @@ public final class ReadinessProbe extends Instrumentation {
       host.runOnUiThread(()->{
         WebView w=find(host.getWindow().getDecorView());
         if(w==null){latch.countDown();return;}
-        String expression="(function(){try{var b=document.body,t=b&&b.innerText||'',r=document.getElementById('root');return JSON.stringify({ready:document.readyState,root:!!r,bodyChildren:b?b.childElementCount:0,buttons:document.querySelectorAll('button').length,authSurface:/sign in|log in|sign up|authenticate|onboarding|continue with/i.test(t),sidebarCandidate:!!document.querySelector('[data-testid*=sidebar],[role=navigation],aside'),startupInstalled:!!(window.__agStartupReady&&window.__agStartupReady.__installed),nativeBridgePresent:!!window.Android,onUiReadyMethod:typeof(window.Android&&window.Android.onUiReady)==='function',tokenInjected:typeof window.__AG_NATIVE_BRIDGE_TOKEN__==='string'})}catch(e){return '{}'}})()";
+        String expression="(function(){try{var b=document.body,t=b&&b.innerText||'',r=document.getElementById('root');return JSON.stringify({ready:document.readyState,root:!!r,bodyChildren:b?b.childElementCount:0,buttons:document.querySelectorAll('button').length,authSurface:/sign in|log in|sign up|authenticate|onboarding|continue with/i.test(t),sidebarCandidate:!!document.querySelector('[data-testid*=sidebar],[role=navigation],aside'),newConversationControl:[...document.querySelectorAll('button,[role=button]')].some(x=>/new conversation/i.test([x.getAttribute('aria-label'),x.title,x.textContent].filter(Boolean).join(' '))),composerControl:!!document.querySelector('textarea,[contenteditable=true]'),sendControl:[...document.querySelectorAll('button,[role=button]')].some(x=>/send message|send immediately/i.test([x.getAttribute('aria-label'),x.title].filter(Boolean).join(' '))),startupInstalled:!!(window.__agStartupReady&&window.__agStartupReady.__installed),nativeBridgePresent:!!window.Android,onUiReadyMethod:typeof(window.Android&&window.Android.onUiReady)==='function',tokenInjected:typeof window.__AG_NATIVE_BRIDGE_TOKEN__==='string'})}catch(e){return '{}'}})()";
         w.evaluateJavascript(expression,s->{raw.set(s);latch.countDown();});
       });
       latch.await(5,TimeUnit.SECONDS);
@@ -96,6 +96,9 @@ public final class ReadinessProbe extends Instrumentation {
         report("BUTTONS",info.optInt("buttons"));
         report("AUTH_SCREEN",info.optBoolean("authSurface"));
         report("SIDEBAR_CANDIDATE",info.optBoolean("sidebarCandidate"));
+        report("NEW_CONVERSATION_CONTROL",info.optBoolean("newConversationControl"));
+        report("COMPOSER_CONTROL",info.optBoolean("composerControl"));
+        report("SEND_CONTROL",info.optBoolean("sendControl"));
         report("STARTUP_HOOK_INSTALLED",info.optBoolean("startupInstalled"));
         report("ANDROID_BRIDGE_VISIBLE",info.optBoolean("nativeBridgePresent"));
         report("ON_UI_READY_METHOD",info.optBoolean("onUiReadyMethod"));

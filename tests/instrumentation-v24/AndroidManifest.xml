@@ -3,4 +3,6 @@
  <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28"/>
  <application android:label="AGY v2.4 Readiness" android:hasCode="true"/>
  <instrumentation android:name="com.agy.v24readiness.ReadinessProbe" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+ <instrumentation android:name="com.agy.v24readiness.LiveCoreSmoke" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+ <instrumentation android:name="com.agy.v24readiness.SafeEvidence" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
 </manifest>
