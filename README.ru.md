@@ -179,6 +179,7 @@
       <p><font size="4"><b>1. Загрузка APK</b></font></p>
       <p><font color="#7d8590">В разделе <a href="https://github.com/krmobdev/antigravity-android/releases">Releases</a> представлены релизные пакеты:<br/><br/>
       &bull; <b><a href="https://github.com/krmobdev/antigravity-android/releases/download/v2.3.0-patches.1/antigravity-two-patches-20261020.apk"><code>antigravity-two-patches-20261020.apk</code></a> — стандартная сборка форка с обоими патчами (порт 45157).<br/><br/>
+      &bull; <b><a href="https://github.com/krmobdev/antigravity-android/releases/download/v2.3.0-patches.1/antigravity-bypass-two-patches-20261020.apk"><code>antigravity-bypass-two-patches-20261020.apk</code></a> — региональная bypass-сборка с обоими исправлениями и региональным патчем автора (порт 45157).<br/><br/>
       Пакет: <code>com.agy</code>; тестовая Dev использует <code>com.agy.dev</code>. Для обновления существующей установки требуется совпадение ключа подписи. Обновление поверх приложения сохраняет его данные.</font></p>
     </td>
     <td width="33%" valign="top" style="border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 12px; padding: 16px;">

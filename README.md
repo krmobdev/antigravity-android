@@ -179,6 +179,7 @@ Real-world test: the agent authored a custom Python I/O benchmark and executed m
       <p><font size="4"><b>1. Download APK</b></font></p>
       <p><font color="#7d8590">Releases are available under <a href="https://github.com/krmobdev/antigravity-android/releases">Releases</a>:<br/><br/>
       &bull; <b><a href="https://github.com/krmobdev/antigravity-android/releases/download/v2.3.0-patches.1/antigravity-two-patches-20261020.apk"><code>antigravity-two-patches-20261020.apk</code></a> — standard fork release with both patches (port 45157).<br/><br/>
+      &bull; <b><a href="https://github.com/krmobdev/antigravity-android/releases/download/v2.3.0-patches.1/antigravity-bypass-two-patches-20261020.apk"><code>antigravity-bypass-two-patches-20261020.apk</code></a> — region-bypass edition with both patches and the author's regional patch (port 45157).<br/><br/>
       Package: <code>com.agy</code>; the test Dev app uses <code>com.agy.dev</code>. Updating an existing installation requires a matching signing key. In-place updates preserve app data.</font></p>
     </td>
     <td width="33%" valign="top" style="border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 12px; padding: 16px;">
