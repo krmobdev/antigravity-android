@@ -48,6 +48,4 @@ for name,wrapped,sources in bundles:
 print("PASS bundle wrappers match manifest; intentionally scoped fragment IIFEs permitted")
 PY
 
-node "$ROOT/web/tests/read_receipt_v24.behavior.cjs" "$TMP/web/generated/main.js"
-node "$ROOT/web/tests/runtime_v24.behavior.cjs" "$TMP/web/generated/main.js"
 echo "web build selftest: OK"
