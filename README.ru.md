@@ -43,6 +43,9 @@
 
 [Описание уведомлений и сборки](docs/AGENT_NOTIFICATIONS.md), [результаты проверки на телефоне](docs/NOTIFICATION_VALIDATION_2026-10-20.md). Политика уведомлений прошла 25 проверок с контролируемыми нативными переходами и настоящими действиями в SystemUI. Эти тесты не отправляли запросов агенту.
 
+Отдельный пользовательский прогон нескольких настоящих агентов также прошёл без зависаний чатов и вечных индикаторов.
+
+
 
 
 ---
@@ -174,10 +177,9 @@
   <tr>
     <td width="33%" valign="top" style="border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 12px; padding: 16px;">
       <p><font size="4"><b>1. Загрузка APK</b></font></p>
-      <p><font color="#7d8590">В разделе <a href="https://github.com/werdio325-png/antigravity-android/releases">Releases</a> представлены релизные пакеты:<br/><br/>
-      &bull; <b><code>antigravity.apk</code></b> — стандартная версия (порт 45157).<br/>
-      &bull; <b><code>antigravity-bypass.apk</code></b> — сборка с патчем региональных ограничений.<br/><br/>
-      <i>Поддерживается бесшовное обновление поверх старых сборок.</i></font></p>
+      <p><font color="#7d8590">В разделе <a href="https://github.com/krmobdev/antigravity-android/releases">Releases</a> представлены релизные пакеты:<br/><br/>
+      &bull; <b><a href="https://github.com/krmobdev/antigravity-android/releases/download/v2.3.0-patches.1/antigravity-two-patches-20261020.apk"><code>antigravity-two-patches-20261020.apk</code></a> — стандартная сборка форка с обоими патчами (порт 45157).<br/><br/>
+      Пакет: <code>com.agy</code>; тестовая Dev использует <code>com.agy.dev</code>. Для обновления существующей установки требуется совпадение ключа подписи. Обновление поверх приложения сохраняет его данные.</font></p>
     </td>
     <td width="33%" valign="top" style="border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 12px; padding: 16px;">
       <p><font size="4"><b>2. Настройка прав</b></font></p>

@@ -43,6 +43,9 @@ This fork of [werdio325-png/antigravity-android](https://github.com/werdio325-pn
 
 See [notification behavior and build instructions](docs/AGENT_NOTIFICATIONS.md) and [device validation](docs/NOTIFICATION_VALIDATION_2026-10-20.md). The notification policy passed 25 checks on Android using controlled native transitions and real SystemUI interactions; those tests sent no agent prompts.
 
+A separate user-run multi-agent check also completed without chat hangs or persistent activity indicators.
+
+
 
 
 ---
@@ -174,10 +177,9 @@ Real-world test: the agent authored a custom Python I/O benchmark and executed m
   <tr>
     <td width="33%" valign="top" style="border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 12px; padding: 16px;">
       <p><font size="4"><b>1. Download APK</b></font></p>
-      <p><font color="#7d8590">Releases are available under <a href="https://github.com/werdio325-png/antigravity-android/releases">Releases</a>:<br/><br/>
-      &bull; <b><code>antigravity.apk</code></b> — standard release (port 45157).<br/>
-      &bull; <b><code>antigravity-bypass.apk</code></b> — region bypass edition.<br/><br/>
-      <i>Seamless in-place updates are supported across versions.</i></font></p>
+      <p><font color="#7d8590">Releases are available under <a href="https://github.com/krmobdev/antigravity-android/releases">Releases</a>:<br/><br/>
+      &bull; <b><a href="https://github.com/krmobdev/antigravity-android/releases/download/v2.3.0-patches.1/antigravity-two-patches-20261020.apk"><code>antigravity-two-patches-20261020.apk</code></a> — standard fork release with both patches (port 45157).<br/><br/>
+      Package: <code>com.agy</code>; the test Dev app uses <code>com.agy.dev</code>. Updating an existing installation requires a matching signing key. In-place updates preserve app data.</font></p>
     </td>
     <td width="33%" valign="top" style="border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 12px; padding: 16px;">
       <p><font size="4"><b>2. Grant Permissions</b></font></p>
