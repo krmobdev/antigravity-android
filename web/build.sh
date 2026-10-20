@@ -155,6 +155,11 @@ emit_bundle
 cp -f "$SCRIPT_DIR/main.js" "$GEN_DIR/main.js"
 python3 "$SCRIPT_DIR/patch_main.py" "$GEN_DIR/main.js" \
     || die "web/patch_main.py failed"
+# Restore native Core completion feeds and both independent UI subscriptions
+# after Android WebView resumes. Version-pinned anchors fail closed on changes.
+python3 "$SCRIPT_DIR/patch_runtime_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
+    || die "web/patch_runtime_v24.py incompatible with upstream"
+
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
     "${#bundle_names[@]}" "$src_count"
