@@ -1,6 +1,22 @@
-# Antigravity for Android v2.4.0
+# Antigravity Android — примечания к релизам
 
-## Спецификация пакетов релиза
+## Наш релиз: v2.4.0-kr1 — Background Reliability Update
+
+**Актуальная сборка нашего форка:** [скачать Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk).
+
+- [Страница нашего релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)
+- [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt)
+- [Описание на русском](docs/releases/v2.4.0-kr1.ru.md) · [Release notes in English](docs/releases/v2.4.0-kr1.en.md)
+
+Наша APK устанавливается как **`com.krmobdev.antigravity`**, отдельно от оригинальной **`com.agy`**.
+
+---
+
+## Исторические заметки оригинального upstream v2.4.0
+
+**Важно:** ниже сохранено описание пакетов **оригинального проекта**, а не наших файлов для скачивания. `antigravity.apk` и `antigravity-region-bypass.apk` **не публиковались** в нашем релизе `v2.4.0-kr1`.
+
+### Спецификация upstream-пакетов
 
 | Файл пакета | Идентификатор приложения | Порт рантайма | Описание |
 | :--- | :--- | :--- | :--- |
