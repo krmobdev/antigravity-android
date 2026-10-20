@@ -71,9 +71,11 @@ No PRoot, chroot, or virtualization overhead. Antigravity runs **bare-metal insi
 
 ### Quick Start
 
-1. **Download our signed APK:** [Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk) ([release page](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)).
-   * We publish **one edition** under the `com.krmobdev.antigravity` package ID, installable alongside upstream `com.agy`.
-   * Optionally verify the download with [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
+1. **Choose an edition on [our release page](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1):**
+   * **[Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)** — standard edition retaining the original Google account eligibility checks.
+   * **[Antigravity-Android-v2.4.0-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1-region-bypass.apk)** — *Region Bypass* edition, with modified local Core account eligibility checks. This does not guarantee access when server-side or regional restrictions apply.
+   * Both editions share **the same package ID** `com.krmobdev.antigravity` and **the same release signing certificate**. They **cannot be installed side by side**: installing one replaces the other. Both coexist separately with upstream `com.agy`.
+   * Verify both packages using [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
 2. **Grant Storage Permission** (`All Files Access`). *(Optional: enable Shizuku for ADB access)*.
 3. **Install Runtimes** via terminal or agent:
    ```bash
@@ -89,6 +91,9 @@ Our signed fork release uses a dedicated build mode and private signing key. Pla
 ```bash
 # Build our fork release (requires private release signing key and dependencies):
 bash modules/builder/build_apk.sh --kr-release
+
+# Bypass edition of the same fork, signed with the same private release key:
+bash modules/builder/build_apk.sh --kr-release --region-bypass
 
 # Run all test suites:
 bash test_all_modules.sh
