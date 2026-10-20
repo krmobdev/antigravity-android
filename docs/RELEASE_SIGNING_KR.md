@@ -49,9 +49,12 @@ export AGY_RELEASE_KEY_ALIAS="antigravity-kr-release-v1"
 export AGY_RELEASE_STORE_PASSWORD_FILE="$HOME/anima-workspace/.antigravity-release-identity/store-password"
 export AGY_RELEASE_KEY_PASSWORD_FILE="$HOME/anima-workspace/.antigravity-release-identity/key-password"
 bash modules/builder/build_apk.sh --kr-release
+
+# Optional region-bypass edition (same package ID, version and signing key):
+bash modules/builder/build_apk.sh --kr-release --region-bypass
 ```
 
-The build pipeline performs **compile → package → zipalign → apksigner**, refuses missing private material and does not invoke GitHub Actions. Use `--kr-release`, **never** the legacy plain `build.sh` debug-key workflow for our public fork. The default non-KR build variants retain original functionality.
+The build pipeline performs **compile → package → zipalign → apksigner**, refuses missing private material and does not invoke GitHub Actions. Two locally signed editions are available: **standard** (original account eligibility checks) and **region-bypass** (patched local Core gates). They use the same Android package ID, versionCode and signing certificate, so only one edition can be installed at a time. The bypass APK was built from fork source commit `6d13e70008a36c9915bf03d9d76610f0a4f6917b`, which adds the KR bypass build option without changing the three reliability patches. Use `--kr-release`, **never** the legacy plain `build.sh` debug-key workflow for our public fork. The default non-KR build variants retain original functionality.
 
 Verify separately:
 
