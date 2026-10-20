@@ -13,7 +13,7 @@
   window.__AGY_VERIFIED_AGENT_GET__ = function(id){
     if (!valid(id)) return false;
     if (status.get(id) === 1) return true;
-    try { return window.Android?.wasAgentRecentlyFinished?.(id) === true; }
+    try { return window.Android?.wasAgentRecentlyFinished?.(window.__AG_NATIVE_BRIDGE_TOKEN__, id) === true; }
     catch (_) { return false; }
   };
   window.__AGY_VERIFIED_AGENT_SUBSCRIBE__ = function(fn){
@@ -53,7 +53,7 @@
       }
       if(prev === next) return;
       if(next === 1){
-        window.Android?.diagnosticEvent?.('reconcile_idle', 'id='+id.slice(-6).replace(/[^A-Za-z0-9]/g,'_'));
+        window.Android?.diagnosticEvent?.(window.__AG_NATIVE_BRIDGE_TOKEN__, 'reconcile_idle', 'id='+id.slice(-6).replace(/[^A-Za-z0-9]/g,'_'));
       }
     }catch(_){}
   };

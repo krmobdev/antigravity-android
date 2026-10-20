@@ -14,6 +14,12 @@ public final class AppHtmlInjector {
 
     /** Web layer generates the ready signal under generated/patches. */
     private static final String READY_SCRIPT = "./generated/patches/startup_ready.js";
+    private static final String CSP = "default-src 'self' https: data: blob:; "
+            + "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; "
+            + "style-src 'self' 'unsafe-inline' https:; "
+            + "img-src 'self' https: data: blob:; font-src 'self' https: data:; "
+            + "connect-src 'self' https: wss:; frame-src https: data: blob:; "
+            + "worker-src 'self' blob:; object-src 'none'; base-uri 'self'";
 
     private AppHtmlInjector() {
     }
@@ -27,7 +33,8 @@ public final class AppHtmlInjector {
             endpoints.put("core", base);
             endpoints.put("core_http", base);
             endpoints.put("enginePort", bridge.getEnginePort());
-            boot = "<script>(function(){"
+            boot = "<meta http-equiv=\"Content-Security-Policy\" content=\"" + CSP + "\">"
+                    + "<script>(function(){"
                     + "window.__APP_CONFIG__=" + config.toString() + ";"
                     + "window.__AG_ENDPOINTS__=" + endpoints.toString() + ";"
                     + "window.__AG_CSRF__=" + JSONObject.quote(bridge.getCsrfToken()) + ";"
@@ -36,7 +43,10 @@ public final class AppHtmlInjector {
                             : (theme != null && theme.mode() == com.agy.theme.ThemeColors.MODE_LIGHT ? "light" : "system")) + ";"
                     + "window.__AG_RESOLVED_THEME__="
                     + JSONObject.quote(theme != null ? theme.getTheme() : "light") + ";"
+                    + "window.__AG_NATIVE_BRIDGE_TOKEN__="
+                    + JSONObject.quote(bridge.getBlobBridgeToken()) + ";"
                     + "window.AndroidBridge=window.Android;"
+                    + "window.dialog={showOpenDialog:function(){return new Promise(function(resolve){window.__onDirectoryPicked=function(path){resolve(path);};if(window.Android&&typeof window.Android.openDirectoryPicker==='function'){window.Android.openDirectoryPicker();}else{resolve(null);}});}};"
                     + "})();</script>"
                     // Signals first paint back to native (AndroidBridge.onUiReady)
                     // so the splash is dismissed on real content, not a timer.

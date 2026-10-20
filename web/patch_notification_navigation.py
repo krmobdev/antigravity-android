@@ -16,7 +16,7 @@ window.addEventListener("agy:open-conversation",function(e){
       return;
     }
     fOb(id);
-    window.Android?.onNotificationNavigationResult?.(id);
+    window.Android?.onNotificationNavigationResult?.(window.__AG_NATIVE_BRIDGE_TOKEN__,id);
   }catch(err){
     console.warn("[AGY] notification navigation failed");
   }
@@ -29,7 +29,7 @@ CONTEXT_REPLACEMENT = '},[e,f,a,b,g,k,l,c]);' + CONTEXT_MARKER + r"""
 (0,z.useLayoutEffect)(()=>{
   var id=/^\/c\/[^/]+$/.test(e)&&typeof g==="string"?g:"";
   if(id==="_new"||! /^[A-Za-z0-9_+:-]{1,128}$/.test(id)) id="";
-  var report=()=>{try{window.Android?.onVisibleConversation?.(id);}catch(_){}};
+  var report=()=>{try{window.Android?.onVisibleConversation?.(window.__AG_NATIVE_BRIDGE_TOKEN__,id);}catch(_){}};
   report();
   window.addEventListener("agy:host-resume",report);
   return ()=>window.removeEventListener("agy:host-resume",report);

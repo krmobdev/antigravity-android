@@ -3,7 +3,7 @@
 
 PKG_VERSION="0.1.0"
 
-: "${PREFIX:=/data/data/com.agy/files/usr}"
+: "${PREFIX:?PREFIX must be exported by the AGY shell profile or pkg wrapper}"
 PKG_ROOT="${PKG_ROOT:-$PREFIX/var/lib/pkg}"
 PKG_DB="$PKG_ROOT/installed"
 PKG_CACHE="$PKG_ROOT/cache"
@@ -23,23 +23,63 @@ die()  { printf 'pkg: error: %s\n' "$*" >&2; exit 1; }
 
 ensure_dirs() { mkdir -p "$PKG_DB" "$PKG_CACHE" "$PKG_INDEX" "$PKG_ROOT/tmp"; }
 
-# rewrite_prefix DIRS... -- rewrite foreign-prefix paths to $PREFIX.
-# Matches any Android app-private prefix (/data/data/com.<id>/files/usr): both
-# the Termux debs we install and our own baked default prefix. Every occurrence
-# is replaced, not only the shebang, so helpers that hardcode the prefix in
-# their body (gzexe tmpdir, dpkg .list, *-config) work after extraction.
-# Text-only (grep -I skips binaries), follows no symlinks, idempotent.
+# rewrite_prefix [FILES_OR_DIRS...] -- rewrite legacy /data/data and modern
+# /data/user/<id> app-private paths to the active $PREFIX. Every occurrence is
+# replaced, not only the shebang, so helper bodies and generated .list files
+# work after extraction. Text-only, no symlink traversal, idempotent.
+# Accepts file/dir paths as arguments, or list of file paths via stdin (newline
+# or null-separated). If no targets are provided or stdin is empty, scans $PREFIX.
 rewrite_prefix() {
-    local f esc
+    local f esc pattern='/data/(data|user/[0-9]+)/[^/]*/files/usr'
     # Escape sed-replacement metacharacters in $PREFIX (never expected, cheap).
-    esc="$(printf '%s' "$PREFIX" | sed 's/[\\&|]/\\&/g')"
-    # One grep walk finds every matching text file, then one sed per file.
-    # Avoids spawning 2-3 processes per file and re-reads nothing.
-    grep -rIlZ -e '/data/data/com\.[^/]*/files/usr' -- "$@" 2>/dev/null \
-        | while IFS= read -r -d '' f; do
-            sed -i "s|/data/data/com\.[^/]*/files/usr|$esc|g" "$f"
-        done
+    esc="$(printf '%s' "$PREFIX" | sed 's/[\\&@]/\\&/g')"
+
+    local targets=("$@")
+    if [ "${#targets[@]}" -eq 0 ]; then
+        if [ ! -t 0 ]; then
+            # Read targets from stdin
+            local item
+            while IFS= read -r item; do
+                [ -n "$item" ] && targets+=("$item")
+            done
+        fi
+    fi
+
+    # Fall back to $PREFIX if no arguments and stdin was empty
+    if [ "${#targets[@]}" -eq 0 ]; then
+        targets=("$PREFIX")
+    fi
+
+    # Separate existing regular files from directories/other
+    local files=() dirs=() t
+    for t in "${targets[@]}"; do
+        if [ -f "$t" ] && [ ! -L "$t" ]; then
+            files+=("$t")
+        elif [ -d "$t" ]; then
+            dirs+=("$t")
+        elif [ -e "$t" ]; then
+            # Symlink or special file, skip
+            continue
+        fi
+    done
+
+    # 1. Process explicit regular files directly
+    if [ "${#files[@]}" -gt 0 ]; then
+        grep -IlZ -E -e "$pattern" -- "${files[@]}" 2>/dev/null \
+            | while IFS= read -r -d '' f; do
+                sed -i -E "s@$pattern@$esc@g" "$f" 2>/dev/null || true
+            done
+    fi
+
+    # 2. Process directories recursively
+    if [ "${#dirs[@]}" -gt 0 ]; then
+        grep -rIlZ -E -e "$pattern" -- "${dirs[@]}" 2>/dev/null \
+            | while IFS= read -r -d '' f; do
+                sed -i -E "s@$pattern@$esc@g" "$f" 2>/dev/null || true
+            done
+    fi
 }
+
 
 load_conf() {
     [ -f "$PKG_ETC/repo.conf" ] && . "$PKG_ETC/repo.conf"

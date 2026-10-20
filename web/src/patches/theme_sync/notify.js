@@ -7,8 +7,19 @@ function notify() {
   state.last = theme;
   state.notifications++;
   try {
+    var isDark = (theme === 'dark');
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+    document.documentElement.style.colorScheme = theme;
+  } catch (e) { /* ignore */ }
+  try {
     if (window.Android) {
       state.hasAndroid = true;
+      if (typeof window.Android.setThemeByUser === 'function') {
+        window.Android.setThemeByUser(theme);
+      } else if (typeof window.Android.setTheme === 'function') {
+        window.Android.setTheme(theme);
+      }
       if (typeof window.Android.onVisualThemeChanged === 'function') {
         window.Android.onVisualThemeChanged(theme);
       }

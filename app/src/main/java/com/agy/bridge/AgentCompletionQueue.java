@@ -23,7 +23,7 @@ public final class AgentCompletionQueue {
     }
     public interface Output {
         boolean isVisible(String id);
-        void post(Entry entry, boolean headsUp);
+        boolean post(Entry entry, boolean headsUp);
         void save(List<Entry> pending);
     }
     private final Clock clock;
@@ -51,8 +51,9 @@ public final class AgentCompletionQueue {
     public void enqueue(Entry entry) {
         if (!valid(entry)) return;
         if (!pending.containsKey(entry.id) && pending.size() >= MAX_PENDING) {
-            Entry oldest = pending.remove(pending.keySet().iterator().next());
-            output.post(oldest, false); // Preserve the notification, without an unbounded alert backlog.
+            // Preserve existing unacknowledged completions: never drop a queued
+            // event because the system currently refuses notification delivery.
+            throw new IllegalStateException("Notification backlog limit reached");
         }
         pending.put(entry.id, entry);
         save(); contextChanged();
@@ -69,7 +70,9 @@ public final class AgentCompletionQueue {
         // A chat opened while an alert waits must receive a non-banner completion immediately.
         for (Entry entry : new ArrayList<>(pending.values())) {
             if (output.isVisible(entry.id)) {
-                output.post(entry, false); pending.remove(entry.id); save();
+                if (output.post(entry, false)) {
+                    pending.remove(entry.id); save();
+                }
             }
         }
         if (pending.isEmpty()) return;
@@ -78,7 +81,14 @@ public final class AgentCompletionQueue {
         Entry entry = pending.values().iterator().next();
         // Recheck at delivery, not when Core originally reported completion.
         boolean headsUp = !output.isVisible(entry.id);
-        output.post(entry, headsUp); pending.remove(entry.id);
+        if (!output.post(entry, headsUp)) {
+            // Permission denied or Android service temporarily unavailable:
+            // persist event, then retry rather than silently consume it.
+            save();
+            scheduler.schedule(drainTask, ALERT_INTERVAL_MS);
+            return;
+        }
+        pending.remove(entry.id);
         if (headsUp) { hasAlert = true; lastAlert = clock.now(); }
         save();
         if (!pending.isEmpty()) scheduler.schedule(drainTask, headsUp ? ALERT_INTERVAL_MS : 0);

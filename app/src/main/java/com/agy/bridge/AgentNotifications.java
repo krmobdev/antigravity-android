@@ -62,7 +62,7 @@ public final class AgentNotifications {
     private void emit(String conversationId, int status, boolean fullyIdle,
                       String stage, boolean nativeSource) {
         synchronized (TRACKER) {
-        if (notifications == null || !notifications.areNotificationsEnabled()) return;
+        // Permission denial does not discard a Core-observed completion.
         // Record exactly when a Core/UI transition reached Android. This is
         // an observed completion, not the agent's internal final-token time.
         final long detectedAt = System.currentTimeMillis();
@@ -75,15 +75,22 @@ public final class AgentNotifications {
             if (update.event == AgentTaskTracker.Event.FINISHED) {
                 notifications.cancel(update.conversationId, RUNNING_ID);
                 CompletionDispatcher delivery = completionDispatcher();
-                delivery.handler.post(() -> delivery.queue.enqueue(new AgentCompletionQueue.Entry(
-                        update.conversationId, detectedAt, nativeSource)));
+                delivery.handler.post(() -> {
+                    try {
+                        delivery.queue.enqueue(new AgentCompletionQueue.Entry(
+                                update.conversationId, detectedAt, nativeSource));
+                    } catch (IllegalStateException full) {
+                        Log.e(TAG, "Notification backlog full; retaining existing unacknowledged events", full);
+                    }
+                });
             } else {
                 if (update.event == AgentTaskTracker.Event.STARTED) {
                     CompletionDispatcher delivery = completionDispatcher();
                     delivery.handler.post(() -> delivery.queue.cancel(update.conversationId));
                     notifications.cancel(update.conversationId, FINISHED_ID);
                 }
-                notifications.notify(update.conversationId, RUNNING_ID, working(update));
+                if (notifications != null && notifications.areNotificationsEnabled())
+                    notifications.notify(update.conversationId, RUNNING_ID, working(update));
             }
         } catch (SecurityException | IllegalArgumentException exc) {
             // The system can deny notifications at any time. Never affect agent state.
@@ -247,16 +254,18 @@ public final class AgentNotifications {
             return activity != null && !activity.isDestroyed() && !activity.isFinishing()
                     && activity.isConversationVisible(id);
         }
-        public void post(AgentCompletionQueue.Entry entry, boolean headsUp) {
-            if (owner.notifications == null || !owner.notifications.areNotificationsEnabled()) return;
+        public boolean post(AgentCompletionQueue.Entry entry, boolean headsUp) {
+            if (owner.notifications == null || !owner.notifications.areNotificationsEnabled()) return false;
             try {
                 owner.notifications.notify(entry.id, FINISHED_ID,
                         owner.finished(entry.id, entry.completedAt, entry.nativeSource, headsUp));
                 AgyDiagnostics.log(owner.context, "notification_posted", "type=FINISHED id=" + shortId(entry.id)
                         + " popup=" + headsUp + " detected_at_ms=" + entry.completedAt
                         + " posted_at_ms=" + System.currentTimeMillis());
+                return true;
             } catch (SecurityException | IllegalArgumentException e) {
                 Log.w(TAG, "Completion notification unavailable: " + e.getClass().getSimpleName());
+                return false;
             }
         }
         public void save(List<AgentCompletionQueue.Entry> pending) {

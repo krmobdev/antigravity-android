@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.agy.v24readiness">
+ <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28"/>
+ <application android:label="AGY v2.4 Readiness" android:hasCode="true"/>
+ <instrumentation android:name="com.agy.v24readiness.ReadinessProbe" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+ <instrumentation android:name="com.agy.v24readiness.LiveCoreSmoke" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+ <instrumentation android:name="com.agy.v24readiness.SafeEvidence" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+ <instrumentation android:name="com.agy.v24readiness.HistoricalCompletionEvidence" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+</manifest>

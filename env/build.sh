@@ -14,7 +14,11 @@ build_bootstrap_tar() {
     local zip="$ENV_DIR/bootstrap/bootstrap-aarch64.zip"
     local out="$ENV_DIR/bootstrap/bootstrap.tar.gz"
     [ -f "$zip" ] || { log "missing $zip"; return 1; }
-    python3 "$ENV_DIR/scripts/pack_bootstrap.py" --zip "$zip" --out "$out"
+    local extra_args=()
+    for deb in "$ENV_DIR/packages"/*.deb; do
+        [ -f "$deb" ] && extra_args+=("--extra-deb" "$deb")
+    done
+    python3 "$ENV_DIR/scripts/pack_bootstrap.py" --zip "$zip" --out "$out" "${extra_args[@]}"
     log "bootstrap.tar.gz: $(du -h "$out" | cut -f1)"
 }
 
@@ -24,6 +28,8 @@ pack_assets() {
     cp -a "$ENV_DIR/pkg"     "$ASSETS/env/pkg"
     cp -a "$ENV_DIR/overlay" "$ASSETS/env/overlay"
     cp -f "$ENV_DIR/bootstrap/bootstrap.tar.gz" "$ASSETS/env/bootstrap/"
+    [ -f "$ENV_DIR/seed-packages.txt" ] && cp -f "$ENV_DIR/seed-packages.txt" "$ASSETS/env/seed-packages.txt" || true
+    python3 "$ENV_DIR/scripts/make_manifest.py" "$ASSETS/env"
     log "assets -> $ASSETS"
     find "$ASSETS" -maxdepth 3 | sed 's/^/  /' >&2
 }
@@ -31,6 +37,6 @@ pack_assets() {
 case "${1:-all}" in
     bootstrap) build_bootstrap_tar ;;
     assets)    pack_assets ;;
-    all)       build_bootstrap_tar; pack_assets ;;
+    all)       pack_assets ;;
     *) printf 'usage: build.sh [bootstrap|assets|all]\n' >&2; exit 1 ;;
 esac
