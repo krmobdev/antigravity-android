@@ -30,6 +30,8 @@ src/patches/web_optimizations/taps.js
 src/patches/web_optimizations/viewport.js
 src/patches/web_optimizations/gpu.js
 src/patches/web_optimizations/public-api.js
+src/patches/web_optimizations/sidebar-reconcile.js
+src/patches/web_optimizations/agent-notifications.js
 
 bundle iife patches/touch_model_menu.js
 src/patches/touch_model_menu/config.js
