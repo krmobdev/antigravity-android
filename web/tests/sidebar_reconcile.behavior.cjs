@@ -1,0 +1,38 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const events=[], subscribers={};
+const ctx={window:{Android:{onAgentState:()=>{},diagnosticEvent:(...x)=>events.push(x)}},console,Map,Set};
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(process.argv[2],'utf8'),ctx);
+vm.runInContext(fs.readFileSync(process.argv[3],'utf8'),ctx);
+const w=ctx.window;
+const conv='6bc57d',other='abc012';
+let rerenders=0;
+const dispose=w.__AGY_VERIFIED_AGENT_SUBSCRIBE__(()=>rerenders++);
+const spinner=(id,summaryActive,agentActive,starting,selected=false)=>{
+  // The selected and unselected spinner branches must both obey confirmed idle.
+  const verifiedIdle=w.__AGY_VERIFIED_AGENT_GET__(id);
+  return ((selected?agentActive:summaryActive)&&!verifiedIdle)||starting;
+};
+assert.equal(spinner(conv,true,false,false),true,'unverified stale summary must not be suppressed');
+assert.equal(spinner(conv,false,true,false,true),true,'unverified selected conversation still shows running');
+w.__AGY_NOTIFY_AGENT_STATE__({conversationId:conv,status:2,fullyIdle:false});
+assert.equal(spinner(conv,true,false,false),true,'real running agent is active');
+w.__AGY_NOTIFY_AGENT_STATE__({conversationId:conv,status:1,fullyIdle:false});
+assert.equal(spinner(conv,true,false,false),true,'partial idle is not completion');
+w.__AGY_NOTIFY_AGENT_STATE__({conversationId:conv,status:1,fullyIdle:true});
+assert.equal(spinner(conv,true,false,false),false,'confirmed idle suppresses stale summary');
+assert.equal(spinner(conv,false,true,false,true),false,'confirmed idle suppresses selected stale running state');
+assert.equal(w.__AGY_VERIFIED_AGENT_GET__(conv),true,'IDLE verified for selected and unselected UI');
+assert.equal(spinner(other,true,false,false),true,'other active dialog must not change');
+assert.equal(spinner(conv,true,true,false,true),false,'selected stale agent activity is suppressed until new RUNNING');
+assert.equal(spinner(conv,true,false,true),true,'starting task still shown');
+w.__AGY_NOTIFY_AGENT_STATE__({conversationId:conv,status:4,fullyIdle:false});
+assert.equal(spinner(conv,true,false,false),true,'new task restores active spinner');
+assert.equal(spinner(conv,false,true,false,true),true,'selected real agent working after new RUNNING');
+assert.equal(rerenders,3,'React subscription must be notified on each transition');
+dispose();
+w.__AGY_NOTIFY_AGENT_STATE__({conversationId:conv,status:1,fullyIdle:true});
+assert.equal(rerenders,3,'unmounted sidebar must not receive updates');
+console.log('PASS stale sidebar summary reconciled while real task state is preserved');

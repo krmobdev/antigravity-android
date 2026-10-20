@@ -43,7 +43,7 @@ fi
 log "  stream resume patch: applied only to packaged assets"
 
 # Completion notifications and sidebar recovery build on the resume patch.
-for script in patch_agent_notifications.py patch_notification_navigation.py; do
+for script in patch_agent_notifications.py patch_notification_navigation.py patch_sidebar_reconcile.py; do
     python3 "$WEB_DIR/$script" "$STAGE_ASSETS/web/main.js" "$STAGE_ASSETS/web/main.js" \
         || die "$script failed"
     rm -f "$STAGE_ASSETS/web/$script"

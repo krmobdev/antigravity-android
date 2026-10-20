@@ -41,6 +41,13 @@ REPLACEMENTS = (
 )
 
 
+# A suspended summary feed also needs renewal. Keep the last snapshot until
+# the new stream sends its initial snapshot; ignore callbacks from old streams.
+SUMMARY_ANCHOR = 'function Vya(){var a=null,b=!1;return c=>e=>f=>{if(Uya.match(f)){let g=f.payload.subscribe,h=f.payload.analyticsService;a?.abort();a=new AbortController;let k=new Ys(h,"trajectory_summary_load");Ok({label:"[TrajectorySummaries]",abort:a,createStream:l=>g({signal:l}),onMessage:l=>{Xs(k);b&&(c.dispatch(cma()),b=!1);c.dispatch(Fo({updates:Object.entries(l.updates),deletes:l.deletes}))},onDisconnect:()=>{b=!0}})}return e(f)}}'
+SUMMARY_REPLACEMENT = 'function Vya(){/* AGY_RESUME_SUMMARIES_V1 */var a=null,b=!1,__agyLast;return c=>{var __agyRestart=()=>{if(__agyLast){b=!0;c.dispatch(__agyLast)}};window.addEventListener("agy:host-resume",__agyRestart);window.addEventListener("agy:agent-proof-changed",e=>{if(e.detail?.fullyIdle===true)__agyRestart()});return e=>f=>{if(Uya.match(f)){__agyLast=f;let g=f.payload.subscribe,h=f.payload.analyticsService;a?.abort();a=new AbortController;let __agyCurrent=a;let k=new Ys(h,"trajectory_summary_load");Ok({label:"[TrajectorySummaries]",abort:a,createStream:l=>g({signal:l}),onMessage:l=>{if(a!==__agyCurrent||__agyCurrent.signal.aborted)return;Xs(k);b&&(c.dispatch(cma()),b=!1);c.dispatch(Fo({updates:Object.entries(l.updates),deletes:l.deletes}))},onDisconnect:()=>{if(a===__agyCurrent)b=!0}})}return e(f)}}}'
+REPLACEMENTS += ((SUMMARY_ANCHOR, SUMMARY_REPLACEMENT),)
+
+
 def patch_bundle(source: str) -> str:
     if MARKER in source:
         if all(new in source for _, new in REPLACEMENTS):
