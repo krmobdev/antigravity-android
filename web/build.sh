@@ -155,6 +155,11 @@ emit_bundle
 cp -f "$SCRIPT_DIR/main.js" "$GEN_DIR/main.js"
 python3 "$SCRIPT_DIR/patch_main.py" "$GEN_DIR/main.js" \
     || die "web/patch_main.py failed"
+# Reconnect the agent observation transport and summary stream after host resume;
+# only the staged bundle is patched; upstream web/main.js remains byte-identical.
+python3 "$SCRIPT_DIR/patch_runtime_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
+    || die "web/patch_runtime_v24.py incompatible with v2.4.0"
+
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
     "${#bundle_names[@]}" "$src_count"
