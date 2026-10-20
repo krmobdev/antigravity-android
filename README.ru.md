@@ -14,7 +14,7 @@
 
   [![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://android.com)
   [![Arch](https://img.shields.io/badge/ARM64-v8.0--A%2B-blue?style=flat-square)](https://arm.com)
-  [![Release](https://img.shields.io/badge/Версия-2.4.0-blueviolet?style=flat-square)](https://github.com/werdio325-png/antigravity-android/releases)
+  [![Release](https://img.shields.io/badge/Версия-2.4.0--kr1-blueviolet?style=flat-square)](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)
   [![License](https://img.shields.io/badge/Лицензия-Apache_2.0-orange?style=flat-square)](LICENSE)
 
   <br/>
@@ -31,13 +31,25 @@
 
 ### Обзор
 
+> **Независимый форк** [оригинального проекта werdio325-png](https://github.com/werdio325-png/antigravity-android). Для установки и обновления используйте **[релизы нашего форка](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)**; ссылки на оригинальный проект приведены только для указания авторства.
+
 **Antigravity для Android** переносит автономное агентное программирование прямо на мобильное устройство.
 
 Никаких PRoot, chroot или накладных расходов виртуализации. Antigravity исполняется **нативно в пространстве пользователя Android (Bionic)**, раскрывая полную скорость физических ядер CPU и накопителей UFS. Агент на базе моделей Gemini автономно анализирует кодовую базу, редактирует файлы проекта, компилирует бинарники и запускает тесты полностью локально.
 
 ---
 
-### Главное в v2.4
+### Исправления нашего релиза v2.4.0-kr1
+
+* **Нативные уведомления:** события завершения агента поступают из Core независимо от приостановленного WebView, уведомления ведут в нужный разговор.
+* **Восстановление Hca:** после возвращения из фона интерфейс снова получает актуальное состояние агента.
+* **NDa / Sidebar:** индикаторы `Working` согласуются с Core, не затрагивая непрочитанные ответы.
+
+[Подробное описание изменений](docs/releases/v2.4.0-kr1.ru.md) · [Скачать APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)
+
+---
+
+### Главное в upstream v2.4
 
 * **Модульная архитектура:** Разделение ядра на 6 изолированных подсистем (`modules/*`) с отдельными тестами.
 * **Нативный сплэш:** Отрисовка анимации точек на Canvas экономит ~40 МБ RAM и ускоряет запуск.
@@ -53,15 +65,15 @@
 * **Привилегии Shizuku:** Прямой доступ к ADB-оболочке (`uid=2000`) без root для установки пакетов и чтения системных логов.
 * **Встроенный менеджер `pkg`:** Быстрая установка инструментариев (`git`, `python`, `node`, `clang`) из репозиториев Termux.
 * **Адаптивный интерфейс:** Удобное сенсорное управление на телефоне с возможностью переключения в десктопный вид.
-* **Бесшовные обновления:** Единый ключ подписи гарантирует сохранение сессий и проектов при обновлении APK.
+* **Обновления форка:** будущие APK с тем же идентификатором `com.krmobdev.antigravity` и ключом подписи устанавливаются поверх нашей версии. Данные официальной `com.agy` не переносятся автоматически.
 
 ---
 
 ### Быстрый старт
 
-1. **Скачайте APK** со страницы [Releases](https://github.com/werdio325-png/antigravity-android/releases):
-   * `antigravity.apk` — стандартная версия (оригинальные проверки Google).
-   * `antigravity-region-bypass.apk` — версия с обходом проверки учетных записей.
+1. **Скачайте нашу APK:** [Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk) ([страница релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)).
+   * Это **одна опубликованная редакция** с package ID `com.krmobdev.antigravity`; она устанавливается отдельно от оригинальной `com.agy`.
+   * При желании проверьте загрузку по [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
 2. **Предоставьте доступ к памяти** (`Все файлы`). *(Опционально: подключите Shizuku для доступа к ADB)*.
 3. **Установите рабочее окружение** в терминале или через агента:
    ```bash
@@ -72,12 +84,11 @@
 
 ### Сборка и тестирование
 
-```bash
-# Сборка стандартного релизного APK (dist/antigravity.apk):
-bash build.sh
+Для **нашей** релизной версии используйте отдельный режим сборки и приватный ключ подписи; обычный `build.sh` создаёт сборки в формате upstream и **не** воспроизводит опубликованный APK форка. См. [инструкцию подписи и локальной сборки](docs/RELEASE_SIGNING_KR.md).
 
-# Сборка релизного APK с обходом проверок (dist/antigravity-region-bypass.apk):
-bash build.sh --region-bypass
+```bash
+# Сборка нашего релизного APK (требуются приватный ключ и зависимости):
+bash modules/builder/build_apk.sh --kr-release
 
 # Запуск полного набора тестов:
 bash test_all_modules.sh
