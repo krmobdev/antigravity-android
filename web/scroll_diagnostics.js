@@ -185,5 +185,20 @@
     if (element && element !== viewport) attach(element);
   }, 750);
   flushTimer = setInterval(flush, 250);
+  // Source-specific probes called ONLY from the real main.js handlers.
+  // Strict numeric fields: no DOM content, IDs, paths, or message text.
+  var lastHandlerLog = {};
+  window.__AGY_SCROLL_EVT__ = function (label, element, extra) {
+    var t = now();
+    if (label === 'CHAT_SCROLL_HANDLER' && t - (lastHandlerLog[label] || 0) < 75) return;
+    if (label === 'CHAT_LAYOUT_EFFECT' && t - (lastHandlerLog[label] || 0) < 80) return;
+    if (label === 'SCROLLBAR_POINTER_MOVE' && t - (lastHandlerLog[label] || 0) < 75) return;
+    lastHandlerLog[label] = t;
+    try {
+      var val = element ? [num(element.scrollTop), num(element.scrollHeight),
+        num(element.clientHeight)] : null;
+      console.info('AGY_SCROLL_EVT ' + JSON.stringify([t, label, val, extra]));
+    } catch (_) {}
+  };
   console.info(TAG + ' ready: numeric telemetry only');
 })();

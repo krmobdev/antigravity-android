@@ -36,6 +36,10 @@ public final class AgyWebChromeClient extends WebChromeClient {
     public boolean onConsoleMessage(ConsoleMessage cm) {
         if (cm != null) {
             String msg = SensitiveDataRedactor.redactLine(cm.message());
+            if (msg.startsWith("AGY_SCROLL_EVT ")) {
+                Log.d("AGY_SCROLL", msg);
+                return true;
+            }
             String src = SensitiveDataRedactor.safeUrl(cm.sourceId());
             int line = cm.lineNumber();
             ConsoleMessage.MessageLevel lvl = cm.messageLevel();
