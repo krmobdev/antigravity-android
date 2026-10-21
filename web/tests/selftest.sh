@@ -53,4 +53,6 @@ node "$ROOT/web/tests/runtime_v24.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
     "$ROOT/web/src/patches/web_optimizations/sidebar-reconcile.js" \
     "$ROOT/web/src/patches/web_optimizations/agent-notifications.js"
+node "$ROOT/web/tests/theme_sync_native_single.behavior.cjs"
+python3 "$ROOT/tests/theme_controller_contract.py"
 echo "web build selftest: OK"

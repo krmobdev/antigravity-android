@@ -41,15 +41,22 @@ public final class ThemeController {
      * Returns false for any other value. Also keeps the launcher in sync.
      */
     public boolean setTheme(String theme) {
+        final int requestedMode;
         if (ThemeColors.THEME_LIGHT.equalsIgnoreCase(theme)) {
-            setMode(ThemeColors.MODE_LIGHT);
+            requestedMode = ThemeColors.MODE_LIGHT;
         } else if (ThemeColors.THEME_DARK.equalsIgnoreCase(theme)) {
-            setMode(ThemeColors.MODE_DARK);
+            requestedMode = ThemeColors.MODE_DARK;
         } else if ("system".equalsIgnoreCase(theme) || "default".equalsIgnoreCase(theme)) {
-            setMode(ThemeColors.MODE_SYSTEM);
+            requestedMode = ThemeColors.MODE_SYSTEM;
         } else {
             return false;
         }
+        // React may reannounce the same visual mode after mount or a class
+        // mutation. Do not schedule another full Activity repaint in that case.
+        if (mode == requestedMode) {
+            return true;
+        }
+        setMode(requestedMode);
         // The bridge calls this on a WebView thread; window/bars must change on
         // the main thread. Apply right away so status/nav bars and the window
         // background track the Web UI without waiting for a resume.
@@ -73,15 +80,20 @@ public final class ThemeController {
      * Updates theme and schedules the launcher icon update without abruptly closing the app.
      */
     public boolean setThemeByUser(String theme) {
-        boolean changed = setTheme(theme);
-        LauncherIconSwitcher.scheduleSwitch(isDark());
-        return changed;
+        // setTheme already persists, repaints and schedules the launcher once.
+        return setTheme(theme);
     }
 
     /** Called when the Web UI paints a visual theme, without altering user mode preference. */
     public void onVisualThemeChanged(final String visual) {
-        final boolean dark = "dark".equalsIgnoreCase(visual);
-        setMode(dark ? ThemeColors.MODE_DARK : ThemeColors.MODE_LIGHT);
+        if (!ThemeColors.THEME_DARK.equalsIgnoreCase(visual)
+                && !ThemeColors.THEME_LIGHT.equalsIgnoreCase(visual)) {
+            return;
+        }
+        final boolean dark = ThemeColors.THEME_DARK.equalsIgnoreCase(visual);
+        // Visual-only notifications must NOT overwrite MODE_SYSTEM (or a user
+        // selection). This method is reserved for older bridge clients.
+        // The current theme_sync bundle uses setThemeByUser exactly once.
         LauncherIconSwitcher.scheduleSwitch(dark);
         final Activity activity = currentContext instanceof Activity
                 ? (Activity) currentContext : null;
