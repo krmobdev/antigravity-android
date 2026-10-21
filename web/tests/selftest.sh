@@ -48,6 +48,7 @@ for name,wrapped,sources in bundles:
 print("PASS bundle wrappers match manifest; intentionally scoped fragment IIFEs permitted")
 PY
 
+node "$ROOT/web/tests/scroll_timeline_only_ab.test.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_react_v24.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/runtime_v24.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
