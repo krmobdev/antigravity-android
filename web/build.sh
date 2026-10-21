@@ -163,9 +163,6 @@ python3 "$SCRIPT_DIR/patch_runtime_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js"
 # sidebar components. Fail closed if v2.4 JSX changes.
 python3 "$SCRIPT_DIR/patch_sidebar_reconcile.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
     || die "web/patch_sidebar_reconcile.py incompatible with v2.4 React"
-# Temporary explicit tracing of actual chat scroll handlers, fail closed.
-python3 "$SCRIPT_DIR/patch_scroll_handlers_diag.py" "$GEN_DIR/main.js" \
-    || die "scroll-handler instrumentation no longer matches upstream"
 
 
 

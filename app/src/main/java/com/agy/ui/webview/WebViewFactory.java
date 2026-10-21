@@ -2,7 +2,6 @@ package com.agy.ui.webview;
 
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.WebView;
@@ -24,22 +23,12 @@ public final class WebViewFactory {
         view.setFocusableInTouchMode(true);
         view.requestFocus(View.FOCUS_DOWN);
         // Hardware layer: hand compositing to the GPU (manifest enables HW accel).
-        // Restore baseline hardware layer; the default-layer A/B did not help.
         view.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        Log.d("AGY_SCROLL", "WEBVIEW_LAYER=HARDWARE_BASELINE");
         view.addJavascriptInterface(bridge, "Android");
         // Android WebView needs an explicit focus grant for the soft keyboard to show.
         view.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                int action = event.getActionMasked();
-                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP
-                        || action == MotionEvent.ACTION_CANCEL) {
-                    Log.d("AGY_SCROLL", "NATIVE_TOUCH action=" + action
-                            + " t=" + event.getEventTime()
-                            + " y=" + Math.round(event.getY())
-                            + " pointers=" + event.getPointerCount());
-                }
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     ((WebView) v).requestFocus(View.FOCUS_DOWN);
                 }
