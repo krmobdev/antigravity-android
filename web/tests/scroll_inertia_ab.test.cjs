@@ -42,7 +42,8 @@ function makeHarness(initialTop=700) {
     for(const fn of current)fn(time);
   }
   return {node,events,logs,start,move,end,tick,
-    advance(ms){time+=ms;},pending:()=>queue.size};
+    advance(ms){time+=ms;},pending:()=>queue.size,
+    hide(){html.hidden=true;events.visibilitychange();}};
 }
 {
   const h=makeHarness();
@@ -105,5 +106,30 @@ function makeHarness(initialTop=700) {
   h.start(500);h.move(450,20,400);h.end(5);
   assert.equal(h.node.scrollTop,700,'horizontal gestures do not scroll chat');
   assert.equal(h.pending(),0);
+}
+{
+  const h=makeHarness();
+  h.start(400);h.end(10);
+  assert.equal(h.pending(),0,'tap does not create fling');
+}
+{
+  const h=makeHarness();
+  h.start(500);h.move(425,16);h.move(325,16);h.end(5);
+  h.tick(16.67);
+  const atHide=h.node.scrollTop;
+  h.hide();
+  assert.equal(h.pending(),0,'background cancels active fling');
+  for(let i=0;i<5;i++)h.tick();
+  assert.equal(h.node.scrollTop,atHide,'no deferred fling after hiding app');
+}
+{
+  const h=makeHarness(1600);
+  h.start(500);h.move(425,20);h.move(325,20);h.end(4);
+  h.tick();
+  const first=h.node.scrollTop;
+  h.start(250);
+  h.move(330,20);h.move(420,20);h.end(4);
+  h.tick();
+  assert.ok(h.node.scrollTop<first-100,'rapid reverse swipe cancels and changes direction');
 }
 console.log('PASS: momentum starts, damps, cancels, reverses, pauses and clamps without jumps');

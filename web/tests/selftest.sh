@@ -53,4 +53,9 @@ node "$ROOT/web/tests/runtime_v24.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
     "$ROOT/web/src/patches/web_optimizations/sidebar-reconcile.js" \
     "$ROOT/web/src/patches/web_optimizations/agent-notifications.js"
+
+# Keep chat-scroll regression tests in the standard local gate, even before
+# the experimental momentum implementation is promoted to a stable release.
+node "$ROOT/web/tests/scroll_inertia_ab.test.cjs"
+node "$ROOT/web/tests/scroll_diagnostics.test.cjs"
 echo "web build selftest: OK"

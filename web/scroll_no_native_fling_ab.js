@@ -15,7 +15,10 @@
   var gesture = null;
   var raf = 0;
   var fling = null;
-  // Speed is in CSS pixels/ms; damping works the same at 60Hz and 120Hz.
+  // TODO(settings/scroll): expose validated momentum strength/decay in
+  // Settings > Chat scrolling, with reset-to-default and persisted preferences.
+  // Keep these proven defaults untouched until settings UI + regression tests land.
+  // Speed is in CSS px/ms; decay is frame-rate independent (60Hz/120Hz).
   var MAX_SPEED = 3.2;
   var MIN_SPEED = 0.11;
   var DECAY_MS = 380;
