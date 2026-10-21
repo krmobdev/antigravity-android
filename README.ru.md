@@ -14,7 +14,7 @@
 
   [![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://android.com)
   [![Arch](https://img.shields.io/badge/ARM64-v8.0--A%2B-blue?style=flat-square)](https://arm.com)
-  [![Release](https://img.shields.io/badge/Версия-2.4.0--kr1-blueviolet?style=flat-square)](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)
+  [![Release](https://img.shields.io/badge/Версия-2.4.1--kr1-blueviolet?style=flat-square)](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.1-kr1)
   [![License](https://img.shields.io/badge/Лицензия-Apache_2.0-orange?style=flat-square)](LICENSE)
 
   <br/>
@@ -31,7 +31,7 @@
 
 ### Обзор
 
-> **Независимый форк** [оригинального проекта werdio325-png](https://github.com/werdio325-png/antigravity-android). Для установки и обновления используйте **[релизы нашего форка](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)**; ссылки на оригинальный проект приведены только для указания авторства.
+> **Независимый форк** [оригинального проекта werdio325-png](https://github.com/werdio325-png/antigravity-android). Для установки и обновления используйте **[релизы нашего форка](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.1-kr1)**; ссылки на оригинальный проект приведены только для указания авторства.
 
 **Antigravity для Android** переносит автономное агентное программирование прямо на мобильное устройство.
 
@@ -39,13 +39,23 @@
 
 ---
 
-### Исправления нашего релиза v2.4.0-kr1
+### Текущий релиз — v2.4.1-kr1
+
+**Устранены рывки инерционной прокрутки длинных чатов в Android WebView.** Точечное изменение проверки `ScrollTimeline` только в OverlayScrollbar включает штатное обновление бегунка по `scroll`, сохраняя нативную инерцию Chromium. Пользователь проверил длинные чаты и переключения тем Dark/Light.
+
+**Обновление поверх:** `com.krmobdev.antigravity`, версия `2.4.1-kr1`, versionCode `18` (ранее `17`). Выберите стандартную или Region Bypass, одновременно установить обе нельзя. Не удаляйте старую версию; проверьте SHA-256 и сертификат загруженной APK.
+
+[Подробности (RU)](docs/releases/v2.4.1-kr1.ru.md) · [English](docs/releases/v2.4.1-kr1.en.md)
+
+---
+
+### Исправления, сохранённые из v2.4.0-kr1
 
 * **Нативные уведомления:** события завершения агента поступают из Core независимо от приостановленного WebView, уведомления ведут в нужный разговор.
 * **Восстановление Hca:** после возвращения из фона интерфейс снова получает актуальное состояние агента.
 * **NDa / Sidebar:** индикаторы `Working` согласуются с Core, не затрагивая непрочитанные ответы.
 
-[Подробное описание изменений](docs/releases/v2.4.0-kr1.ru.md) · [Скачать APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)
+[Подробное описание изменений](docs/releases/v2.4.1-kr1.ru.md) · [Скачать APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1.apk)
 
 ---
 
@@ -71,11 +81,11 @@
 
 ### Быстрый старт
 
-1. **Выберите редакцию на [странице нашего релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1):**
-   * **[Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)** — стандартная, с исходными проверками доступности учётной записи Google.
-   * **[Antigravity-Android-v2.4.0-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1-region-bypass.apk)** — *Region Bypass*, с изменёнными проверками доступности аккаунта в локальном Core. Не гарантирует авторизацию при любых серверных или региональных ограничениях.
+1. **Выберите редакцию на [странице нашего релиза](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.1-kr1):**
+   * **[Antigravity-Android-v2.4.1-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1.apk)** — стандартная, с исходными проверками доступности учётной записи Google.
+   * **[Antigravity-Android-v2.4.1-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1-region-bypass.apk)** — *Region Bypass*, с изменёнными проверками доступности аккаунта в локальном Core. Не гарантирует авторизацию при любых серверных или региональных ограничениях.
    * Обе редакции используют **один package ID** `com.krmobdev.antigravity` и **один сертификат подписи**. Установить их рядом друг с другом нельзя: выбранная редакция заменяет другую при установке поверх. От оригинальной `com.agy` обе устанавливаются отдельно.
-   * Проверьте хеши обеих APK по [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
+   * Проверьте хеши обеих APK по [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/SHA256SUMS.txt).
 2. **Предоставьте доступ к памяти** (`Все файлы`). *(Опционально: подключите Shizuku для доступа к ADB)*.
 3. **Установите рабочее окружение** в терминале или через агента:
    ```bash

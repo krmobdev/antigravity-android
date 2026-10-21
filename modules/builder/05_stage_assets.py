@@ -42,8 +42,8 @@ def stage_assets(staging_dir, no_bypass=False):
             ignored = set()
             rel_dir = os.path.relpath(directory, web_src)
             if rel_dir == ".":
-                for name in ("main.js", "src", "tests", "build.sh", "patch_main.py", "patch_scroll_timeline_only.py", "src.manifest"):
-                    if name in files:
+                for name in files:
+                    if name in ("main.js", "src", "tests", "src.manifest") or name.endswith((".py", ".sh", ".cjs")):
                         ignored.add(name)
             return ignored
 

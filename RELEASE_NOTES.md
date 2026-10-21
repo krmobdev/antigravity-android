@@ -1,5 +1,19 @@
 # Antigravity Android — примечания к релизам
 
+## Новый релиз: v2.4.1-kr1 — исправление инерционной прокрутки
+
+Исправлена проблема со скачками и задержками прокрутки длинных чатов Android WebView. Встроенный оверлейный скроллбар использует собственный штатный fallback через `scroll`; нативная инерция Chromium сохранена. Подробное описание и инструкция обновления:
+
+- [Описание по-русски](docs/releases/v2.4.1-kr1.ru.md)
+- [English release notes](docs/releases/v2.4.1-kr1.en.md)
+- [Стандартная APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1.apk)
+- [Region Bypass APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1-region-bypass.apk)
+- [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/SHA256SUMS.txt)
+
+Обе версии `com.krmobdev.antigravity` имеют versionCode `18` и должны обновляться поверх предыдущего релиза `17` тем же постоянным сертификатом. Нельзя устанавливать их рядом друг с другом. Дальнейшие работы над стадиями агента остаются в TODO.
+
+---
+
 ## Наш релиз: v2.4.0-kr1 — Background Reliability Update
 
 **Две редакции нашего форка:**

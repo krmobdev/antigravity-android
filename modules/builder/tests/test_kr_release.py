@@ -17,7 +17,7 @@ class KrRelease(unittest.TestCase):
     def test_fork_release(self):
         m,j,r=self.generate(fork=True)
         for value in ('package="com.krmobdev.antigravity"','android:debuggable="false"',
-                      'android:versionName="2.4.0-kr1"','android:versionCode="17"',
+                      'android:versionName="2.4.1-kr1"','android:versionCode="18"',
                       'com.krmobdev.antigravity.permission.INTERNAL_BROADCAST',
                       'com.krmobdev.antigravity.fileprovider'):
             self.assertIn(value,m)
@@ -46,6 +46,6 @@ class KrRelease(unittest.TestCase):
         builder=(ROOT/"modules/builder/build_apk.sh").read_text()
         for k in ("AGY_RELEASE_KEYSTORE_PATH","AGY_RELEASE_KEY_ALIAS",
                   "AGY_RELEASE_STORE_PASSWORD_FILE","AGY_RELEASE_KEY_PASSWORD_FILE",
-                  "--kr-release","Public debug key forbidden"):
+                  "--kr-release","--unsigned","UNSIGNED_KR_RELEASE_MODE","Public debug key forbidden"):
             self.assertIn(k,builder)
 if __name__=="__main__":unittest.main()

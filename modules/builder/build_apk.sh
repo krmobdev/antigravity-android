@@ -22,6 +22,7 @@ export LC_ALL=C.UTF-8
 export FAST_BUILD=0
 export DEV_MODE=0
 export KR_RELEASE_MODE=0
+export UNSIGNED_KR_RELEASE_MODE=0
 export NO_BYPASS="${NO_BYPASS:-1}"
 if [ "${REGION_BYPASS:-0}" = "1" ] || [ "${BYPASS:-0}" = "1" ]; then export NO_BYPASS=0; fi
 if [ "${SKIP_GATES:-0}" = "1" ]; then export NO_BYPASS=1; fi
@@ -36,6 +37,10 @@ while [ $# -gt 0 ]; do
             ;;
         --dev|-d)
             export DEV_MODE=1
+            shift
+            ;;
+        --unsigned)
+            export UNSIGNED_KR_RELEASE_MODE=1
             shift
             ;;
         --kr-release)
@@ -69,6 +74,10 @@ if [ "$KR_RELEASE_MODE" = "1" ] && [ "$DEV_MODE" = "1" ]; then
     echo "[ERROR] --kr-release cannot be combined with --dev" >&2
     exit 1
 fi
+if [ "$UNSIGNED_KR_RELEASE_MODE" = "1" ] && [ "$KR_RELEASE_MODE" != "1" ]; then
+    echo "[ERROR] --unsigned is allowed only with --kr-release" >&2
+    exit 1
+fi
 BASE_PREFIX="${CUSTOM_PREFIX:-antigravity}"
 
 if [ -n "$CUSTOM_OUT" ]; then
@@ -76,10 +85,10 @@ if [ -n "$CUSTOM_OUT" ]; then
     EDITION_LABEL="CUSTOM OUTPUT ($OUT_APK)"
 elif [ "$KR_RELEASE_MODE" = "1" ]; then
     if [ "$NO_BYPASS" = "0" ]; then
-        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.0-kr1-region-bypass.apk"
+        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.1-kr1-region-bypass.apk"
         EDITION_LABEL="KR RELEASE REGION BYPASS (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
     else
-        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.0-kr1.apk"
+        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.1-kr1.apk"
         EDITION_LABEL="KR RELEASE STANDARD (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
     fi
 elif [ "$DEV_MODE" = "1" ]; then
@@ -98,6 +107,11 @@ else
         OUT_APK="$DIST_DIR/${BASE_PREFIX}.apk"
         EDITION_LABEL="RELEASE EDITION STANDARD (com.agy, port 45157, original gates)"
     fi
+fi
+
+if [ "$UNSIGNED_KR_RELEASE_MODE" = "1" ]; then
+    OUT_APK="${OUT_APK%.apk}-unsigned.apk"
+    EDITION_LABEL="$EDITION_LABEL [UNSIGNED: OWNER SIGNING REQUIRED]"
 fi
 
 
@@ -161,7 +175,10 @@ python3 "$SCRIPT_DIR/align.py" "$BUILD_DIR/unaligned.apk" "$BUILD_DIR/aligned.ap
 
 # Phase 08: Sign and Verify APK
 echo -e "\n>>> [8/8] Signing and Verifying APK..."
-if [ "$KR_RELEASE_MODE" = "1" ]; then
+if [ "$UNSIGNED_KR_RELEASE_MODE" = "1" ]; then
+    cp "$BUILD_DIR/aligned.apk" "$OUT_APK"
+    echo "[*] Unsigned aligned KR APK staged for interactive owner signing: $OUT_APK"
+elif [ "$KR_RELEASE_MODE" = "1" ]; then
     : "${AGY_RELEASE_KEYSTORE_PATH:?Private release keystore required}"
     : "${AGY_RELEASE_KEY_ALIAS:?Permanent release key alias required}"
     : "${AGY_RELEASE_STORE_PASSWORD_FILE:?Private store password file required}"
@@ -177,7 +194,12 @@ if [ "$KR_RELEASE_MODE" = "1" ]; then
 else
     bash "$SCRIPT_DIR/08_sign.sh" "$BUILD_DIR/aligned.apk" "$OUT_APK" "$TOOLS_DIR/debug.keystore"
 fi
-bash "$SCRIPT_DIR/09_verify.sh" "$OUT_APK"
+if [ "$UNSIGNED_KR_RELEASE_MODE" != "1" ]; then
+    bash "$SCRIPT_DIR/09_verify.sh" "$OUT_APK"
+else
+    aapt dump badging "$OUT_APK" | head -n 1
+    echo "[!] UNSIGNED APK: not installable until signed with permanent KR release key"
+fi
 
 echo "============================================================"
 echo "  BUILD SUCCESSFUL! APK CREATED:"

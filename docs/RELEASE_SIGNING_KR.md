@@ -39,6 +39,26 @@ The existing release keystore plus its two independent signing passwords were pa
 - **External backup remains NOT CONFIRMED** until the user verifies the OneDrive upload and confirms that the archive passphrase is saved separately.
 - Restoration: download the encrypted `.7z` from OneDrive, unlock it in 7-Zip with the separately saved passphrase, place the restored keystore/password files in a protected local folder, and check the certificate SHA-256 fingerprint in this document.
 
+## v2.4.1-kr1 — unsigned handoff and interactive signing on Android
+
+The maintainer prepares **two unsigned, aligned** artifacts on the Android device, without accessing any private password files:
+
+```bash
+bash modules/builder/build_apk.sh --kr-release --unsigned
+bash modules/builder/build_apk.sh --kr-release --region-bypass --unsigned
+```
+
+After build, unsigned files are copied to Android Downloads with explicit `-unsigned.apk` names. The **owner** runs these two commands directly in Termux, entering existing store/key passwords **only at the interactive `apksigner` prompts**:
+
+```bash
+bash ~/anima-workspace/AGY-release-v2.4.1-kr1/tools/sign_release_interactive.sh standard
+bash ~/anima-workspace/AGY-release-v2.4.1-kr1/tools/sign_release_interactive.sh bypass
+```
+
+Each command refuses to replace existing signed files and verifies APK signature scheme v2, the fixed certificate fingerprint, package ID `com.krmobdev.antigravity`, versionName `2.4.1-kr1`, and versionCode `18`. Signed APKs are created directly in Downloads. **Never publish unsigned artifacts**. After both signing commands, the maintainer must independently verify both APKs, compare their manifests and contents, produce `SHA256SUMS.txt`, and perform or confirm an **in-place update** before publishing GitHub Release.
+
+**Backup status remains NOT CONFIRMED:** an encrypted local archive was prepared, but the owner has not confirmed independently recoverable off-phone storage plus separate retention of its password. This publication gate is not waived by successful APK signing.
+
 ## Repeatable KR release build
 
 From a clean checkout of the intended fork `main` commit with locally available vendor inputs, launch:
@@ -59,9 +79,9 @@ The build pipeline performs **compile → package → zipalign → apksigner**, 
 Verify separately:
 
 ```bash
-apksigner verify --verbose --print-certs dist/antigravity-v2.4.0-kr1.apk
-aapt dump badging dist/antigravity-v2.4.0-kr1.apk
-sha256sum dist/antigravity-v2.4.0-kr1.apk
+apksigner verify --verbose --print-certs dist/antigravity-v2.4.1-kr1.apk
+aapt dump badging dist/antigravity-v2.4.1-kr1.apk
+sha256sum dist/antigravity-v2.4.1-kr1.apk
 ```
 
 Check the expected package, non-debuggable manifest and certificate SHA-256. An installable update needs **the same certificate and package ID** with a larger `versionCode` than 17; do not generate a new signing identity.

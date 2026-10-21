@@ -14,7 +14,7 @@
 
   [![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://android.com)
   [![Arch](https://img.shields.io/badge/ARM64-v8.0--A%2B-blue?style=flat-square)](https://arm.com)
-  [![Release](https://img.shields.io/badge/Version-2.4.0--kr1-blueviolet?style=flat-square)](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)
+  [![Release](https://img.shields.io/badge/Version-2.4.1--kr1-blueviolet?style=flat-square)](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.1-kr1)
   [![License](https://img.shields.io/badge/License-Apache_2.0-orange?style=flat-square)](LICENSE)
 
   <br/>
@@ -31,7 +31,7 @@
 
 ### Overview
 
-> **Independent fork** of the [original project by werdio325-png](https://github.com/werdio325-png/antigravity-android). For installation and updates, use **[our fork's releases](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1)**; links to upstream are provided explicitly for attribution only.
+> **Independent fork** of the [original project by werdio325-png](https://github.com/werdio325-png/antigravity-android). For installation and updates, use **[our fork's releases](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.1-kr1)**; links to upstream are provided explicitly for attribution only.
 
 **Antigravity for Android** brings autonomous agentic coding directly to mobile hardware.
 
@@ -39,13 +39,23 @@ No PRoot, chroot, or virtualization overhead. Antigravity runs **bare-metal insi
 
 ---
 
-### Reliability Fixes in Our v2.4.0-kr1 Release
+### Current Release — v2.4.1-kr1
+
+**Fixed Android WebView long-chat inertial scrolling.** A scoped OverlayScrollbar `ScrollTimeline` probe change selects the existing scroll-event fallback without replacing Chromium native fling or touching the global API. Long chats and Dark/Light theme switching were verified by the owner.
+
+**Upgrade in place:** `com.krmobdev.antigravity`, versionName `2.4.1-kr1`, versionCode `18` (previously `17`). Choose Standard or Region Bypass, not both simultaneously. Do not uninstall the previous fork; verify the published APK's SHA-256 and certificate.
+
+[Release details (English)](docs/releases/v2.4.1-kr1.en.md) · [Русский](docs/releases/v2.4.1-kr1.ru.md)
+
+---
+
+### Reliability Fixes Retained from v2.4.0-kr1
 
 * **Native agent notifications:** Core-driven completion alerts that work independently of a suspended WebView and open the matching conversation.
 * **Hca stream recovery:** Refreshes agent state after returning from the background.
 * **NDa / Sidebar reconciliation:** Keeps `Working` indicators in sync with Core without changing unread states.
 
-[Full release notes](docs/releases/v2.4.0-kr1.en.md) · [Download APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)
+[Full release notes](docs/releases/v2.4.1-kr1.en.md) · [Download APK](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1.apk)
 
 ---
 
@@ -71,11 +81,11 @@ No PRoot, chroot, or virtualization overhead. Antigravity runs **bare-metal insi
 
 ### Quick Start
 
-1. **Choose an edition on [our release page](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.0-kr1):**
-   * **[Antigravity-Android-v2.4.0-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1.apk)** — standard edition retaining the original Google account eligibility checks.
-   * **[Antigravity-Android-v2.4.0-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/Antigravity-Android-v2.4.0-kr1-region-bypass.apk)** — *Region Bypass* edition, with modified local Core account eligibility checks. This does not guarantee access when server-side or regional restrictions apply.
+1. **Choose an edition on [our release page](https://github.com/krmobdev/antigravity-android/releases/tag/v2.4.1-kr1):**
+   * **[Antigravity-Android-v2.4.1-kr1.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1.apk)** — standard edition retaining the original Google account eligibility checks.
+   * **[Antigravity-Android-v2.4.1-kr1-region-bypass.apk](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/Antigravity-Android-v2.4.1-kr1-region-bypass.apk)** — *Region Bypass* edition, with modified local Core account eligibility checks. This does not guarantee access when server-side or regional restrictions apply.
    * Both editions share **the same package ID** `com.krmobdev.antigravity` and **the same release signing certificate**. They **cannot be installed side by side**: installing one replaces the other. Both coexist separately with upstream `com.agy`.
-   * Verify both packages using [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.0-kr1/SHA256SUMS.txt).
+   * Verify both packages using [SHA256SUMS.txt](https://github.com/krmobdev/antigravity-android/releases/download/v2.4.1-kr1/SHA256SUMS.txt).
 2. **Grant Storage Permission** (`All Files Access`). *(Optional: enable Shizuku for ADB access)*.
 3. **Install Runtimes** via terminal or agent:
    ```bash

@@ -7,7 +7,7 @@ on:
       tag_name:
         description: 'Future manual release tag'
         required: false
-        default: 'v2.4.0-kr1'
+        default: 'v2.4.1-kr1'
       draft:
         description: 'Create Draft Release'
         type: boolean

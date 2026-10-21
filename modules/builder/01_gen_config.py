@@ -54,7 +54,7 @@ def main():
     app_version_name = env.get("APP_VERSION_NAME", "2.4.0")
     app_version_code = env.get("APP_VERSION_CODE", "16")
     if is_kr_release:
-        app_version_name, app_version_code = "2.4.0-kr1", "17"
+        app_version_name, app_version_code = "2.4.1-kr1", "18"
     oauth_scheme = env.get("OAUTH_SCHEME", "antigravity")
     app_name = env.get("APP_NAME_DEV", "Antigravity Dev") if is_dev else env.get("APP_NAME", "Antigravity")
     if is_kr_release:

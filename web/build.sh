@@ -163,10 +163,10 @@ python3 "$SCRIPT_DIR/patch_runtime_v24.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js"
 # sidebar components. Fail closed if v2.4 JSX changes.
 python3 "$SCRIPT_DIR/patch_sidebar_reconcile.py" "$GEN_DIR/main.js" "$GEN_DIR/main.js" \
     || die "web/patch_sidebar_reconcile.py incompatible with v2.4 React"
-# Isolated A/B hypothesis test: disable only OverlayScrollbar ScrollTimeline.
-# Deliberately do not touch global ScrollTimeline, theme, native scroll, or styles.
+# Android WebView regression fix: use the stock scrollbar scroll-event fallback.
+# Preserve native fling, global ScrollTimeline, theming, and styles.
 python3 "$SCRIPT_DIR/patch_scroll_timeline_only.py" "$GEN_DIR/main.js" \
-    || die "diagnostic ScrollTimeline anchor mismatch; refusing build"
+    || die "OverlayScrollbar ScrollTimeline anchor mismatch; refusing build"
 
 
 

@@ -28,6 +28,28 @@ for (const [label, snippet, want] of [
   assert.equal(typeof result === 'function', want, label + ' with fake global ScrollTimeline');
   assert.equal(typeof ctx.ScrollTimeline, 'function', 'must not tamper with global API');
 }
+const os = require('node:os');
+const child = require('node:child_process');
+const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-scroll-failclosed-'));
+try {
+  const target = path.join(fixtureDir, 'main.js');
+  const patcher = path.join(root, 'patch_scroll_timeline_only.py');
+  fs.writeFileSync(target, 'prefix;' + oldFn + ';suffix');
+  child.execFileSync('python3', [patcher, target], { stdio: 'pipe' });
+  assert.equal(fs.readFileSync(target, 'utf8'), 'prefix;' + newFn + ';suffix', 'exact single replacement');
+  const already = fs.readFileSync(target, 'utf8');
+  assert.throws(() => child.execFileSync('python3', [patcher, target], { stdio: 'pipe' }),
+    'double application must fail closed');
+  assert.equal(fs.readFileSync(target, 'utf8'), already, 'failed repeat must preserve bytes');
+  const unknown = 'prefix;function G$a(){return 42};suffix';
+  fs.writeFileSync(target, unknown);
+  assert.throws(() => child.execFileSync('python3', [patcher, target], { stdio: 'pipe' }),
+    'changed upstream anchor must fail closed');
+  assert.equal(fs.readFileSync(target, 'utf8'), unknown, 'unknown anchors must remain untouched');
+} finally {
+  fs.rmSync(fixtureDir, { recursive: true, force: true });
+}
+console.log('PASS: patcher fails closed on double application or unknown anchor');
 console.log('PASS: exact v2.4 G$a anchor; only generated code modified');
 console.log('PASS: ScrollTimeline disabled in OverlayScrollbar, global API remains available');
 console.log('PASS: native scroll and stock scrollbar fallback code preserved');
