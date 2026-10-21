@@ -35,3 +35,12 @@ Installed baseline APK SHA-256 before testing: `cc0b0c450f88fc2d87a2a9d257a31352
   timed capture.
 - Builds must use the *existing* KR release keystore, never a new key. Do not distribute
   this diagnostic artifact as a normal public release.
+
+## Session 1 findings (numerical telemetry only)
+
+- 76 logcat lines, 472 decoded events, 19 gestures; logcat included earlier buffered entries.
+- During active gestures scrollHeight=3701px and clientHeight=642px; no content resize coincided with a delayed position change. A resize to zero marks background/detach between two active intervals.
+- After touchend, observed position differences without intermediate JS-visible samples: -536px/791ms, -1732px/921ms, +1090px/914ms, +2659px/896ms, -851px/499ms, -1854px/894ms.
+- The single tracked programmatic scrollTo was at 70.246s, to the bottom, corresponding to the working scroll-to-bottom button. Exclude it from suspected failures.
+- No tracked scrollTop assignment, scrollBy, or nested scrollIntoView was recorded during those delayed positions.
+- Position sample gaps alone do NOT prove UI-frame freezes: Chromium's compositor may scroll while the JS-visible coordinate stays stale. Next: correlate Perfetto compositor/renderer/UI scheduling and frame timeline during short flicks. No production fix yet.
