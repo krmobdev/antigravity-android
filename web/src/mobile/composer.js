@@ -181,8 +181,31 @@ function useAgyMobileLayout(){
   },[]);
   return mobile;
 }
-function AgyComposerModelControl({primary,desktop}){
-  return useAgyMobileLayout()?A.createElement("div",{className:"agy-composer-model-control"},primary):desktop;
+function agyCompactModelName(label){
+  const text=String(label||"Модель");
+  const gemini=/^Gemini\s+(\S+)\s+(.+)$/i.exec(text);
+  if(gemini)return gemini[1]+" "+gemini[2];
+  return text.replace(/^Claude\s+(?=Sonnet|Opus|Haiku)/i,"");
+}
+function AgyModelName({label,effort,tooltipId}){
+  const mobile=useAgyMobileLayout();
+  return A.createElement("span",{"data-tooltip-id":tooltipId,
+    className:mobile?"agy-model-button-label":"min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
+    title:mobile?label+(effort?" · "+effort:""):undefined},
+    A.createElement("span",{className:mobile?"agy-model-short-label":undefined},mobile?agyCompactModelName(label):label),
+    effort&&A.createElement("span",{className:mobile?"agy-model-effort-label":"opacity-70"},mobile?" · ":" ",effort));
+}
+function AgyMobilePermissions(props){
+  return useAgyMobileLayout()?A.createElement(cWb,props):null;
+}
+function AgyDesktopPermissions({control}){
+  return useAgyMobileLayout()?null:control;
+}
+function AgyComposerModelControl({primary,permissions,desktop}){
+  if(!useAgyMobileLayout())return desktop;
+  return A.createElement(A.Fragment,null,
+    permissions&&A.createElement("div",{className:"agy-composer-permissions-control"},permissions),
+    A.createElement("div",{className:"agy-composer-model-control"},primary));
 }
 function agyComposerActionLabel(label){
   return ({Media:"Фото и файлы",Folder:"Папка",Mentions:"Упоминания",Actions:"Действия",Browser:"Браузер","Screen Recording":"Запись экрана"})[label]||label;

@@ -153,6 +153,14 @@ def transform(source):
                 'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="requesting"&&!Yf&&A.createElement("div",{role:"status",className:"agy-composer-audio-pending"},"Подключение микрофона…"),oe.audioPhase==="recording"&&!Yf')
     source=once(source,'"aria-label":a?"Stop recording":"Record voice memo"',
                 '"aria-label":a?"Остановить запись":"Записать голосовое сообщение"')
+    source=once(source,'A.createElement("span",{"data-tooltip-id":u?q:void 0,className:"min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"},t,v&&A.createElement("span",{className:"opacity-70"}," ",v))',
+        'A.createElement(AgyModelName,{label:t,effort:v,tooltipId:u?q:void 0})')
+    # Expose the existing Core selector on mobile, using the same conversation
+    # scope and original preset/save/error handlers. Never change a preset here.
+    source=once(source,'sideQuestionControl:y,permissionsSelector:v}',
+        'sideQuestionControl:y,permissionsSelector:v??(!Ea?A.createElement(AgyMobilePermissions,{conversationId:O,dropdownPlacement:B}):null)}')
+    source=once(source,'},ha,A.createElement(DYb,',
+        '},A.createElement(AgyDesktopPermissions,{control:ha}),A.createElement(DYb,')
     source=once(source,"var zYb=({items:a,dropdownPlacement:b,onOpenChange:c})",
                 "var agyOriginalContextMenu=({items:a,dropdownPlacement:b,onOpenChange:c})")
     source=once(source,";const AYb=()=>Promise.resolve(p(kia));",
@@ -171,7 +179,7 @@ def transform(source):
     desktop=source[left:right]
     pair='A.createElement("div",{className:"flex items-center gap-1 min-w-0"},h,k)'
     extra=once(desktop,pair,'A.createElement("div",{className:"flex items-center gap-1 min-w-0"},k)')
-    source=source[:left]+'A.createElement(AgyComposerModelControl,{primary:h,desktop:'+desktop+'})'+source[right:]
+    source=source[:left]+'A.createElement(AgyComposerModelControl,{primary:h,permissions:ha,desktop:'+desktop+'})'+source[right:]
     source=once(source,'A.createElement(zYb,{items:ia,dropdownPlacement:r,onOpenChange:Ma=>{Ma&&la()}})',
         'A.createElement(zYb,{items:ia,extraControls:'+extra+',dropdownPlacement:r,onOpenChange:Ma=>{Ma&&la()}})')
     return source

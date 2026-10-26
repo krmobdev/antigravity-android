@@ -147,3 +147,34 @@
    outline:2px solid var(--color-primary)!important;outline-offset:2px!important;
  }
 }
+
+/* Compact model pill and separate permissions icon; original Core menus remain. */
+@media (max-width:720px),(pointer:coarse){
+ .agy-composer-permissions-control{display:flex;flex:0 0 48px;align-items:center;justify-content:center}
+ .agy-composer-permissions-control button[data-testid=permissions-selector-trigger]{
+  width:48px!important;height:48px!important;min-width:48px!important;
+  padding:0!important;justify-content:center;border-radius:50%;color:var(--color-foreground)
+ }
+ .agy-composer-permissions-control [data-testid=permissions-selector-trigger]>span,
+ .agy-composer-permissions-control [data-testid=permissions-selector-trigger]>.google-symbols:last-child,
+ .agy-composer-permissions-control [data-testid=permissions-selector-trigger]>svg:last-child:not(:first-child){display:none}
+ .agy-composer-permissions-control [data-testid=permissions-selector-trigger]>:first-child{
+  display:inline-flex!important;width:22px!important;height:22px!important;
+  min-width:22px;min-height:22px
+ }
+ .agy-composer-model-control{justify-content:flex-start}
+ .agy-composer-model-control button[data-testid=model-selector-trigger]{
+  min-height:48px;height:48px;min-width:48px;padding:0 10px!important;
+  gap:4px;border-radius:20px;background:var(--color-muted,var(--color-card));
+  color:var(--color-foreground);font-size:12px;font-weight:500;max-width:100%
+ }
+ .agy-composer-model-control [data-testid=model-selector-trigger]{position:relative;min-height:48px}
+ .agy-model-button-label{display:flex;align-items:center;min-width:0;overflow:hidden}
+ .agy-model-short-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .agy-model-effort-label{flex:none;font-size:11px;color:var(--color-muted-foreground)}
+ .agy-composer-model-control [data-testid=model-selector-trigger]>.google-symbols,
+ .agy-composer-model-control [data-testid=model-selector-trigger]>svg{flex:none;width:14px}
+}
+@media (max-width:380px){
+ .agy-composer .agy-model-effort-label{display:none}
+}

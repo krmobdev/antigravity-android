@@ -282,3 +282,17 @@ The custom overlay stack removes disposed entries even when unmounted out of
 order; it never restores stale callbacks. Native chat history is used only once
 the active overlay reports no handler. See mobile_back.behavior.cjs and Android
 instrumentation for repeated open/pop/close coverage.
+
+
+### Compact mobile model and permissions controls
+
+Mobile Composer places the original Core permissions selector beside + as an
+icon-only 48px control, preserving its preset glyph, current-mode accessible
+label, conversation scope, save handlers and error reporting. When the upstream
+visibility flag omits it, mobile creates the same cWb selector for non-subagent
+input; desktop retains the original visibility behavior. Merely opening it does
+not change permissions. No access preset or backend representation is replaced.
+The model trigger remains the original button with its original open/focus and
+accessible full model/effort name. Only its visible mobile label drops redundant
+Gemini/Claude brand prefixes; unknown/custom names remain intact and truncate.
+Menus retain full names and effort choices. Voice, Send/Stop and Back unchanged.

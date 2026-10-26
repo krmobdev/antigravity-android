@@ -3,7 +3,7 @@ const source=fs.readFileSync(path.join(__dirname,"../src/mobile/composer.js"),"u
 function setup(mobile){
   let slots=[],cursor=0,effects=[],notifications=[],backCount=0,pop;
   const history={state:{route:1},pushState(s){this.state=s;},back(){backCount++;this.state={route:1};}};
-  const ctx={Math,history,location:{href:"https://local/c/test"},agyOriginalContextMenu(){},
+  const ctx={Math,history,location:{href:"https://local/c/test"},agyOriginalContextMenu(){},cWb(){},
     window:{matchMedia:()=>({matches:mobile,addEventListener(){},removeEventListener(){}}),
       addEventListener:(name,f)=>{pop=f;},removeEventListener:()=>{pop=null;}},
     A:{Fragment:"fragment",
@@ -33,6 +33,22 @@ tree.props.onCancel({preventDefault(){}});assert.equal(closed,2);
 h.pop();assert.equal(closed,3);h.cleanup();assert.equal(h.backCount,1);
 h=setup(false);tree=h.render("zYb",{items});assert.equal(tree.type,h.ctx.agyOriginalContextMenu);h.cleanup();
 h=setup(true);const primary={type:"model",props:{},children:[]},desktop={type:"desktop-settings",props:{},children:[]};
-tree=h.render("AgyComposerModelControl",{primary,desktop});assert.equal(tree.children[0],primary);h.cleanup();
+const permissions={type:"permissions",props:{},children:[]};
+tree=h.render("AgyComposerModelControl",{primary,permissions,desktop});
+assert.equal(nodes(tree,"div").find(n=>n.props.className==="agy-composer-model-control").children[0],primary);
+assert.equal(nodes(tree,"div").find(n=>n.props.className==="agy-composer-permissions-control").children[0],permissions);h.cleanup();
 h=setup(false);tree=h.render("AgyComposerModelControl",{primary,desktop});assert.equal(tree,desktop);h.cleanup();
 console.log("PASS mobile composer: adaptive menu, supported actions, disabled state, close/Back cleanup, desktop fallback");
+
+h=setup(true);assert.equal(h.ctx.agyCompactModelName("Gemini 3.8 Flash"),"3.8 Flash");
+assert.equal(h.ctx.agyCompactModelName("Claude Sonnet 4.6"),"Sonnet 4.6");
+assert.equal(h.ctx.agyCompactModelName("My private model"),"My private model");
+tree=h.render("AgyModelName",{label:"Gemini 3.8 Flash",effort:"High"});
+assert.equal(tree.props.title,"Gemini 3.8 Flash · High");
+assert.equal(nodes(tree,"span").find(n=>n.props.className==="agy-model-short-label").children[0],"3.8 Flash");h.cleanup();
+h=setup(true);tree=h.render("AgyMobilePermissions",{conversationId:"fixture",dropdownPlacement:"top-start"});
+assert.equal(tree.type,h.ctx.cWb);assert.equal(tree.props.conversationId,"fixture");h.cleanup();
+h=setup(false);tree=h.render("AgyMobilePermissions",{conversationId:"fixture"});assert.equal(tree,null);h.cleanup();
+h=setup(false);tree=h.render("AgyDesktopPermissions",{control:permissions});assert.equal(tree,permissions);h.cleanup();
+h=setup(true);tree=h.render("AgyDesktopPermissions",{control:permissions});assert.equal(tree,null);h.cleanup();
+console.log("PASS compact mobile toolbar: short/full model labels, distinct permissions, unchanged desktop scope, no duplicate selector");

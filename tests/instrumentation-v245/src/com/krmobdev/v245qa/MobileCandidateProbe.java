@@ -28,6 +28,7 @@ public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
     private boolean capture;
     private boolean backMode;
+    private boolean toolbarMode;
     private boolean micMode;
     private boolean micUiMode;
     private boolean micPcmUiMode;
@@ -127,6 +128,52 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
+    private void captureRegion(String selector,String tag)throws Exception{
+        if(!capture)return;
+        JSONObject rect=state("const e=document.querySelector("+JSONObject.quote(selector)+"),r=e?.getBoundingClientRect();return JSON.stringify({ok:!!r,x:r?.left,y:r?.top,w:r?.width,h:r?.height,vw:innerWidth});");
+        if(!rect.optBoolean("ok"))return;
+        int[] location=new int[2];runOnMainSync(()->web.getLocationOnScreen(location));
+        float scale=web.getWidth()/(float)rect.getDouble("vw");
+        android.graphics.Bitmap full=getUiAutomation().takeScreenshot();if(full==null)return;
+        int x=Math.max(0,location[0]+Math.round((float)rect.getDouble("x")*scale));
+        int y=Math.max(0,location[1]+Math.round((float)rect.getDouble("y")*scale));
+        int w=Math.min(full.getWidth()-x,Math.round((float)rect.getDouble("w")*scale));
+        int h=Math.min(full.getHeight()-y,Math.round((float)rect.getDouble("h")*scale));
+        if(w<=0||h<=0){full.recycle();return;}
+        android.graphics.Bitmap crop=android.graphics.Bitmap.createBitmap(full,x,y,w,h);
+        android.graphics.Bitmap small=android.graphics.Bitmap.createScaledBitmap(crop,480,Math.max(1,Math.round(h*480f/w)),true);
+        java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();small.compress(android.graphics.Bitmap.CompressFormat.JPEG,85,bytes);
+        String data=android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP);
+        for(int i=0,part=0;i<data.length();i+=8000,part++)report("SCREENSHOT_"+tag+"_PART_"+part,data.substring(i,Math.min(data.length(),i+8000)));
+        small.recycle();if(crop!=small&&crop!=full)crop.recycle();if(full!=small)full.recycle();
+    }
+    private void compactToolbar()throws Exception{
+        JSONObject info=state("const p=document.querySelector('[data-testid=permissions-selector-trigger]'),m=document.querySelector('[data-testid=model-selector-trigger]'),a=document.querySelector('.agy-composer-add');window.__agyPermissionBefore=p?.getAttribute('aria-label');window.__agyDraftBeforeToolbar=JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(x=>x.textContent));const pr=p?.getBoundingClientRect(),mr=m?.getBoundingClientRect(),ar=a?.getBoundingClientRect();return JSON.stringify({ready:!!p&&!!m,sized:!!pr&&pr.width>=47.5&&pr.height>=47.5&&mr.width>=47.5&&mr.height>=47.5,ordered:!!pr&&pr.left>=ar.right-1&&mr.left>=pr.right-1,pill:!!m&&parseFloat(getComputedStyle(m).borderRadius)>=16,short:!!m?.querySelector('.agy-model-short-label'),once:document.querySelectorAll('[data-testid=permissions-selector-trigger]').length===1});");
+        require(info.optBoolean("ready"),"TOOLBAR_CONTROLS_PRESENT");
+        require(info.optBoolean("sized")&&info.optBoolean("ordered"),"TOOLBAR_ICON_MODEL_GEOMETRY");
+        require(info.optBoolean("pill")&&info.optBoolean("short")&&info.optBoolean("once"),"TOOLBAR_COMPACT_MODEL_AND_SINGLE_PERMISSION");
+        SystemClock.sleep(500);captureRegion(".agy-composer-footer","TOOLBAR");
+        state("document.querySelector('[data-testid=permissions-selector-trigger]').click();return '{}';");
+        info=waitState("return JSON.stringify({ready:document.querySelectorAll('[data-testid^=permissions-preset-option-]').length>0});","ready");
+        require(info.optBoolean("ready"),"TOOLBAR_REAL_CORE_PERMISSION_OPTIONS");
+        SystemClock.sleep(400);captureRegion("[data-testid=permissions-project-options]","PERMISSIONS");
+        sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(550);
+        info=state("const p=document.querySelector('[data-testid=permissions-selector-trigger]'),d=document.querySelector('[data-testid=permissions-project-options]');return JSON.stringify({same:p?.getAttribute('aria-label')===window.__agyPermissionBefore,closed:!d||!!d.closest('[aria-hidden=true]')||getComputedStyle(d).visibility==='hidden',draft:window.__agyDraftBeforeToolbar===JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(x=>x.textContent))});");
+        require(info.optBoolean("same")&&info.optBoolean("draft"),"TOOLBAR_EXISTING_PERMISSIONS_AND_DRAFT_PRESERVED");
+        require(stockSheets().optInt("visible")==0,"TOOLBAR_BACK_CLOSES_PERMISSIONS");
+        state("document.querySelector('[data-testid=model-selector-trigger]').click();return '{}';");SystemClock.sleep(550);
+        require(stockSheets().optInt("visible")==1,"TOOLBAR_MODEL_MENU_OPENS");
+        boolean ime=keyboardVisible();report("TOOLBAR_MODEL_IME_BEFORE_BACK",ime);
+        sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+        if(ime&&stockSheets().optInt("visible")>0){
+            require(!keyboardVisible(),"TOOLBAR_BACK_DISMISSES_IME_FIRST");
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+        }
+        JSONObject stock=stockSheets();report("TOOLBAR_MODEL_REMAINING_SHEETS",stock.optInt("visible"));
+        require(stock.optInt("visible")==0,"TOOLBAR_MODEL_BACK");
+        assertHost("TOOLBAR_HOST");
+        report("ANDROID_COMPACT_TOOLBAR","PASS_REAL_CORE_MENUS_NO_SETTING_CHANGE");
+    }
     private void backdropTap()throws Exception {
         JSONObject point=state("const e=[...document.querySelectorAll('[data-testid=bottom-sheet]')].find(e=>!e.closest('[aria-hidden=true]')&&e.getBoundingClientRect().height>0&&getComputedStyle(e).visibility!=='hidden');const r=e?.getBoundingClientRect();return JSON.stringify({x:innerWidth/2,y:r?Math.max(4,r.top/2):4,width:innerWidth});");
         final int[] location=new int[2];runOnMainSync(()->web.getLocationOnScreen(location));
@@ -411,7 +458,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -434,6 +481,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(toolbarMode){compactToolbar();ok=true;return;}
             if(backMode){progressiveBack();ok=true;return;}
             if(micMode){microphoneCapabilities();ok=true;return;}
             if(micUiMode){microphoneButtonRouting();ok=true;return;}

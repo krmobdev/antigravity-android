@@ -24,3 +24,9 @@ return/reopen cycles and Settings child screens. Checks Activity/WebView surviva
 and draft preservation; no Send or microphone capture. Startup dismissal sends
 Back only when Android Settings is the foreground package, never merely while
 the target window is waiting for focus. Inspect INSTRUMENTATION_CODE and flags.
+
+
+Compact controls mode: -e mode toolbar. Checks real permissions/model menus,
+48px geometry, ordering, a single permission selector, Back and unchanged current
+mode/draft. No preset is changed by this probe. With -e capture yes, exports
+cropped toolbar and permissions-menu regions only; no prompt or chat screenshot.
