@@ -108,5 +108,8 @@ function media(name,mime,text){return{description:name,mimeType:mime,payload:{ca
   const target={files:[batch[0]],value:"file.pdf"};
   picker.handleFileChange({target});target.value="file.pdf";picker.handleFileChange({target});
   check(selections===2&&target.value==="","same file may be selected again after removal/error");
+  const zero=context.u5a(items=>added.push(...items),0,false,error=>errors.push(error),0);
+  const pendingBefore=pending.length;await zero.handleMediaFiles(batch);
+  check(pending.length===pendingBefore,"Core zero attachment capability is respected");
   console.log("PASS mobile attachments:",checks,"behaviour assertions");
 })().catch(error=>{console.error(error);process.exitCode=1;});

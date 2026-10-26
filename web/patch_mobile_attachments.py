@@ -23,11 +23,11 @@ def transform(source):
     source = once(source, "A.createElement(uYb,{selectedMedia:Ya,setSelectedMedia:cb})",
                   "A.createElement(uYb,{selectedMedia:Ya,setSelectedMedia:cb,limit:Sd})")
     source = once(source, 'Sd=WN("max-media-attachments",5)',
-                  'Sd=Math.max(1,Math.min(5,WN("max-media-attachments",5)))')
+                  'Sd=Math.max(0,Math.min(5,WN("max-media-attachments",5)))')
     source = once(source, 'e=e.target;e.files&&a(e.files)',
                   'e=e.target;const agyFiles=Array.from(e.files||[]);e.value="";agyFiles.length&&a(agyFiles)')
     source = once(source, "var u5a=(a,b,c,e,f=5)=>{var g=$t(),h=",
-                  "var u5a=(a,b,c,e,f=5)=>{f=Math.max(1,Math.min(5,f));var agyPending=(0,A.useRef)(0);var g=$t(),h=")
+                  "var u5a=(a,b,c,e,f=5)=>{f=Math.max(0,Math.min(5,f));var agyPending=(0,A.useRef)(0);var g=$t(),h=")
     source = once(source, "var r=f-b;if(r<=0)", "var r=f-b-agyPending.current;if(r<=0)")
     source = once(source, "q(await n(Promise.allSettled(t.map(h))))",
                   "agyPending.current+=t.length;try{q(await n(Promise.allSettled(t.map(h))))}finally{agyPending.current-=t.length}")

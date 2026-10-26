@@ -13,6 +13,7 @@ with tempfile.TemporaryDirectory(prefix="agy-staging-regression-") as d:
     (project / "env/dist/env").mkdir(parents=True)
     (project / "env/dist/env/manifest.json").write_text("{}\n")
     upstream = (project / "web/main.js").read_bytes()
+    generated_before = (project / "web/generated/main.js").read_bytes()
     calls = []
     fake = types.ModuleType("runner")
     def prepare(dest_runtime_dir, no_bypass):
@@ -38,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="agy-staging-regression-") as d:
         assert "function G$a(){var a=globalThis.ScrollTimeline" not in js
         for marker in ("AGY_V24_TRANSPORT_RECONNECT", "AGY_V24_SUMMARY_RECONNECT",
                        "AGY_V24_DEEPLINK", "AGY_SIDEBAR_RECONCILE_V24",
-                       "AGY_SIDEBAR_RUNNING_RECONCILE_V24"):
+                       "AGY_SIDEBAR_RUNNING_RECONCILE_V24", "AGY_ATTACHMENTS_KR1", "AGY_COMPOSER_KR1"):
             assert js.count(marker) == 1, ("web hook missing or duplicated", marker)
         assert (web / "index.html").exists()
         assert (web / "compiled_tailwind.css").exists()
@@ -50,6 +51,7 @@ with tempfile.TemporaryDirectory(prefix="agy-staging-regression-") as d:
         assert not forbidden, "Build tools packed into APK: " + repr(forbidden)
         assert (assets / "runtime/build-variant.txt").read_text() == ("standard" if no_bypass else "bypass")
         data.append(hashlib.sha256((web / "generated/main.js").read_bytes()).hexdigest())
+    assert (project / "web/generated/main.js").read_bytes() == generated_before, "pre-existing generated work overwritten"
     assert calls == [True, False, True], "variant dispatch altered"
     assert len(set(data)) == 1, "staged WebView code differs between variants / repeat builds"
     assert (project / "web/main.js").read_bytes() == upstream, "upstream web/main.js modified"

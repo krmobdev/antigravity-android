@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Verify that actual signed APK ships v2.4 stream, sidebar and notification hooks."""
+"""Verify that actual APK ships v2.4 stream, sidebar and notification hooks."""
 from pathlib import Path
 import hashlib
 import sys
 from zipfile import ZipFile
 
 if len(sys.argv) != 2:
-    raise SystemExit("usage: verify_integration_apk.py path/to/dev.apk")
+    raise SystemExit("usage: verify_integration_apk.py path/to/candidate.apk")
 repo = Path(__file__).resolve().parents[2]
 apk = Path(sys.argv[1])
 source = repo / "web/main.js"
@@ -39,7 +39,7 @@ with ZipFile(apk) as zipf:
     # Deployment must contain upstream modular runtime and source-independent build results.
     assert any(x.endswith("/runtime/bin/liblanguage_server.so") for x in files)
     assert any(x.endswith("/generated/bridge.core.js") for x in files)
-    print("PASS signed APK staged web Hca/NDa/deeplink/sidebar/notifications")
+    print("PASS APK content: staged web Hca/NDa/deeplink/sidebar/notifications")
     print("main bundle:", webmain[0], len(data), "bytes")
     print("web patches:", patches[0], len(aux), "bytes")
     print("web/main.js unchanged SHA-256:", hashlib.sha256(source.read_bytes()).hexdigest())

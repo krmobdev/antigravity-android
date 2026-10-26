@@ -155,3 +155,5 @@ raw toolSummary is not forwarded; public stages are exclusively native enums.
 The taskset 0-3 regression shell's first child reported affinity [0,1,2,3,4,6],
 while a direct taskset 0-3 Python probe reported [0,1,2,3]. Android/runtime can
 widen child affinity; exclusive efficiency-core execution is not claimed.
+
+Final review also tests a Core attachment capability of zero: it remains zero, rather than being raised to one. Mobile attachment behaviour now passes 21 assertions. Artifact verification compares entry sets/content, allowing ZIP entry order differences; the two preliminary editions differed only in Core and its runtime manifest. Final artifacts are rebuilt after this correction.
