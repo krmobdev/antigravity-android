@@ -12,6 +12,7 @@ function agyAudioError(error){
     "Ошибка записи. Проверьте микрофон и попробуйте снова."
   ];
   if(typeof error==="string" && known.includes(error)) return error;
+  if(typeof error==="string" && error.startsWith("Не удалось начать запись на этапе ")) return error;
   const name=error?.name||"";
   if(name==="NotAllowedError"||name==="PermissionDeniedError")
     return "Нет доступа к микрофону. Разрешите запись звука в настройках приложения.";
@@ -29,6 +30,19 @@ function agyAudioError(error){
   // that might include private paths or account data.
   const safeClass=typeof name==="string"&&/^[A-Za-z]{2,36}Error$/.test(name)?name:"UnknownError";
   return "Не удалось начать запись ("+safeClass+"). Проверьте поддержку микрофона в Android WebView.";
+}
+function agyAudioStageError(stage,error){
+  const names={
+    getUserMedia:"получения звука от Android",
+    MediaRecorder:"создания аудиорекордера",
+    start:"старта записи",
+    recording:"записи аудио"
+  };
+  const place=names[stage]||"подготовки записи";
+  // Report only safe type and phase, never a raw browser error with private data.
+  const raw=error?.name||error?.constructor?.name||typeof error;
+  const kind=typeof raw==="string"&&/^[A-Za-z][A-Za-z0-9]{1,35}$/.test(raw)?raw:"UnknownError";
+  return "Не удалось начать запись на этапе "+place+" ("+kind+"). "+agyAudioError(error);
 }
 /* Compact mobile composer; all settings keep their original controllers. */
 function useAgyMobileLayout(){

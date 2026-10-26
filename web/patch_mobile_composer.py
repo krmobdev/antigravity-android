@@ -27,9 +27,9 @@ def transform(source):
     source=once(source,'var d5a=a=>{var [b,c]',
                 'var d5a=a=>{var [agyPending,setAgyPending]=(0,A.useState)(!1),[b,c]')
     source=once(source,'try{try{q();let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))',
-                'try{try{q();setAgyPending(true);let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))')
+                'try{let agyPhase="getUserMedia";try{q();setAgyPending(true);let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))')
     source=once(source,'catch(y){x(),q(),f(agyAudioError(y))}}finally{w()}',
-                'catch(y){x(),q(),f(agyAudioError(y))}finally{setAgyPending(false)}}finally{w()}')
+                'catch(y){x(),q(),f(agyAudioStageError(agyPhase,y))}finally{setAgyPending(false)}}finally{w()}')
     source=once(source,'isRecording:b,\nerror:e,hasMicrophone:v}',
                 'isRecording:b,starting:agyPending,\nerror:e,hasMicrophone:v}')
     source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',
@@ -46,8 +46,14 @@ def transform(source):
                 'B.onstop=()=>{var agySeconds=n.current?(Date.now()-n.current)/1E3:0,C=new Blob(k.current,{type:B.mimeType});if(C.size===0){q();f("Запись пуста. Проверьте микрофон и попробуйте снова.");return;}')
     source=once(source,'F=\nn.current?(Date.now()-n.current)/1E3:0',
                 'F=agySeconds')
+    # Explicit audio MIME is supported on the tested Android 15 WebView.
+    # The fallback keeps upstream settings for older Android WebView releases.
+    source=once(source,'h.current=y;let B=new MediaRecorder(y,{audioBitsPerSecond:64E3});',
+                'h.current=y;agyPhase="MediaRecorder";let agyOptions={audioBitsPerSecond:64E3};if(MediaRecorder.isTypeSupported?.("audio/webm;codecs=opus"))agyOptions.mimeType="audio/webm;codecs=opus";let B=new MediaRecorder(y,agyOptions);')
+    source=once(source,'B.start();c(!0);',
+                'agyPhase="start";B.start();c(!0);')
     source=once(source,'B.ondataavailable=C=>{C.data.size>0&&k.current.push(C.data)};',
-                'B.onerror=()=>{q();f("Ошибка записи. Проверьте микрофон и попробуйте снова.");};B.ondataavailable=C=>{C.data.size>0&&k.current.push(C.data)};')
+                'B.onerror=C=>{q();f(agyAudioStageError("recording",C?.error||C));};B.ondataavailable=C=>{C.data.size>0&&k.current.push(C.data)};')
     # Include errors and permission-waiting states in the parent header;
     # previously the error component could never render while idle.
     source=once(source,'(oe.audioPhase===\n"recording"&&!Yf||Ya.length>0',
