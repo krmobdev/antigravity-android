@@ -80,7 +80,8 @@ public final class CoreProcessSupervisor {
             try {
                 CoreRuntimeState.lastError = null;
                 CoreRuntimeState.restarting = false;
-                Process proc = CoreLauncher.launch(runtime, appContext.getFilesDir());
+                final long startupAttempt = CoreRuntimeState.startup.begin();
+                Process proc = CoreLauncher.launch(runtime, appContext.getFilesDir(), startupAttempt);
                 process = proc;
 
                 final Writer streamWriter = log;
@@ -88,7 +89,7 @@ public final class CoreProcessSupervisor {
                 streamer.setDaemon(true);
                 streamer.start();
 
-                if (!waitForReady(proc, log)) {
+                if (!waitForReady(proc, log, startupAttempt)) {
                     if (stopping) {
                         break;
                     }
@@ -155,7 +156,7 @@ public final class CoreProcessSupervisor {
         }
     }
 
-    private boolean waitForReady(Process proc, Writer log) {
+    private boolean waitForReady(Process proc, Writer log, long startupAttempt) {
         long start = System.currentTimeMillis();
         String csrf = runtime.getCsrfToken();
         int port = CoreRuntimeState.httpsPort;
@@ -173,6 +174,7 @@ public final class CoreProcessSupervisor {
                 return false;
             }
             if (CoreReadyProbe.probeOnce(appContext, port)) {
+                CoreRuntimeState.startup.advance(startupAttempt, CoreStartupProgress.CONNECTING);
                 CoreRuntimeState.serverUrl = CoreUrl.startUrl(port, csrf);
                 CoreRuntimeState.lastError = null;
                 CoreRuntimeState.restarting = false;

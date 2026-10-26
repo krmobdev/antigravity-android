@@ -4,157 +4,92 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.view.View;
-import android.webkit.WebView;
 import android.widget.FrameLayout;
 
+import com.agy.core.CoreRuntimeState;
+import com.agy.core.CoreStartupProgress;
 import com.agy.theme.ThemeManager;
 
-/**
- * Owns the 3-dot splash WebView: shows the loading animation, transient
- * restart status, and fail-closed errors; dismisses it when the UI paints.
- */
+/** Owns a native startup surface until an authenticated UI-ready callback. */
 public final class SplashController {
-
-    public static final int MODE_LOADING = 0;
-    public static final int MODE_TRANSIENT = 1;
-    public static final int MODE_ERROR = 2;
-
+    public static final int MODE_LOADING = 0, MODE_TRANSIENT = 1, MODE_ERROR = 2;
     private final Context context;
-    private final WebView view;
+    private final NativeStartupView view;
     private final ThemeManager theme;
     private final FrameLayout root;
-
     private SplashRetryListener retryListener;
-    private boolean dismissed = false;
-    private boolean fatalShown = false;
-    private int mode = MODE_LOADING;
+    private boolean dismissed, fatalShown, uiTimeout;
+    private int mode = MODE_LOADING, stage = CoreStartupProgress.PREPARING;
+    private long lastAttempt = -1, minimumAttempt;
 
     public SplashController(Context context, ThemeManager theme, FrameLayout root) {
-        this.context = context;
-        this.theme = theme;
-        this.root = root;
-        this.view = new WebView(context);
-        this.view.setBackgroundColor(Color.TRANSPARENT);
-        android.webkit.WebSettings settings = this.view.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
+        this.context = context; this.theme = theme; this.root = root;
+        view = new NativeStartupView(context);
+        palette();
     }
-
-    public WebView view() {
-        return view;
-    }
-
-    public int mode() {
-        return mode;
-    }
-
-    public boolean isFatalShown() {
-        return fatalShown;
-    }
-
+    public NativeStartupView view() { return view; }
+    public int mode() { return mode; }
+    public boolean isFatalShown() { return fatalShown; }
+    public boolean isDismissed() { return dismissed; }
     public void setRetryListener(SplashRetryListener listener) {
-        this.retryListener = listener;
-        SplashRetryBridge.bind(view, context, listener);
+        retryListener = listener;
+        view.bind(listener == null ? null : listener::onRetry,
+                () -> LogExporter.copyToClipboard(context),
+                () -> LogExporter.saveAndShare(context));
     }
-
-    /** First render of the loading splash (before any show* call). */
     public void loadInitial() {
-        mode = MODE_LOADING;
-        SplashLoadingHtml.load(view, foreground(), background());
+        mode = MODE_LOADING; stage = CoreStartupProgress.PREPARING;
+        setVisible(); render();
     }
-
-    /** Show the animated loading splash again (startup or post-restart ready). */
+    /** A user retry awaits a fresh supervisor attempt, ignoring its old snapshot. */
     public void showLoading() {
+        minimumAttempt = CoreRuntimeState.startup.snapshot().attempt + 1;
+        mode = MODE_LOADING; stage = CoreStartupProgress.PREPARING;
+        setVisible(); render();
+    }
+    public void showProgress(CoreStartupProgress.Snapshot snapshot) {
+        if (dismissed || fatalShown || snapshot.attempt < minimumAttempt
+                || snapshot.attempt < lastAttempt) return;
+        if (snapshot.attempt == lastAttempt && snapshot.stage == stage && mode == MODE_LOADING) return;
+        if (snapshot.attempt == lastAttempt && snapshot.stage < stage) return;
+        lastAttempt = snapshot.attempt; stage = snapshot.stage; mode = MODE_LOADING;
+        render();
+    }
+    /** Core answered its ready probe; now wait for the Web UI to really mount. */
+    public void showConnecting() {
+        minimumAttempt = 0; mode = MODE_LOADING; stage = CoreStartupProgress.CONNECTING;
+        setVisible(); render();
+    }
+    public void showTransient(String ignoredDiagnostic) {
+        if (fatalShown) return;
         setVisible();
-        if (mode != MODE_LOADING) {
-            mode = MODE_LOADING;
-            SplashLoadingHtml.load(view, foreground(), background());
-        }
+        if (mode == MODE_TRANSIENT) return;
+        mode = MODE_TRANSIENT; render();
     }
-
-    /** Non-fatal status (auto-restart running): overlay without a Retry button. */
-    public void showTransient(String message) {
-        if (fatalShown) {
-            return;
-        }
-        setVisible();
-        if (mode != MODE_TRANSIENT) {
-            mode = MODE_TRANSIENT;
-            SplashOverlayHtml.show(view, "Restarting Antigravity", message,
-                    foreground(), background(), false);
-        }
+    public void showFatalError(String diagnostic) {
+        if (fatalShown) return;
+        fatalShown = true; uiTimeout = "ui_ready_timeout".equals(diagnostic);
+        mode = MODE_ERROR; setVisible(); render();
     }
-
-    /** Fail-closed startup failure: readable message with a Retry action. */
-    public void showFatalError(String message) {
-        if (fatalShown) {
-            return;
-        }
-        fatalShown = true;
-        mode = MODE_ERROR;
-        setVisible();
-        SplashRetryBridge.bind(view, context, retryListener);
-        SplashOverlayHtml.show(view, "Antigravity failed to start", message,
-                foreground(), background(), retryListener != null);
-    }
-
-    /** Called when a fresh ready generation begins; errors can be shown again. */
-    public void clearFatal() {
-        fatalShown = false;
-    }
-
+    public void clearFatal() { fatalShown = false; }
     public void setVisible() {
-        dismissed = false;
-        view.setAlpha(1f);
-        if (view.getVisibility() != View.VISIBLE) {
-            view.setVisibility(View.VISIBLE);
-        }
-        if (root != null) {
-            root.bringChildToFront(view);
-        }
+        dismissed = false; view.animate().cancel(); view.setAlpha(1f);
+        view.setVisibility(View.VISIBLE);
+        if (root != null) root.bringChildToFront(view);
     }
-
-    /** Idempotent; called by AndroidBridge.onUiReady() on the main thread. */
     public void dismiss() {
-        if (dismissed) {
-            return;
-        }
-        dismissed = true;
-        view.animate()
-                .alpha(0f)
-                .setDuration(280)
-                .withEndAction(new Runnable() {
-                    @Override
-                    public void run() {
-                        view.setVisibility(View.GONE);
-                        try {
-                            view.stopLoading();
-                            view.loadUrl("about:blank");
-                        } catch (Exception ignored) {
-                        }
-                    }
-                })
-                .start();
+        if (dismissed || fatalShown) return;
+        dismissed = true; view.animate().cancel(); view.setVisibility(View.GONE);
     }
-
-    /** Re-render the splash after a theme/configuration change. */
-    public void refresh() {
-        view.setBackgroundColor(Color.TRANSPARENT);
-        if (mode == MODE_LOADING && !dismissed) {
-            SplashLoadingHtml.load(view, foreground(), background());
-        }
+    public void refresh() { palette(); if (!dismissed) render(); }
+    public void installExitAnimation(Activity activity) { SplashExitInstaller.install(activity, view); }
+    public void destroy() { view.animate().cancel(); view.setVisibility(View.GONE); view.release(); retryListener = null; }
+    private void palette() {
+        view.applyPalette(theme.getBackgroundColor(), Color.parseColor(theme.getForegroundHex()));
     }
-
-    /** API31+: cross-fade the system splash into this overlay. */
-    public void installExitAnimation(Activity activity) {
-        SplashExitInstaller.install(activity, view);
-    }
-
-    private String foreground() {
-        return theme.getForegroundHex();
-    }
-
-    private String background() {
-        return theme.getBackgroundHex();
+    private void render() {
+        if (mode == MODE_ERROR) view.showError(uiTimeout, retryListener != null);
+        else if (mode == MODE_TRANSIENT) view.showRestarting();
+        else view.showStage(stage);
     }
 }

@@ -9,6 +9,7 @@ public final class CoreRuntimeState {
     }
 
     /** Published once the core answers on its loopback port. */
+    public static final CoreStartupProgress startup = new CoreStartupProgress();
     public static volatile String serverUrl = null;
     public static volatile int httpsPort = RuntimeConfig.DEFAULT_HTTPS_PORT;
     public static volatile String csrfToken = null;

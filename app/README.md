@@ -12,7 +12,7 @@
 graph TD
     subgraph UI_Layer ["Слой представления (UI Layer)"]
         LDA["LauncherDarkActivity / LauncherLightActivity"] --> MA["MainActivity"]
-        MA --> SC["SplashController (NativeSplashDotsView / Lazy WebView)"]
+        MA --> SC["SplashController (NativeStartupView)"]
         MA --> WVH["WebViewHost (Chromium WebView)"]
         WVH --> AWVC["AgyWebViewClient (OAuth & Asset Interceptor)"]
         WVH --> AWCC["AgyWebChromeClient (Console, Files, Popups)"]
@@ -206,3 +206,19 @@ The native queue holds at most 20 frames (40ms each); overflow is an explicit
 error rather than silent speech loss. Poll batches remain at most eight frames.
 Activity background and bridge detach cancel capture. No raw audio is logged
 or persisted. Fault/race tests use fake sources and never acquire a microphone.
+
+### Native startup milestones (v2.4.5)
+
+SplashController now owns NativeStartupView rather than a second WebView.
+The existing logo, title, thin framework progress bar and accessible stage text
+follow the resolved native Light/Dark theme, including changes during loading.
+CoreStartupProgress publishes immutable, attempt-scoped milestones: preparing
+before install, starting only after installCore returns, connecting only after
+CoreReadyProbe succeeds. No overall percentage or timer-based advancement.
+Authenticated onUiReady dismisses the overlay immediately. A 60s UI timeout
+shows a retryable error instead of pretending the UI is ready after 10s.
+Retry reloads only UI while Core is healthy; failed Core startup retains the
+existing reinstall/restart path. Copy/save logs remain explicit native actions;
+raw log tails and private paths are not displayed on the splash.
+The original HTML splash helpers are retained for compatibility but are not
+loaded by the main activity. NativeSplashDotsView is not the active overlay.

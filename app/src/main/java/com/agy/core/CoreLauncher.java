@@ -64,12 +64,17 @@ public final class CoreLauncher {
     }
 
     public static Process launch(RuntimeManager runtime, File filesDir) throws IOException {
+        return launch(runtime, filesDir, CoreRuntimeState.startup.begin());
+    }
+
+    public static Process launch(RuntimeManager runtime, File filesDir, long startupAttempt) throws IOException {
         // Pre-flight: kill any zombie/orphan core instances to release the fixed loopback port
         killOrphanCoreProcesses();
 
         // Phase 1 only: extract + verify the core (fail-closed, throws on
         // corruption) and return. Never wait on the ~90 MB bionic env here.
         runtime.installCore();
+        CoreRuntimeState.startup.advance(startupAttempt, CoreStartupProgress.STARTING);
         // Phase 2: env toolchain + bridges on a daemon thread, deferred
         // by 3500ms to avoid peak disk I/O throttling during startup.
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {

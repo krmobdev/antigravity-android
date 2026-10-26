@@ -46,7 +46,7 @@ import com.agy.util.ViewParams;
 
 /**
  * Activity host: builds the WebView, starts CoreServerService, shows the
- * three-dot splash until the core UI has rendered, and wires theming/OAuth.
+ * native startup milestones until the core UI has rendered, and wires theming/OAuth.
  * All logic lives in the helper classes; this only wires them and polls.
  */
 public class MainActivity extends Activity
@@ -116,6 +116,7 @@ public class MainActivity extends Activity
     private boolean appLoaded = false;
     private boolean activityResumed = false;
     private int loadedGeneration = -1;
+    private int uiLoadAttempt;
     private long splashDeadline;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -148,30 +149,32 @@ public class MainActivity extends Activity
         if (CoreRuntimeState.serverUrl != null && webViewHost != null) {
             int generation = CoreRuntimeState.readyGeneration;
             if (!appLoaded || (loadedGeneration > 0 && generation != loadedGeneration)) {
-                appLoaded = true;
-                loadedGeneration = generation;
-                webUiReady = false;
-                splash.clearFatal();
-                if (generation > 1) {
-                    splash.showLoading();
-                }
-                webViewHost.loadApp();
-                handler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (appLoaded && !splash.isFatalShown()) {
-                            Log.w(TAG, "watchdog: auto-dismissing splash after timeout");
-                            dismissSplash();
-                        }
-                    }
-                }, 10000);
+                loadCoreUi(generation);
             }
             return;
         }
+        if (!appLoaded) splash.showProgress(CoreRuntimeState.startup.snapshot());
         if (!appLoaded && CoreRuntimeState.serverUrl == null && !splash.isFatalShown()
-                && System.currentTimeMillis() > splashDeadline) {
+                && android.os.SystemClock.elapsedRealtime() > splashDeadline) {
             splash.showFatalError("core did not start within " + (SPLASH_TIMEOUT_MS / 1000) + "s");
         }
+    }
+
+    private void loadCoreUi(final int generation) {
+        final int expectedAttempt = ++uiLoadAttempt;
+        appLoaded = true;
+        loadedGeneration = generation;
+        webUiReady = false;
+        splash.clearFatal();
+        splash.showConnecting();
+        webViewHost.loadApp();
+        handler.postDelayed(() -> {
+            if (!isDestroyed() && !isFinishing() && appLoaded
+                    && loadedGeneration == generation && uiLoadAttempt == expectedAttempt
+                    && !webUiReady && !splash.isFatalShown()) {
+                splash.showFatalError("ui_ready_timeout");
+            }
+        }, SPLASH_TIMEOUT_MS);
     }
 
     @Override
@@ -209,7 +212,7 @@ public class MainActivity extends Activity
 
         splash.installExitAnimation(this);
 
-        splashDeadline = System.currentTimeMillis() + SPLASH_TIMEOUT_MS;
+        splashDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
         requestStoragePermissions();
 
         startCoreService();
@@ -231,10 +234,17 @@ public class MainActivity extends Activity
 
     /** Retry re-runs install + start: stop the service, then start it again. */
     private void retryCore() {
+        // UI-only failures must not stop a healthy Core or its active agents.
+        if (CoreRuntimeState.serverUrl != null && CoreRuntimeState.lastError == null
+                && !CoreRuntimeState.restarting && webViewHost != null) {
+            loadCoreUi(CoreRuntimeState.readyGeneration);
+            return;
+        }
+        webUiReady = false;
         splash.clearFatal();
         appLoaded = false;
         loadedGeneration = -1;
-        splashDeadline = System.currentTimeMillis() + SPLASH_TIMEOUT_MS;
+        splashDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
         splash.showLoading();
         CoreServiceLauncher.stop(this);
         try {
@@ -259,6 +269,7 @@ public class MainActivity extends Activity
 
     /** Signal from WebView that it has mounted its UI and client router. */
     public void onWebUiReady() {
+        if (!appLoaded || splash.isFatalShown() || isDestroyed() || isFinishing()) return;
         webUiReady = true;
         dismissSplash();
         navigatePendingConversation();
@@ -310,7 +321,7 @@ public class MainActivity extends Activity
 
     /** Idempotent; called by AndroidBridge.onUiReady() on the main thread. */
     public void dismissSplash() {
-        Log.i(TAG, "dismissSplash: fading out splashView (280ms)");
+        Log.i(TAG, "dismissSplash: confirmed UI ready");
         splash.dismiss();
     }
 
@@ -342,6 +353,7 @@ public class MainActivity extends Activity
         if (androidBridge != null) {
             androidBridge.setActivity(null);
         }
+        if (splash != null) splash.destroy();
         if (rootLayout != null) {
             rootLayout.removeAllViews();
         }

@@ -39,3 +39,6 @@ java -cp "$OUT" WebAudioOriginTest
 
 javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/bridge/PcmCaptureSession.java" "$ROOT/app/tests/PcmCaptureSessionTest.java"
 java -cp "$OUT" com.agy.bridge.PcmCaptureSessionTest
+
+javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/core/CoreStartupProgress.java" "$ROOT/app/tests/CoreStartupProgressTest.java"
+java -cp "$OUT" CoreStartupProgressTest

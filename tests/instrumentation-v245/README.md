@@ -50,3 +50,11 @@ menus. No setting, audio recording or model request is submitted.
 
 Settings polish also requires selected-theme and switch-track backgrounds to
 contrast with the containing settings group in both Light and Dark modes.
+
+Native startup mode: -e mode startup. Checks the real authenticated UI-ready
+handoff and hidden native splash, then temporarily mounts an isolated controller
+over the Dev UI to exercise actual native stage labels, Light/Dark, fatal
+timeout and Retry callback. This fixture never restarts Core or changes user
+data/themes. Optional pictures draw only the owned native view into a bitmap,
+not the screen, chat, other apps or system UI. It does not simulate a successful
+cold install or live Core failure; those require separate startup acceptance.

@@ -29,6 +29,7 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean capture;
     private boolean backMode;
     private boolean toolbarMode;
+    private boolean startupMode;
     private boolean unifiedMode;
     private boolean polishMode;
     private boolean surfacesMode;
@@ -131,6 +132,86 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
+    private void nativeStartup()throws Exception {
+        Object live=field(activity,"splash");
+        require(Boolean.TRUE.equals(field(activity,"webUiReady")),"STARTUP_REAL_UI_READY");
+        View liveView=(View)live.getClass().getMethod("view").invoke(live);
+        require(!(liveView instanceof WebView)&&liveView.getVisibility()==View.GONE,"STARTUP_NATIVE_DISMISSED_ON_REAL_READY");
+        Class<?> state=Class.forName("com.agy.core.CoreRuntimeState",true,target.getClassLoader());
+        int before=(Integer)field(state,"readyGeneration");
+        Class<?> progressClass=Class.forName("com.agy.core.CoreStartupProgress",true,target.getClassLoader());
+        Object model=progressClass.getConstructor().newInstance();
+        long attempt=(Long)progressClass.getMethod("begin").invoke(model);
+        final FrameLayoutBox box=new FrameLayoutBox();
+        final int[] retries={0};
+        runOnMainSync(()->{
+            try{
+                box.root=new android.widget.FrameLayout(activity);
+                ((ViewGroup)activity.getWindow().getDecorView()).addView(box.root,new ViewGroup.LayoutParams(-1,-1));
+                box.controller=live.getClass().getConstructor(Context.class,Class.forName("com.agy.theme.ThemeManager",true,target.getClassLoader()),android.widget.FrameLayout.class).newInstance(activity,field(activity,"themeManager"),box.root);
+                box.view=(View)box.controller.getClass().getMethod("view").invoke(box.controller);
+                box.root.addView(box.view,new android.widget.FrameLayout.LayoutParams(-1,-1));
+                Class<?> retry=Class.forName("com.agy.ui.splash.SplashRetryListener",true,target.getClassLoader());
+                Object listener=java.lang.reflect.Proxy.newProxyInstance(retry.getClassLoader(),new Class[]{retry},(proxy,method,args)->{
+                    if("onRetry".equals(method.getName())){retries[0]++;box.controller.getClass().getMethod("clearFatal").invoke(box.controller);box.controller.getClass().getMethod("showConnecting").invoke(box.controller);}return null;
+                });
+                box.controller.getClass().getMethod("setRetryListener",retry).invoke(box.controller,listener);
+                box.controller.getClass().getMethod("loadInitial").invoke(box.controller);
+            }catch(Exception error){throw new RuntimeException(error);}
+        });
+        try{
+            String[] labels={"Подготовка среды","Запуск ядра","Подключение интерфейса"};
+            for(int stage=0;stage<3;stage++){
+                progressClass.getMethod("advance",long.class,int.class).invoke(model,attempt,stage);
+                Object snapshot=progressClass.getMethod("snapshot").invoke(model);
+                runOnMainSync(()->{try{box.controller.getClass().getMethod("showProgress",snapshot.getClass()).invoke(box.controller,snapshot);}catch(Exception error){throw new RuntimeException(error);}});
+                SystemClock.sleep(200);
+                final int current=stage;
+                runOnMainSync(()->{
+                    android.widget.TextView status=box.view.findViewWithTag("startup-status");
+                    android.widget.TextView step=box.view.findViewWithTag("startup-step");
+                    require(labels[current].contentEquals(status.getText())&&("Этап "+(current+1)+" из 3").contentEquals(step.getText()),"STARTUP_STAGE_"+current);
+                });
+            }
+            for(int palette=0;palette<2;palette++){
+                final int bg=palette==0?0xff101010:0xffffffff,fg=palette==0?0xffffffff:0xff101010;
+                runOnMainSync(()->{try{box.view.getClass().getMethod("applyPalette",int.class,int.class).invoke(box.view,bg,fg);}catch(Exception error){throw new RuntimeException(error);}});
+                SystemClock.sleep(150);
+                captureNativeStartup(box.view,palette==0?"STARTUP_DARK":"STARTUP_LIGHT");
+            }
+            runOnMainSync(()->{try{box.controller.getClass().getMethod("showFatalError",String.class).invoke(box.controller,"ui_ready_timeout");}catch(Exception error){throw new RuntimeException(error);}});
+            runOnMainSync(()->{
+                View bar=box.view.findViewWithTag("startup-progress"),retry=box.view.findViewWithTag("startup-retry");
+                android.widget.TextView status=box.view.findViewWithTag("startup-status");
+                require(bar.getVisibility()==View.GONE&&retry.getVisibility()==View.VISIBLE&&status.getText().toString().contains("интерфейс"),"STARTUP_RETRYABLE_ERROR");
+            });
+            captureNativeStartup(box.view,"STARTUP_ERROR");
+            runOnMainSync(()->box.view.findViewWithTag("startup-retry").performClick());
+            require(retries[0]==1,"STARTUP_NATIVE_RETRY_CALLBACK");
+            runOnMainSync(()->{try{box.controller.getClass().getMethod("dismiss").invoke(box.controller);}catch(Exception error){throw new RuntimeException(error);}});
+            require(box.view.getVisibility()==View.GONE,"STARTUP_NATIVE_DISMISS");
+            require(before==(Integer)field(state,"readyGeneration"),"STARTUP_FIXTURE_NO_CORE_RESTART");
+            report("ANDROID_NATIVE_STARTUP","PASS_REAL_READY_AND_ISOLATED_NATIVE_STAGE_ERROR_RETRY");
+        }finally{
+            runOnMainSync(()->{try{box.controller.getClass().getMethod("destroy").invoke(box.controller);}catch(Exception ignored){}((ViewGroup)box.root.getParent()).removeView(box.root);});
+        }
+    }
+    private static final class FrameLayoutBox { android.widget.FrameLayout root; Object controller; View view; }
+    private void captureNativeStartup(View owned,String tag)throws Exception{
+        if(!capture)return;
+        final AtomicReference<android.graphics.Bitmap> output=new AtomicReference<>();
+        runOnMainSync(()->{
+            if(owned.getWidth()==0||owned.getHeight()==0)return;
+            int width=480,height=Math.round(owned.getHeight()*480f/owned.getWidth());
+            android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(width,height,android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas=new android.graphics.Canvas(bitmap);canvas.scale(480f/owned.getWidth(),480f/owned.getWidth());
+            owned.draw(canvas);output.set(bitmap);
+        });
+        android.graphics.Bitmap bitmap=output.get();if(bitmap==null){report("CAPTURE_"+tag,"PENDING_UNMEASURED");return;}
+        java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,85,bytes);bitmap.recycle();
+        String data=android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP);
+        for(int i=0,part=0;i<data.length();i+=8000,part++)report("SCREENSHOT_"+tag+"_PART_"+part,data.substring(i,Math.min(data.length(),i+8000)));
+    }
     private void unifiedInterface()throws Exception{
         closeOwnedSheets();SystemClock.sleep(500);
         JSONObject initial=state("window.__agyUnifiedDraft=JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(e=>e.textContent));window.__agyUnifiedPermission=document.querySelector('[data-testid=permissions-selector-trigger]')?.getAttribute('aria-label');return JSON.stringify({css:!![...document.styleSheets].find(s=>s.href?.endsWith('/mobile-interface.css'))});");
@@ -579,7 +660,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -602,6 +683,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(startupMode){nativeStartup();ok=true;return;}
             if(unifiedMode){unifiedInterface();ok=true;return;}
             if(surfacesMode){greySurfaces();ok=true;return;}
             if(polishMode){settingsPolish();ok=true;return;}
