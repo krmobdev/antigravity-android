@@ -26,6 +26,8 @@ Owner reported: Antigravity Dev shows “Не удалось начать зап
 - 25 Python tests PASS; WebView patch selftest PASS.
 - Local dev APK `dist/antigravity-v2.4.5-mic-diagnostics-dev.apk` built and debug signature verified; installed on Realme as `com.agy.dev`, without replacing production.
 - Capability instrumentation PASS.
+- **Synthetic MediaRecorder end-to-end test on the actual WebView: PASS.** A generated audio oscillator was recorded and produced data. No microphone was activated and no ambient sound was collected.
+- Therefore the remaining failure is more likely during physical `getUserMedia({audio:true})` acquisition, native WebChromeClient permission handling, or a real-device-specific recorder initialization. The precise point still needs a user-initiated tap with the updated diagnostic APK.
 
 ### Still open
 The exact **cause of the recording failure** is not yet proven. The diagnostic APK must be tested by the owner: open Antigravity Dev and tap the microphone once, then capture the **new specific error message**. Do not claim live recording works until a user-initiated recording succeeds. No ambient mic audio was recorded during these tests.
