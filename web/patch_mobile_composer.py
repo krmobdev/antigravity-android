@@ -58,18 +58,10 @@ def transform(source):
                 'g.current?.__agyNative&&agyNativeMicCancel();g.current=null;k.current=[];m.current=!1;')
     source=once(source,'isRecording:b,\nerror:e,hasMicrophone:v}',
                 'isRecording:b,starting:agyPending,\nerror:e,hasMicrophone:v}')
-    # Core supplies both streaming transcription and file recording. On Android
-    # a valid native bridge must select the file recorder, NOT streaming dO().
-    # Otherwise the visible microphone never reaches our native implementation.
-    source=once(source,'oe=(0,A.useMemo)(()=>Yf?',
-                'oe=(0,A.useMemo)(()=>Yf&&!agyNativeMicAvailable()?')
-    # Keep the existing microphone visible when streaming capability exists.
-    # Availability in the button is separate from which recorder implementation
-    # the composer chooses for Android.
-    source=once(source,'error:ib,hasMicrophone:tb},[Yf',
-                'error:ib,hasMicrophone:tb||agyNativeMicAvailable()},[Yf')
-    source=once(source,'a?r(a):navigator?.mediaDevices?.getUserMedia&&navigator.mediaDevices.getUserMedia({audio:!0})',
-                'a?r(a):!agyNativeMicAvailable()&&navigator?.mediaDevices?.getUserMedia&&navigator.mediaDevices.getUserMedia({audio:!0})')
+    # Preserve the ORIGINAL upstream voice behavior: select live speech-to-text
+    # when its Core feature is available (Yf); otherwise offer audio attachment.
+    # Native Android recording is a compatibility implementation ONLY for
+    # the upstream audio-attachment branch, never a forced UI mode.
     source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',
                 'isRecording:Ob,starting:agyStarting,error:ib,hasMicrophone:tb}=d5a(Qb)')
     source=once(source,'audioPhase:Ob?"recording":"idle",error:ib',

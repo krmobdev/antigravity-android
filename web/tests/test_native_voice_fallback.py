@@ -48,21 +48,23 @@ assert.equal(scope.agyNativeMicStart({name:'UnknownError'},done,fail,()=>false),
         result=subprocess.run(['node','-e',js],cwd=ROOT,capture_output=True,text=True,timeout=30)
         self.assertEqual(result.returncode,0,result.stderr)
 
-    def test_native_is_tried_before_get_user_media_on_android(self):
-        from pathlib import Path
-        source=(ROOT/"web/patch_mobile_composer.py").read_text()
-        self.assertIn('agyNativeMicStart({name:"NativePrimary"}', source)
-        self.assertIn("oe=(0,A.useMemo)(()=>Yf&&!agyNativeMicAvailable()?", source)
-        self.assertIn("error:ib,hasMicrophone:tb||agyNativeMicAvailable()", source)
-        self.assertNotIn("'isStreamingTranscriptionEnabled:Yf',", source)
-        self.assertIn("a?r(a):!agyNativeMicAvailable()&&navigator?.mediaDevices", source)
-        # When a native bridge is present, the Android path must return before
-        # reaching WebView's broken hardware capture.
-        start=source.index('agyNativeMicStart({name:"NativePrimary"}')
-        native_success=source.index('setAgyPending(false);return;',start)
-        browser=source.index('let y=x(await w(navigator.mediaDevices.getUserMedia',native_success)
-        self.assertLess(native_success,browser)
-        self.assertIn('ERR_NO_PERMISSION', (ROOT/"app/src/main/java/com/agy/bridge/NativeVoiceRecorder.java").read_text())
+    def test_original_voice_mode_selection_preserved(self):
+        import sys
+        sys.path.insert(0,str(ROOT/"web"))
+        from patch_mobile_composer import transform
+        upstream=(ROOT/"web/main.js").read_text()
+        result=transform(upstream)
+        # Original Core: streaming speech-to-text only when its API/flag is
+        # available. Otherwise button records a MediaSchema audio attachment.
+        original_switch="oe=(0,A.useMemo)(()=>Yf?"
+        self.assertEqual(upstream.count(original_switch),1)
+        self.assertEqual(result.count(original_switch),1)
+        self.assertIn("isStreamingTranscriptionEnabled:Yf",result)
+        self.assertNotIn("oe=(0,A.useMemo)(()=>Yf&&!agyNativeMicAvailable()?",result)
+        # The Android AAC recorder is ONLY a compatibility implementation of
+        # upstream's attachment branch, without forcing the attachment mode.
+        self.assertIn('agyNativeMicStart({name:"NativePrimary"}',result)
+        self.assertIn('ERR_NO_PERMISSION',(ROOT/"app/src/main/java/com/agy/bridge/NativeVoiceRecorder.java").read_text())
 
     def test_native_recorder_requires_user_and_token(self):
         bridge=(ROOT/'app/src/main/java/com/agy/bridge/AndroidBridge.java').read_text()
