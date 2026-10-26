@@ -27,7 +27,7 @@ const sheet=nodes(tree,h.ctx.AgyComposerSheet)[0];assert.ok(sheet);assert.equal(
 h=setup(true);let closed=0;tree=h.render("AgyComposerSheet",{items,onClose:()=>closed++});
 const buttons=nodes(tree,"button");
 assert.equal(buttons.length,3);assert.equal(buttons[1].children[1].children[0],"Фото и файлы");
-assert.equal(buttons[2].props.disabled,true);buttons[1].props.onClick();
+assert.equal(buttons[2].children[1].children[0],"Папка");assert.equal(buttons[2].props.disabled,true);buttons[1].props.onClick();
 assert.equal(closed,1);assert.equal(calls,1);
 tree.props.onCancel({preventDefault(){}});assert.equal(closed,2);
 h.pop();assert.equal(closed,3);h.cleanup();assert.equal(h.backCount,1);

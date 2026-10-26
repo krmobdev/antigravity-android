@@ -101,7 +101,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         require(text(notification(B,21002)).startsWith("Отменено"),"ANDROID_CANCEL_OUTCOME_FIFO");
         report("ANDROID_NOTIFICATION_FIXTURES","PASS_SYNTHETIC_NATIVE_EVENTS");
     }
-    private void captureComposer(){
+    private void captureComposer(String stage){
         if(!capture||!activity.hasWindowFocus())return;
         try{
             android.graphics.Bitmap full=getUiAutomation().takeScreenshot();
@@ -109,7 +109,7 @@ public final class MobileCandidateProbe extends Instrumentation {
             android.graphics.Bitmap small=android.graphics.Bitmap.createScaledBitmap(full,480,Math.round(full.getHeight()*480f/full.getWidth()),true);
             java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();small.compress(android.graphics.Bitmap.CompressFormat.JPEG,78,bytes);
             String data=android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP);
-            for(int i=0,part=0;i<data.length();i+=8000,part++)report("SCREENSHOT_PART_"+part,data.substring(i,Math.min(data.length(),i+8000)));
+            for(int i=0,part=0;i<data.length();i+=8000,part++)report("SCREENSHOT_"+stage+"_PART_"+part,data.substring(i,Math.min(data.length(),i+8000)));
             small.recycle();if(small!=full)full.recycle();
         }catch(Exception e){report("SCREENSHOT","UNAVAILABLE");}
     }
@@ -121,7 +121,6 @@ public final class MobileCandidateProbe extends Instrumentation {
             if(!info.optBoolean("ready")){report("ANDROID_MOBILE_UI","PENDING_ONBOARDING_OR_AUTH");return;}
         }
         require(activity.hasWindowFocus(),"ANDROID_DEV_WINDOW_FOCUS");
-        captureComposer();
         info=state("const p=document.querySelector('.agy-composer'),b=[...p.querySelectorAll('button')].map(x=>x.getBoundingClientRect()).filter(r=>r.width&&r.height);return JSON.stringify({controls:b.length>0&&b.every(r=>r.width>=47.5&&r.height>=47.5),multiline:parseFloat(getComputedStyle(p.querySelector('[contenteditable=true]')).minHeight)>=36&&parseFloat(getComputedStyle(p.querySelector('[contenteditable=true]')).minHeight)<=48});");
         require(info.optBoolean("controls"),"ANDROID_48DP_CONTROLS");
         require(info.optBoolean("multiline"),"ANDROID_MULTILINE_SURFACE");
@@ -148,10 +147,16 @@ public final class MobileCandidateProbe extends Instrumentation {
         state("document.querySelector('.agy-composer-add').click();return '{}';");
         info=waitState("return JSON.stringify({ready:!!document.querySelector('dialog.agy-composer-sheet[open]')});","ready");
         require(info.optBoolean("ready"),"ANDROID_PLUS_SHEET");
+        SystemClock.sleep(500);captureComposer("SHEET");
+        info=state("return JSON.stringify({count:document.querySelectorAll('.agy-composer-extra-controls button,.agy-composer-extra-controls [role=button]').length});");
+        report("ANDROID_EXTRA_SETTINGS_CONTROLS",info.optInt("count"));
+        info=state("const e=document.querySelector('.agy-composer-extra-controls'),body=e?.lastElementChild;const empty=!body||!body.textContent.trim()&&!body.querySelector('button,input,[role=button]');return JSON.stringify({ok:!empty||!e||getComputedStyle(e).display==='none'});");
+        require(info.optBoolean("ok"),"ANDROID_NO_EMPTY_SETTINGS_SECTION");
         sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(500);
         info=state("return JSON.stringify({closed:!document.querySelector('dialog.agy-composer-sheet[open]')});");
         require(info.optBoolean("closed"),"ANDROID_BACK_CLOSES_SHEET");
         report("ANDROID_MOBILE_UI","PASS_LOCAL_FIXTURES_NO_SEND");
+        SystemClock.sleep(800);captureComposer("COMPOSER");
     }
     @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));start();}
     @Override public void onStart(){

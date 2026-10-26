@@ -11,6 +11,9 @@ function useAgyMobileLayout(){
 function AgyComposerModelControl({primary,desktop}){
   return useAgyMobileLayout()?A.createElement("div",{className:"agy-composer-model-control"},primary):desktop;
 }
+function agyComposerActionLabel(label){
+  return ({Media:"Фото и файлы",Folder:"Папка",Mentions:"Упоминания",Actions:"Действия",Browser:"Браузер","Screen Recording":"Запись экрана"})[label]||label;
+}
 function AgyComposerSheet({items,onClose,extraControls}){
   const dialog=A.useRef(null);
   A.useEffect(()=>{
@@ -36,7 +39,7 @@ function AgyComposerSheet({items,onClose,extraControls}){
       group.map(item=>A.createElement("button",{type:"button",key:item.label,disabled:item.disabled,
         className:"agy-composer-action",onClick:()=>{onClose();item.onClick();}},
         A.createElement(item.icon,{width:24,height:24,"aria-hidden":true}),
-        A.createElement("span",null,item.label==="Media"?"Фото и файлы":item.label))))),
+        A.createElement("span",null,agyComposerActionLabel(item.label)))))),
     extraControls&&A.createElement("section",{className:"agy-composer-extra-controls"},
       A.createElement("div",{className:"agy-composer-settings-label"},"Настройки чата"),extraControls));
 }

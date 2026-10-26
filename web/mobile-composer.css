@@ -10,8 +10,8 @@
  .agy-composer-footer>div:last-child{flex:0 0 auto;gap:4px}
  .agy-composer-model-control{display:flex;flex:1;min-width:0;align-items:center;justify-content:flex-end}
  .agy-composer-model-control>*{min-width:0;max-width:100%}
- .agy-composer-model-control button{max-width:100%;min-width:48px;padding-left:6px;padding-right:6px;border-radius:12px}
- .agy-composer-model-control button span,.agy-composer-model-control button>div{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .agy-composer-model-control button{color:var(--color-foreground);font-size:13px;max-width:100%;min-width:48px;padding-left:6px;padding-right:6px;border-radius:12px}
+ .agy-composer-model-control button span,.agy-composer-model-control button>div{color:inherit;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .agy-composer-footer [data-testid=send-button]{width:48px;height:48px;border-radius:50%}
  .agy-composer-add{width:48px;height:48px;padding:0;border:0;border-radius:12px;background:transparent;font-size:28px;line-height:1}
 }
@@ -26,3 +26,5 @@
 .agy-composer-settings-label{font-size:12px;opacity:.7;margin:0 8px 8px}
 .agy-composer-extra-controls>div:last-child{display:flex;flex-wrap:wrap;gap:8px}
 .agy-composer-action:focus-visible,.agy-composer-sheet button:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
+
+.agy-composer-extra-controls:not(:has(button,input,select,[role=button],[role=combobox],span:not(:empty))){display:none}
