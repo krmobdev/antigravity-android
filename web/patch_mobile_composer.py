@@ -161,10 +161,32 @@ def transform(source):
         'sideQuestionControl:y,permissionsSelector:v??(!Ea?A.createElement(AgyMobilePermissions,{conversationId:O,dropdownPlacement:B}):null)}')
     source=once(source,'},ha,A.createElement(DYb,',
         '},A.createElement(AgyDesktopPermissions,{control:ha}),A.createElement(DYb,')
+    source=once(source,'var ECb=A.createContext(!1),G_=({title:',
+        'var ECb=A.createContext(!1),agyOriginalSettingsPage=({title:')
+    source=once(source,'e=aj("w-full bg-transparent",e?"h-full overflow-y-auto":"");',
+        'e=aj("agy-settings-page w-full bg-transparent",e?"h-full overflow-y-auto":"");')
+    source=once(source,'className:`${h?"":"py-2 px-3"} w-full bg-transparent flex justify-between gap-4',
+        'className:`agy-settings-row ${h?"":"py-2 px-3"} w-full bg-transparent flex justify-between gap-4')
+    source=once(source,'children:n}){var q=rK(),[r,t]=A.useState(!!f)',
+        'children:n}){var agySettings=A.useContext(agySettingsContext),agySelectId=A.useId();h=agySettings?false:h;var q=rK(),[r,t]=A.useState(!!f)')
+    source=once(source,'D=A.useCallback(G=>{y||x(G);c?.(G)},[y,c])',
+        'D=A.useCallback(G=>{if(k)return;y||x(G);c?.(G)},[y,c,k])')
+    source=once(source,'setOpen:C,isMobile:q,nativeOnMobile:h,\nopen:v',
+        'setOpen:C,isMobile:q,nativeOnMobile:h,settings:agySettings,disabled:k,listId:agySelectId,\nopen:v')
+    source=once(source,'[C,q,h,v,B,D,F,l,m]);return q&&h?',
+        '[C,q,h,v,B,D,F,l,m,k,agySettings,agySelectId]);return q&&h?')
+    source=once(source,'return A.cloneElement(g,{onClick:h=>{g.props.onClick?.(h);\ne.setOpen(!0)}})',
+        'return A.cloneElement(g,{disabled:e.disabled||g.props.disabled,className:aj(g.props.className,e.settings&&"agy-settings-select-trigger"),"aria-haspopup":e.settings?"listbox":g.props["aria-haspopup"],"aria-expanded":e.open,"aria-controls":e.settings?e.listId:void 0,onClick:h=>{if(e.disabled||g.props.disabled)return;g.props.onClick?.(h);e.setOpen(!0)}})')
+    source=once(source,'return A.createElement("button",{type:"button",onClick:()=>{e.setOpen(!0)},className:aj("flex w-full cursor-pointer items-center rounded-lg border border-border bg-background px-4 py-2.5 text-left text-foreground shadow-sm",c)},b)',
+        'return A.createElement("button",{type:"button",disabled:e.disabled,"aria-haspopup":e.settings?"listbox":void 0,"aria-expanded":e.open,"aria-controls":e.settings?e.listId:void 0,"aria-labelledby":e.ariaLabelledBy,"aria-describedby":e.ariaDescribedBy,onClick:()=>{if(!e.disabled)e.setOpen(!0)},className:aj("flex w-full cursor-pointer items-center rounded-lg border border-border bg-background px-4 py-2.5 text-left text-foreground shadow-sm",e.settings&&"agy-settings-select-trigger",c)},b)')
+    source=once(source,'A.createElement(EK,{open:k.open,onOpenChange:k.setOpen,maxHeight:"85dvh"},\nA.createElement("div",{className:"flex flex-col gap-px overflow-y-auto overscroll-contain p-1",style:{maxHeight:"80dvh"}},a))',
+        'A.createElement(EK,{open:k.open,onOpenChange:k.setOpen,maxHeight:"85dvh",className:k.settings?"agy-settings-select-sheet":void 0},k.settings&&A.createElement(AgySettingsSelectHeader,{onClose:()=>k.setOpen(false)}),A.createElement("div",{id:k.settings?k.listId:void 0,role:k.settings?"listbox":void 0,onKeyDown:k.settings?agySettingsListKeyDown:void 0,"aria-labelledby":k.ariaLabelledBy,"aria-label":k.ariaLabelledBy?void 0:"Выберите значение",className:"flex flex-col gap-px overflow-y-auto overscroll-contain p-1",style:{maxHeight:"70dvh"}},a))')
+    source=once(source,'m=n.value===a,A.createElement("button",{type:"button",disabled:f,onClick:q=>{l?.(q);e?.();n.onValueChange(a);n.setOpen(!1)}',
+        'm=n.value===a,A.createElement("button",{type:"button",role:n.settings?"option":void 0,"aria-selected":n.settings?m:void 0,"data-agy-select-option":n.settings?a:void 0,disabled:f||n.disabled,onClick:q=>{if(f||n.disabled)return;l?.(q);e?.();n.onValueChange(a);n.setOpen(!1)}')
     source=once(source,"var zYb=({items:a,dropdownPlacement:b,onOpenChange:c})",
                 "var agyOriginalContextMenu=({items:a,dropdownPlacement:b,onOpenChange:c})")
     source=once(source,";const AYb=()=>Promise.resolve(p(kia));",
-                ";"+MARKER+"\n"+(ROOT/"src/mobile/composer.js").read_text()+"\nconst AYb=()=>Promise.resolve(p(kia));")
+                ";"+MARKER+"\n"+(ROOT/"src/mobile/composer.js").read_text()+"\n"+(ROOT/"src/mobile/settings.js").read_text()+"\nconst AYb=()=>Promise.resolve(p(kia));")
     source=once(source,'className:"flex flex-col w-full shrink-0",style:Ja?',
                 'className:"agy-composer flex flex-col w-full shrink-0",style:Ja?')
     source=once(source,'ref:Us,className:"relative flex flex-col gap-0 p-1 rounded-',

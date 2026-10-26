@@ -29,6 +29,8 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean capture;
     private boolean backMode;
     private boolean toolbarMode;
+    private boolean polishMode;
+    private boolean surfacesMode;
     private boolean micMode;
     private boolean micUiMode;
     private boolean micPcmUiMode;
@@ -128,8 +130,98 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
+    private void greySurfaces()throws Exception{
+        require(activity.hasWindowFocus(),"GREY_DEV_WINDOW_FOCUSED");
+        closeOwnedSheets();SystemClock.sleep(500);captureRegion(".agy-composer-footer","GREY_TOOLBAR");
+        JSONObject info=state("const e=document.querySelector('[data-testid=model-selector-trigger]'),c=e&&getComputedStyle(e).backgroundColor;return JSON.stringify({colored:!!c&&c!=='rgb(0, 0, 0)'&&c!=='rgba(0, 0, 0, 0)'});");
+        require(info.optBoolean("colored"),"GREY_MODEL_SURFACE");
+        state("document.querySelector('.agy-composer-add')?.click();return '{}';");SystemClock.sleep(550);
+        captureRegion("dialog.agy-composer-sheet","GREY_ADD");
+        state("window.__AGY_CLOSE_MOBILE_OVERLAY__?.();return '{}';");SystemClock.sleep(450);
+        openAppearance();SystemClock.sleep(500);captureRegion(".agy-settings-page","SETTINGS_DARK");
+        closeOwnedSheets();report("ANDROID_GREY_SURFACES","PASS_TARGET_FOCUS_NO_SETTING_CHANGE");
+    }
+    private void closeOwnedSheets()throws Exception{
+        for(int i=0;i<8;i++){
+            JSONObject info=state("const d=document.querySelector('dialog[open]');return JSON.stringify({open:!!d||[...document.querySelectorAll('[data-testid=bottom-sheet]')].some(e=>!e.closest('[aria-hidden=true]')&&getComputedStyle(e).visibility!=='hidden'&&e.getBoundingClientRect().height>0)});");
+            if(!info.optBoolean("open"))return;
+            state("window.__AGY_CLOSE_MOBILE_OVERLAY__?.();return '{}';");SystemClock.sleep(450);
+        }
+    }
+    private void openAppearance()throws Exception{
+        closeOwnedSheets();
+        JSONObject info=state("const b=[...document.querySelectorAll('button')].find(e=>e.getBoundingClientRect().width>0&&!e.closest('[inert]')&&/^settings$/i.test((e.getAttribute('aria-label')||e.title||e.textContent).trim()));b?.click();return JSON.stringify({available:!!b});");
+        require(info.optBoolean("available"),"POLISH_SETTINGS_TRIGGER");SystemClock.sleep(450);
+        state("document.querySelector('[data-testid=\"settings-nav-item-Appearance\"]')?.click();return '{}';");
+        info=waitState("return JSON.stringify({ready:!!document.querySelector('.agy-settings-page .agy-settings-select-trigger')});","ready");
+        require(info.optBoolean("ready"),"POLISH_APPEARANCE_PRESENT");
+    }
+    private void settingsPolish()throws Exception{
+        Object manager=field(activity,"themeManager");
+        int nativeMode=(Integer)manager.getClass().getMethod("mode").invoke(manager);
+        Class<?> colors=Class.forName("com.agy.theme.ThemeColors",true,target.getClassLoader());
+        int dark=colors.getField("MODE_DARK").getInt(null),light=colors.getField("MODE_LIGHT").getInt(null);
+        String originalNative=nativeMode==dark?"dark":nativeMode==light?"light":"system";
+        state("window.__agyPolishDraft=JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(x=>x.textContent));window.__agyPolishSection=t=>[...document.querySelectorAll('.agy-settings-page .space-y-2')].find(e=>e.querySelector('h3')?.textContent===t);window.__agyPolishThemeRow=()=>[...document.querySelectorAll('.agy-settings-row')].find(e=>e.querySelector('span')?.textContent==='Theme');window.__agyPolishOption=t=>[...document.querySelectorAll('.agy-settings-select-sheet [role=option]')].find(e=>e.querySelector('div span')?.textContent===t);return '{}';");
+        try{
+            closeOwnedSheets();
+            SystemClock.sleep(450);captureRegion(".agy-composer-footer","GREY_TOOLBAR");
+            state("document.querySelector('.agy-composer-add')?.click();return '{}';");SystemClock.sleep(500);
+            captureRegion("dialog.agy-composer-sheet","GREY_ADD");
+            state("window.__AGY_CLOSE_MOBILE_OVERLAY__?.();return '{}';");SystemClock.sleep(450);
+            openAppearance();
+            JSONObject info=state("const row=window.__agyPolishThemeRow(),buttons=[...(row?.querySelectorAll('button')||[])],active=buttons.find(e=>e.hasAttribute('data-pressed')||e.getAttribute('aria-pressed')==='true');window.__agyPolishThemeLabel=active?.getAttribute('aria-label');window.__agyPolishPresetStorage={light:localStorage.getItem('theme-preset-light'),dark:localStorage.getItem('theme-preset-dark')};return JSON.stringify({theme:!!active,painted:buttons.map(e=>{const c=getComputedStyle(e);return e.getBoundingClientRect().height-parseFloat(c.borderTopWidth)-parseFloat(c.borderBottomWidth)}),touch:buttons.every(e=>e.getBoundingClientRect().height>=47.5),switches:[...document.querySelectorAll('.agy-settings-page [role=switch]')].every(e=>{const r=e.getBoundingClientRect();return r.width>=36&&r.width<=52&&r.height<=28&&r.width>r.height*1.5})});");
+            require(info.optBoolean("theme"),"POLISH_THEME_STATE_READABLE");
+            require(info.optBoolean("touch")&&info.optBoolean("switches"),"POLISH_TOUCH_AND_SWITCH_GEOMETRY");
+            org.json.JSONArray heights=info.getJSONArray("painted");boolean compact=heights.length()>0;
+            for(int i=0;i<heights.length();i++)compact&=heights.getDouble(i)>=37&&heights.getDouble(i)<=40;
+            require(compact,"POLISH_SETTINGS_PAINTED_HEIGHT_MINUS_20_PERCENT");
+            for(String mode:new String[]{"Dark","Light"}){
+                state("window.__agyPolishThemeRow()?.querySelector('[aria-label=\""+mode+"\"]')?.click();return '{}';");SystemClock.sleep(900);
+                info=state("const e=window.__agyPolishSection("+JSONObject.quote(mode+" Theme")+");return JSON.stringify({ready:!!e});");
+                require(info.optBoolean("ready"),"POLISH_"+mode+"_THEME_APPLIED");
+                SystemClock.sleep(300);captureRegion(".agy-settings-page","SETTINGS_"+mode.toUpperCase());
+                state("window.__agyPolishSection("+JSONObject.quote(mode+" Theme")+")?.querySelector('.agy-settings-select-trigger')?.click();return '{}';");
+                info=waitState("return JSON.stringify({ready:!!document.querySelector('.agy-settings-select-sheet [role=listbox]'),native:[...document.querySelectorAll('.agy-settings-page select')].some(e=>e.getBoundingClientRect().width>0),selected:document.querySelectorAll('.agy-settings-select-sheet [role=option][aria-selected=true]').length});","ready");
+                require(info.optBoolean("ready")&&!info.optBoolean("native")&&info.optInt("selected")==1,"POLISH_"+mode+"_THEMED_DROPDOWN");
+                SystemClock.sleep(400);captureRegion(".agy-settings-select-sheet","SELECT_"+mode.toUpperCase());
+                sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(600);
+                require(stockSheets().optInt("visible")==1,"POLISH_"+mode+"_SELECT_BACK_ONE_LEVEL");
+            }
+            // Exercise a real preset only when current colors match that preset.
+            state("window.__agyPolishThemeRow()?.querySelector('[aria-label=Dark]')?.click();return '{}';");SystemClock.sleep(850);
+            info=state("const section=window.__agyPolishSection('Dark Theme'),row=section?.querySelector('.agy-settings-row'),b=row?.querySelector('.agy-settings-select-trigger');const clone=b?.cloneNode(true);clone?.querySelectorAll('.google-symbols,svg,[data-icon]').forEach(e=>e.remove());window.__agyPolishPreset=clone?.textContent.trim();window.__agyPolishColors=[...(section?.querySelectorAll('input[type=text]')||[])].map(e=>e.value.toLowerCase());return JSON.stringify({safe:!!b&&row.querySelectorAll('button').length===1});");
+            if(info.optBoolean("safe")){
+                state("window.__agyPolishSection('Dark Theme').querySelector('.agy-settings-select-trigger').click();return '{}';");SystemClock.sleep(450);
+                info=state("return JSON.stringify({available:!!window.__agyPolishOption(window.__agyPolishPreset)&&!!window.__agyPolishOption('Catppuccin')});");
+                require(info.optBoolean("available"),"POLISH_ORIGINAL_PRESET_RESTORABLE");
+                state("window.__agyPolishOption('Catppuccin').click();return '{}';");SystemClock.sleep(850);
+                info=state("return JSON.stringify({saved:localStorage.getItem('theme-preset-dark')==='Catppuccin'});");
+                require(info.optBoolean("saved"),"POLISH_REAL_PRESET_SELECTION_SAVED");
+                captureRegion(".agy-settings-page","SETTINGS_CUSTOM");
+                state("window.__agyPolishSection('Dark Theme').querySelector('.agy-settings-select-trigger').click();return '{}';");SystemClock.sleep(450);
+                state("window.__agyPolishOption(window.__agyPolishPreset)?.click();return '{}';");SystemClock.sleep(850);
+                info=state("return JSON.stringify({same:JSON.stringify(window.__agyPolishColors)===JSON.stringify([...window.__agyPolishSection('Dark Theme').querySelectorAll('input[type=text]')].map(e=>e.value.toLowerCase()))});");
+                require(info.optBoolean("same"),"POLISH_ORIGINAL_COLORS_RESTORED");
+            }else report("POLISH_REAL_PRESET_SELECTION","PENDING_CUSTOM_COLOR_OVERRIDES_PRESERVED");
+            report("ANDROID_SETTINGS_POLISH","PASS_REAL_LIGHT_DARK_LISTS_GEOMETRY");
+        }finally{
+            try{
+                state("if(window.__agyPolishPreset&&window.__agyPolishSection('Dark Theme')){const label=window.__agyPolishPreset;const option=window.__agyPolishOption(label);if(option)option.click();}return '{}';");
+                closeOwnedSheets();openAppearance();
+                state("const label=window.__agyPolishThemeLabel;if(label)window.__agyPolishThemeRow()?.querySelector('[aria-label='+JSON.stringify(label)+']')?.click();return '{}';");SystemClock.sleep(850);
+                state("const saved=window.__agyPolishPresetStorage;if(saved)for(const mode of ['light','dark']){const value=saved[mode];if(value===null)localStorage.removeItem('theme-preset-'+mode);else localStorage.setItem('theme-preset-'+mode,value);}return '{}';");
+                manager.getClass().getMethod("setTheme",String.class).invoke(manager,originalNative);
+                closeOwnedSheets();
+                JSONObject same=state("return JSON.stringify({same:window.__agyPolishDraft===JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(e=>e.textContent))});");
+                require(same.optBoolean("same"),"POLISH_DRAFT_PRESERVED");
+            }catch(Exception restore){report("POLISH_RESTORE","FAIL_"+restore.getClass().getSimpleName());throw restore;}
+        }
+    }
     private void captureRegion(String selector,String tag)throws Exception{
         if(!capture)return;
+        android.view.accessibility.AccessibilityNodeInfo focused=getUiAutomation().getRootInActiveWindow();
+        if(!activity.hasWindowFocus()||focused==null||!target.getPackageName().contentEquals(focused.getPackageName())){report("CAPTURE_"+tag,"PENDING_TARGET_NOT_FOCUSED");return;}
         JSONObject rect=state("const e=document.querySelector("+JSONObject.quote(selector)+"),r=e?.getBoundingClientRect();return JSON.stringify({ok:!!r,x:r?.left,y:r?.top,w:r?.width,h:r?.height,vw:innerWidth});");
         if(!rect.optBoolean("ok"))return;
         int[] location=new int[2];runOnMainSync(()->web.getLocationOnScreen(location));
@@ -458,7 +550,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -481,6 +573,8 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(surfacesMode){greySurfaces();ok=true;return;}
+            if(polishMode){settingsPolish();ok=true;return;}
             if(toolbarMode){compactToolbar();ok=true;return;}
             if(backMode){progressiveBack();ok=true;return;}
             if(micMode){microphoneCapabilities();ok=true;return;}

@@ -30,3 +30,15 @@ Compact controls mode: -e mode toolbar. Checks real permissions/model menus,
 48px geometry, ordering, a single permission selector, Back and unchanged current
 mode/draft. No preset is changed by this probe. With -e capture yes, exports
 cropped toolbar and permissions-menu regions only; no prompt or chat screenshot.
+
+
+Settings polish mode: -e mode polish. Exercises actual Light/Dark settings,
+themed preset lists, selected option, one-level Back, painted 20% reduction
+with retained 48px targets, and switch geometry. Preset selection is exercised
+only if no custom color overrides would be lost; original colors/preset/theme
+are restored in finally. Optional captures contain only toolbar/Add/settings
+regions. No audio, model request or permission preset is changed.
+
+Grey surfaces mode: -e mode surfaces. Checks the model grey surface and opens
+Add/Appearance without changing settings. Captures require both Activity focus
+and the target package active in UiAutomation; otherwise report PENDING.

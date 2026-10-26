@@ -178,3 +178,34 @@
 @media (max-width:380px){
  .agy-composer .agy-model-effort-label{display:none}
 }
+
+/* Grey controls adapt to light/dark/custom palettes. */
+@media (max-width:720px),(pointer:coarse){
+ :root{--agy-control-surface:var(--color-secondary,#444);--agy-mobile-icon:var(--agy-control-surface)}
+ @supports (background:color-mix(in srgb,#000,#fff)){
+  :root{--agy-control-surface:color-mix(in srgb,var(--color-secondary,var(--color-background)) 84%,var(--color-foreground) 16%)}
+ }
+ .agy-composer .agy-composer-model-control button[data-testid=model-selector-trigger],
+ .agy-composer button[data-testid=send-button]:disabled,
+ .agy-composer-sheet .agy-composer-action-icon{background:var(--agy-control-surface)!important}
+ /* Keep 48px targets; the painted settings button is 38.4px (20% shorter). */
+ .agy-settings-page .agy-settings-row{padding-top:4px;padding-bottom:4px;gap:12px}
+ .agy-settings-page .agy-settings-row button:not([role=switch]),
+ .agy-settings-page .agy-settings-select-trigger{
+  box-sizing:border-box;min-height:48px;height:48px;
+  border-top:4.8px solid transparent!important;border-bottom:4.8px solid transparent!important;
+  background-clip:padding-box!important;border-radius:16px;padding-top:0!important;padding-bottom:0!important
+ }
+ .agy-settings-page .agy-settings-select-trigger{
+  background-color:var(--agy-control-surface)!important;max-width:100%;font-size:14px
+ }
+ .agy-settings-select-sheet{padding:0 12px max(12px,env(safe-area-inset-bottom))!important}
+ .agy-settings-select-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px}
+ .agy-settings-select-header strong{font-size:16px;font-weight:600}
+ .agy-settings-select-header button{min-width:48px;min-height:48px;border-radius:50%}
+ .agy-settings-select-sheet [role=listbox]{padding:4px!important;gap:4px!important;overscroll-behavior:contain}
+ .agy-settings-select-sheet [role=option]{min-height:48px;padding:10px 12px!important;border-radius:14px;font-size:15px}
+ .agy-settings-select-sheet [role=option][aria-selected=true]{background:var(--agy-control-surface);color:var(--color-foreground);font-weight:600}
+ .agy-settings-select-sheet [role=option]:disabled{opacity:.4}
+ .agy-settings-select-sheet [role=option]:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
+}

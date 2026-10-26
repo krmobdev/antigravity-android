@@ -296,3 +296,16 @@ The model trigger remains the original button with its original open/focus and
 accessible full model/effort name. Only its visible mobile label drops redundant
 Gemini/Claude brand prefixes; unknown/custom names remain intact and truncate.
 Menus retain full names and effort choices. Voice, Send/Stop and Back unchanged.
+
+
+### Settings and neutral control surfaces
+
+Mobile model/disabled-Send buttons and Add-menu icon discs use a grey surface
+mixed from the existing palette. Enabled Send retains the active theme accent.
+Settings buttons keep 48px targets with a 38.4px painted surface (20% shorter);
+switch tracks retain their original dimensions. The settings page provides a
+scoped context selecting Core's existing themed mobile select instead of the
+Android system picker. Core values, options, callbacks and persistence remain.
+Disabled controls/options, selected option semantics, Back, and custom presets
+are preserved. Outside Settings and on desktop the native/custom select choice
+is unchanged. No replacement settings store or new animation system is added.
