@@ -95,6 +95,7 @@ public class MainActivity extends Activity
     }
 
     private ValueCallback<Uri[]> filePathCallback;
+    private com.agy.ui.webview.WebAudioPermission webAudioPermission;
 
     private ThemeManager themeManager;
     private OAuthManager oauthManager;
@@ -191,6 +192,7 @@ public class MainActivity extends Activity
         shizukuBridge = new ShizukuBridge(this);
         androidBridge = new AndroidBridge(this, runtimeManager, shizukuBridge, themeManager);
         androidBridge.setActivity(this);
+        webAudioPermission = new com.agy.ui.webview.WebAudioPermission(this);
         webViewHost = new WebViewHost(this, themeManager, oauthManager, androidBridge, this);
         webViewHost.setListener(this);
 
@@ -327,6 +329,7 @@ public class MainActivity extends Activity
     @Override
     protected void onDestroy() {
         activityResumed = false;
+        if (webAudioPermission != null) webAudioPermission.destroy();
         if (filePathCallback != null) {
             filePathCallback.onReceiveValue(null);
             filePathCallback = null;
@@ -459,6 +462,13 @@ public class MainActivity extends Activity
 
     private void navigateBackNormally(WebView web) {
         if (!BackNavigator.handle(web)) super.onBackPressed();
+    }
+
+    @Override public void onAudioPermissionRequest(android.webkit.PermissionRequest request) {
+        webAudioPermission.request(request);
+    }
+    @Override public void onAudioPermissionCanceled(android.webkit.PermissionRequest request) {
+        webAudioPermission.cancel(request);
     }
 
     private void requestStoragePermissions() {
@@ -644,6 +654,7 @@ public class MainActivity extends Activity
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (webAudioPermission != null) webAudioPermission.result(requestCode, grantResults);
         if (requestCode == com.agy.ui.download.FileDownloader.REQUEST_STORAGE_DOWNLOAD) {
             WebView wv = (webViewHost != null) ? webViewHost.getWebView() : null;
             com.agy.ui.download.FileDownloader.onPermissionResult(this, wv, requestCode, grantResults);

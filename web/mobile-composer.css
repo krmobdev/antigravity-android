@@ -28,3 +28,29 @@
 .agy-composer-action:focus-visible,.agy-composer-sheet button:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
 
 .agy-composer-extra-controls:not(:has(button,input,select,[role=button],[role=combobox],span:not(:empty))){display:none}
+
+/* Shared mobile surface for +, model, effort and usage; colors follow presets. */
+@media (max-width:720px),(pointer:coarse){
+ :root{--agy-mobile-surface:var(--color-secondary,var(--color-card));--agy-mobile-icon:var(--color-muted,var(--color-card))}
+ .agy-composer-sheet,[data-testid=bottom-sheet]{
+  background:var(--agy-mobile-surface)!important;color:var(--color-foreground)!important;
+  border:0!important;border-radius:28px 28px 0 0!important;box-shadow:0 -8px 32px #0002;
+ }
+ .agy-composer-sheet{padding:12px max(16px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+ .agy-composer-sheet header{padding:0 0 4px 8px}
+ .agy-composer-sheet header strong{font-size:16px;font-weight:600}
+ .agy-composer-action{min-height:64px;gap:16px;padding:8px;border-radius:18px;font-size:16px;font-weight:500}
+ .agy-composer-action-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:50%;background:var(--agy-mobile-icon)}
+ .agy-composer-action:active,[data-testid=bottom-sheet] [role=menuitem]:active{background:var(--agy-mobile-icon)}
+ [data-testid=bottom-sheet-grabber]{width:36px!important;height:4px!important;background:var(--color-muted-foreground)!important;opacity:.4}
+ [data-testid=bottom-sheet] button,[data-testid=bottom-sheet] [role=menuitem],[data-testid=model-selector-item],[data-testid=model-selector-effort-option]{
+  min-height:48px;touch-action:manipulation;font-size:15px;line-height:22px;border-radius:14px;
+ }
+ [data-testid=bottom-sheet] button{min-width:48px}
+ [data-testid=bottom-sheet] [data-testid=model-selector-panel]{max-height:65dvh}
+ [data-testid=model-selector-item],[data-testid=model-selector-effort-option]{padding:12px}
+ [data-testid=bottom-sheet] [data-highlighted]{background:var(--agy-mobile-icon)}
+ [data-testid=bottom-sheet] [data-disabled]{opacity:.45}
+ [data-testid=bottom-sheet] [role=separator]{margin:8px 12px;border-color:var(--color-border)}
+ .agy-composer-audio-error{padding:8px 10px;font-size:14px;line-height:20px;color:var(--color-foreground);background:var(--agy-mobile-icon);border-radius:14px}
+}

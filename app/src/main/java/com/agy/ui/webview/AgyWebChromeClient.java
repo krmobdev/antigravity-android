@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.os.Message;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -16,6 +17,8 @@ public final class AgyWebChromeClient extends WebChromeClient {
     private static final String TAG = "WebViewHost";
 
     public interface FileChooserCallback {
+        default void onAudioPermissionRequest(PermissionRequest request) { request.deny(); }
+        default void onAudioPermissionCanceled(PermissionRequest request) {}
         boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
                                   FileChooserParams fileChooserParams);
     }
@@ -30,6 +33,17 @@ public final class AgyWebChromeClient extends WebChromeClient {
 
     public AgyWebChromeClient(PopupWindowHandler popupHandler) {
         this(popupHandler, null);
+    }
+
+    @Override
+    public void onPermissionRequest(PermissionRequest request) {
+        if (fileChooserCallback != null) fileChooserCallback.onAudioPermissionRequest(request);
+        else request.deny();
+    }
+
+    @Override
+    public void onPermissionRequestCanceled(PermissionRequest request) {
+        if (fileChooserCallback != null) fileChooserCallback.onAudioPermissionCanceled(request);
     }
 
     @Override

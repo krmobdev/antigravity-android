@@ -14,6 +14,13 @@ def transform(source):
         if source.count(MARKER)!=1 or "var zYb=AgyMobileContextMenu;" not in source:
             raise ValueError("Incomplete composer integration")
         return source
+    # Legacy recorder swallowed its own errors by clearing state after setting it.
+    source=once(source,'catch(y){x(),f(gp(y)),q()}',
+                'catch(y){x(),q(),f(agyAudioError(y))}')
+    source=once(source,'g,oe.audioPhase==="recording"&&!Yf',
+                'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="recording"&&!Yf')
+    source=once(source,'"aria-label":a?"Stop recording":"Record voice memo"',
+                '"aria-label":a?"Остановить запись":"Записать голосовое сообщение"')
     source=once(source,"var zYb=({items:a,dropdownPlacement:b,onOpenChange:c})",
                 "var agyOriginalContextMenu=({items:a,dropdownPlacement:b,onOpenChange:c})")
     source=once(source,";const AYb=()=>Promise.resolve(p(kia));",

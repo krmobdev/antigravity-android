@@ -33,3 +33,6 @@ javac -cp "$ROOT/tools/android.jar" -d "$OUT" \
     "$ROOT/app/src/main/java/com/agy/gateway/GatewayAuthToken.java" \
     "$ROOT/app/tests/GatewayAuthTokenTest.java"
 java -cp "$OUT" com.agy.gateway.GatewayAuthTokenTest
+
+javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/ui/webview/WebAudioOrigin.java" "$ROOT/app/tests/WebAudioOriginTest.java"
+java -cp "$OUT" WebAudioOriginTest
