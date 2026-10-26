@@ -39,6 +39,12 @@ const denied=box.agyAudioError({name:'NotAllowedError'});
 assert.strictEqual(box.agyAudioError(denied),denied);
 const unsupported=box.agyAudioError({name:'NotSupportedError'});
 assert.strictEqual(box.agyAudioError(unsupported),unsupported);
+for(const original of [
+  'Не удалось начать запись через Android (ERR_NOT_FOREGROUND).',
+  'Не удалось начать запись через Android (ERR_NO_PERMISSION).',
+  'Не удалось завершить запись через Android (ERR_STOP_FAILED).'
+]) assert.strictEqual(box.agyAudioError(original),original);
+assert(!box.agyAudioError('secret=abc').includes('secret'));
 const unknown=box.agyAudioError({name:'InvalidStateError',message:'password=SECRET'});
 assert(unknown.includes('InvalidStateError'));
 assert(!unknown.includes('SECRET'));
@@ -57,7 +63,7 @@ assert(!unknown.includes('password'));
         self.assertIn('putLong(CACHE_PACKAGE_UPDATE, installedAt)', loader)
         self.assertIn('no-store, max-age=0, must-revalidate', server)
         self.assertIn('relPath.endsWith(".js")', server)
-        self.assertIn('2026-10-26-native-primary-v3', voice)
+        self.assertIn('2026-10-26-native-primary-v4', voice)
 
     def test_compact_attachments_are_scrollable_and_safe(self):
         css = (ROOT / "web/mobile-attachments.css").read_text()

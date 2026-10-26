@@ -68,6 +68,8 @@ assert.equal(scope.agyNativeMicStart({name:'UnknownError'},done,fail,()=>false),
         self.assertIn('hasWindowFocus()',native)
         self.assertIn('Manifest.permission.RECORD_AUDIO',native)
         self.assertIn('MAX_BYTES',native)
+        self.assertIn('readiness(Activity activity)',native)
+        self.assertIn('nativeVoiceReadiness(String token)',bridge)
         self.assertIn('if (file != null) file.delete()',native)
         self.assertIn('cancelNativeVoiceOnBackground()',activity)
 

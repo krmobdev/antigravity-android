@@ -139,6 +139,13 @@ public final class AndroidBridge {
      * to embedded frames. Only the trusted top-level page receives the token.
      * Each recording is started by an explicit microphone button interaction.
      */
+    /** Read-only check for QA; never starts recording or reveals private data. */
+    @JavascriptInterface
+    public String nativeVoiceReadiness(String token) {
+        return matchesNativeBridgeToken(token)
+                ? nativeVoiceRecorder.readiness(getActivity()) : "ERR_UNAUTHORIZED";
+    }
+
     @JavascriptInterface
     public String startNativeVoice(String token) {
         if (!matchesNativeBridgeToken(token)) return "ERR_UNAUTHORIZED";

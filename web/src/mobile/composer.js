@@ -1,4 +1,4 @@
-window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-native-primary-v3";
+window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-native-primary-v4";
 function agyAudioError(error){
   // Native recorder already stores a localized message. Reformatting it
   // used to erase the real reason and show the same generic error every time.
@@ -14,6 +14,11 @@ function agyAudioError(error){
   ];
   if(typeof error==="string" && known.includes(error)) return error;
   if(typeof error==="string" && error.startsWith("Не удалось начать запись на этапе ")) return error;
+  // Android's native microphone returns bounded error codes. Retain them
+  // across the outer UI formatter instead of disguising them as UnknownError.
+  if(typeof error==="string" &&
+    /^Не удалось (начать|завершить) запись через Android \(ERR_[A-Z_]{2,48}\)\.$/.test(error))
+    return error;
   const name=error?.name||"";
   if(name==="NotAllowedError"||name==="PermissionDeniedError")
     return "Нет доступа к микрофону. Разрешите запись звука в настройках приложения.";

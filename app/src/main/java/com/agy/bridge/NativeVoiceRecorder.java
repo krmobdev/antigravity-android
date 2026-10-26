@@ -31,12 +31,20 @@ public final class NativeVoiceRecorder {
         app = context.getApplicationContext();
     }
 
-    public synchronized String start(Activity activity) {
+    /** Read-only readiness probe. Does not acquire the microphone. */
+    public synchronized String readiness(Activity activity) {
         if (recorder != null) return "ERR_ALREADY_RECORDING";
-        if (activity == null || activity.isFinishing() || activity.isDestroyed()
-                || !activity.hasWindowFocus()) return "ERR_NOT_FOREGROUND";
+        if (activity == null) return "ERR_NO_ACTIVITY";
+        if (activity.isFinishing() || activity.isDestroyed()) return "ERR_ACTIVITY_FINISHING";
+        if (!activity.hasWindowFocus()) return "ERR_NOT_FOREGROUND";
         if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) return "ERR_NO_PERMISSION";
+        return "READY";
+    }
+
+    public synchronized String start(Activity activity) {
+        String ready = readiness(activity);
+        if (!"READY".equals(ready)) return ready;
         File file = null;
         MediaRecorder next = null;
         try {
