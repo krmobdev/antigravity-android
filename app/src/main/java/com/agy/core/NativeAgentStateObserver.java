@@ -36,15 +36,18 @@ public final class NativeAgentStateObserver {
     private final Context context;
     private final ExecutorService pool;
     private final Map<String, Watch> watches = new ConcurrentHashMap<>();
+    // Bounded per-conversation ordering watermarks survive stream reconnects.
+    private final Map<String, CoreAgentProgress> progress = new java.util.LinkedHashMap<>();
     private final Map<String, Long> recentNativeFinish = new ConcurrentHashMap<>();
     private final AgentNotifications notifications;
     private volatile boolean stopped = false;
 
     private static final class Watch {
         final String id;
+        final CoreAgentProgress progress;
         final AtomicBoolean cancelled = new AtomicBoolean(false);
         volatile NativeAgentStreamClient client;
-        Watch(String id) { this.id = id; }
+        Watch(String id, CoreAgentProgress progress) { this.id = id; this.progress = progress; }
         void cancel() {
             cancelled.set(true);
             NativeAgentStreamClient current = client;
@@ -94,9 +97,9 @@ public final class NativeAgentStateObserver {
             if (finishedAt != null && now >= finishedAt &&
                     now - finishedAt < RECENT_NATIVE_FINISH_MS) return;
             observer.watch(id);
-        } else if (status == AgentTaskTracker.IDLE && fullyIdle) {
-            observer.unwatch(id);
         }
+        // UI-first IDLE must not cancel the native subscription before its
+        // authoritative terminal outcome/error is delivered. Native owns teardown.
     }
 
     /** Synchronous, read-only cache query used by a fresh WebView after a deep link. */
@@ -135,7 +138,17 @@ public final class NativeAgentStateObserver {
                 }
             }
         }
-        Watch watch = new Watch(id);
+        CoreAgentProgress state = progress.get(id);
+        if (state == null) {
+            if (progress.size() >= 32) {
+                for (String key : new java.util.ArrayList<>(progress.keySet())) {
+                    if (!watches.containsKey(key)) { progress.remove(key); break; }
+                }
+            }
+            state = new CoreAgentProgress();
+            progress.put(id, state);
+        }
+        Watch watch = new Watch(id, state);
         watches.put(id, watch);
         persist();
         AgyDiagnostics.log(context, "native_observer", "watch id=" + shortId(id));
@@ -174,7 +187,12 @@ public final class NativeAgentStateObserver {
                 AgyDiagnostics.log(context, "native_observer",
                         "subscribe id=" + shortId(watch.id));
                 final int[] lastState = {-1};
-                client.subscribe(watch.id, (status, fullyIdle) -> {
+                client.subscribe(watch.id, event -> {
+                    if (stopped || watch.cancelled.get() || watches.get(watch.id) != watch) return false;
+                    CoreAgentProgress.Snapshot snapshot = watch.progress.accept(event);
+                    if (snapshot == null) return true;
+                    int status = snapshot.status;
+                    boolean fullyIdle = snapshot.fullyIdle;
                     int code = status * 10 + (fullyIdle ? 1 : 0);
                     if (lastState[0] != code) {
                         lastState[0] = code;
@@ -191,18 +209,18 @@ public final class NativeAgentStateObserver {
                         // Keep verified completion across Activity/WebView recreation.
                         // Clear only on authoritative native RUNNING, not UI replay.
                         setNativeFinished(watch.id, true);
-                        notifications.observeNative(watch.id, status, true, null);
+                        notifications.observeNative(watch.id, status, true, snapshot.stage, snapshot.outcome);
                         AgyDiagnostics.log(context, "native_observer",
                                 "finished id=" + shortId(watch.id));
                         unwatch(watch.id);
                         return false;
                     }
-                    if (status == AgentTaskTracker.RUNNING || status == AgentTaskTracker.BUSY) {
+                    if (status == AgentTaskTracker.RUNNING || status == AgentTaskTracker.BUSY || status == 3) {
                         if (wasRecentlyFinished(context, watch.id)) {
                             setNativeFinished(watch.id, false);
                             AgyDiagnostics.log(context, "native_observer", "new_run id=" + shortId(watch.id));
                         }
-                        notifications.observeNative(watch.id, status, false, null);
+                        notifications.observeNative(watch.id, status, false, snapshot.stage, snapshot.outcome);
                         return true;
                     }
                     return true;

@@ -178,3 +178,13 @@ graph TD
 - **Уязвимость `AppFileProvider` (ИСПРАВЛЕНО):** В `getFileForUri` добавлена проверка канонического пути (`file.getCanonicalPath()`) против разрешенных каталогов песочницы (`filesDir`, `cacheDir`, `dataDir`, `getExternalStorageDirectory()`, `getExternalFilesDir()`), защищающая от атак типа Path Traversal (`../`).
 
 PTY shells prefer executable prefix bash, runtime bash, then Android sh; no executable candidate fails explicitly. TERM is xterm-256color; TERMINFO uses the readable prefix database and stale inherited values are removed.
+
+Native agent progress uses Core's main trajectory step type and step-count
+watermarks per conversation, retained across subscription reconnects. Only a
+fixed public label allowlist reaches Android. Unknown steps are generic;
+run-command never implies tests. Progress updates coalesce to one per second
+per task on the existing tag/ID; terminal transitions cancel pending progress.
+Core errors/cancellation enrich the existing completion FIFO entry (persisted
+outcome) or update an already posted completion silently. UI IDLE no longer
+cancels the native observer before Core's terminal event. Channels, read/unread,
+Core running, navigation and FIFO timing remain independent.

@@ -11,14 +11,14 @@ public final class AgentTaskTrackerTest {
     private static void event(AgentTaskTracker t, String id, int status,
                               boolean fullyIdle, long clock, boolean nativeUpdate,
                               AgentTaskTracker.Event expected, String reason) {
-        expect(t.observe(id,status,fullyIdle,"Stage",clock,nativeUpdate).event,expected,reason);
+        expect(t.observe(id,status,fullyIdle,"Читает исходники",clock,nativeUpdate).event,expected,reason);
     }
     public static void main(String[] args) {
         AgentTaskTracker t = new AgentTaskTracker(5000);
         event(t,"x",1,true,1000,false,AgentTaskTracker.Event.NONE,"initial idle");
         event(t,"x",2,false,2000,false,AgentTaskTracker.Event.STARTED,"initial start");
         event(t,"x",2,false,2001,false,AgentTaskTracker.Event.NONE,"duplicate running");
-        expect(t.observe("x",4,false,"Different stage",8000).event,
+        expect(t.observe("x",4,false,"Изменяет файлы",8000).event,
                AgentTaskTracker.Event.PROGRESS,"progress");
         event(t,"x",1,false,8500,false,AgentTaskTracker.Event.NONE,"partial idle");
         event(t,"x",1,true,9000,true,AgentTaskTracker.Event.FINISHED,"native finish");

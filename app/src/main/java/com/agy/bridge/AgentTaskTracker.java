@@ -34,6 +34,7 @@ public final class AgentTaskTracker {
     private static final class Task {
         final long startedAt;
         String stage;
+        boolean nativeOwned;
         long updatedAt;
         Task(long startedAt, String stage) {
             this.startedAt = startedAt;
@@ -74,11 +75,12 @@ public final class AgentTaskTracker {
             }
             return new Change(Event.FINISHED, id, existing.stage, existing.startedAt);
         }
-        if (status != RUNNING && status != BUSY) {
+        if (status != RUNNING && status != BUSY && status != 3) {
             return new Change(Event.NONE, id, "", 0);
         }
 
-        String stage = sanitize(rawStage);
+        String stage = com.agy.core.CoreAgentProgress.publicStage(rawStage);
+        if (existing != null && existing.nativeOwned && !nativeSource) stage = existing.stage;
         if (existing == null) {
             Long lastFinish = recentlyFinished.get(id);
             if (!nativeSource && lastFinish != null && nowMs >= lastFinish &&
@@ -92,10 +94,13 @@ public final class AgentTaskTracker {
                 return new Change(Event.NONE, id, "", 0);
             }
             recentlyFinished.remove(id);
-            running.put(id, new Task(nowMs, stage));
+            Task task = new Task(nowMs, stage);
+            task.nativeOwned = nativeSource;
+            running.put(id, task);
             return new Change(Event.STARTED, id, stage, nowMs);
         }
 
+        if (nativeSource) existing.nativeOwned = true;
         if (!stage.equals(existing.stage) && nowMs - existing.updatedAt >= minUpdateMs) {
             existing.stage = stage;
             existing.updatedAt = nowMs;
@@ -104,15 +109,4 @@ public final class AgentTaskTracker {
         return new Change(Event.NONE, id, existing.stage, existing.startedAt);
     }
 
-    private static String sanitize(String s) {
-        if (s == null || s.trim().isEmpty()) return "Агент выполняет задачу";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length() && sb.length() < 120; i++) {
-            char ch = s.charAt(i);
-            if (ch >= 32 && ch != 127) sb.append(ch);
-            else sb.append(' ');
-        }
-        String result = sb.toString().trim();
-        return result.isEmpty() ? "Агент выполняет задачу" : result;
-    }
 }

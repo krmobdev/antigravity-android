@@ -39,6 +39,13 @@ public final class AgentCompletionQueueTest {
         h.check(h.saved.size()==1&&h.delivered.isEmpty(),"failed Android post stays queued");
         h.failDelivery=false;h.until(5099);h.check(h.delivered.isEmpty(),"retry observes backoff");
         h.until(5100);h.check(h.delivered.size()==1&&h.saved.isEmpty(),"queue retries only after output acknowledges delivery");
+        h=new Harness();h.failDelivery=true;h.add("A");
+        h.check(h.queue.correctOutcome("A",1),"native error enriches queued UI completion");
+        h.check(h.saved.get(0).outcome==1&&h.saved.get(0).completedAt==1234,"error preserves FIFO timestamp");
+        h.queue=new AgentCompletionQueue(h,h,h,new ArrayList<>(h.saved));
+        h.check(h.queue.correctOutcome("A",2)&&h.saved.get(0).outcome==2,"outcome retained through restore");
+        h.check(!h.queue.correctOutcome("absent",1),"correction never creates a completion");
+        h.check(new AgentCompletionQueue.Entry("safe",1234,true,99).outcome==0,"outcome allowlist");
         System.out.println("PASS completion context, FIFO spacing, navigation race, cancellation, persistence, retry after denial and overflow");
     }
 }

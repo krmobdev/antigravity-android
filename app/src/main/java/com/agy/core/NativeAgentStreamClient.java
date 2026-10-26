@@ -38,7 +38,7 @@ public final class NativeAgentStreamClient {
 
     public interface Listener {
         /** Return false to stop the subscription. */
-        boolean onState(int status, boolean fullyIdle);
+        boolean onState(CoreAgentProgress.Update update);
     }
 
     private final Context context;
@@ -156,10 +156,20 @@ public final class NativeAgentStreamClient {
                         // Do not permit cross-conversation status injection.
                         continue;
                     }
-                    int status = parseStatus(update.opt("status"));
-                    if (status != 1 && status != 2 && status != 4) continue;
-                    boolean fullyIdle = update.optBoolean("fullyIdle", false);
-                    if (!listener.onState(status, fullyIdle)) break;
+                    JSONObject trajectory = update.optJSONObject("mainTrajectoryUpdate");
+                    JSONObject steps = trajectory == null ? null : trajectory.optJSONObject("stepsUpdate");
+                    JSONObject error = trajectory == null ? null : trajectory.optJSONObject("lastStepError");
+                    // Omitted status is UNSPECIFIED. Only explicit fullyIdle=true
+                    // can complete a task; false is the protobuf boolean default.
+                    CoreAgentProgress.Update event = new CoreAgentProgress.Update(
+                            update.optString("trajectoryId", ""),
+                            CoreAgentProgress.status(update.opt("status")),
+                            update.optBoolean("fullyIdle", false),
+                            steps != null && steps.has("totalLength") ? steps.optInt("totalLength", -1) : -1,
+                            trajectory == null ? 0 : CoreAgentProgress.stepType(trajectory.opt("lastStepType")),
+                            error != null && error.length() > 0,
+                            trajectory != null && trajectory.optBoolean("killed", false));
+                    if (!listener.onState(event)) break;
                 }
             }
         } finally {
@@ -170,12 +180,6 @@ public final class NativeAgentStreamClient {
 
     /** Protobuf JSON may serialize enum status as an integer or enum name. */
     static int parseStatus(Object raw) {
-        if (raw instanceof Number) return ((Number) raw).intValue();
-        if (!(raw instanceof String)) return 0;
-        String v = (String)raw;
-        if ("1".equals(v) || v.endsWith("_IDLE")) return 1;
-        if ("2".equals(v) || v.endsWith("_RUNNING")) return 2;
-        if ("4".equals(v) || v.endsWith("_BUSY")) return 4;
-        return 0;
+        return CoreAgentProgress.status(raw);
     }
 }

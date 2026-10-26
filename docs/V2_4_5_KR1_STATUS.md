@@ -75,3 +75,23 @@ PTY UI and Pixel 7 acceptance remain PENDING.
    actually performed.
 
 No release-ready claim is made by this checkpoint.
+
+## Native progress implementation checkpoint
+
+Protocol source: bundled protobuf descriptors in web/main.js (Core client).
+AgentStateUpdate.mainTrajectoryUpdate contains lastStepType, stepsUpdate.totalLength,
+lastStepError and killed; status CANCELING is value 3. The stage reducer consumes
+only these typed values, never descriptions/arguments/commands/file contents.
+There is no global event sequence number in this schema. Lower step counts,
+equal-index type conflicts, retired trajectories and finished-run RUNNING
+replays are filtered conservatively. Per-conversation watermarks survive
+native stream reconnects in-process; cold start waits for fresh Core data.
+
+Notifications retain their task tag/ID and coalesce rapid observed stages.
+Terminal outcomes persist with existing completion queue entries; UI-first
+completion can be enriched silently without a duplicate FIFO alert. Native
+subscriptions continue through UI-first IDLE until Core confirms completion.
+
+Automated reducer/coalescer/tracker/FIFO tests and complete Android source
+compilation ran locally. Real background/screen-off notifications, native/UI
+race acceptance and Pixel 7 checks remain PENDING until separately recorded.

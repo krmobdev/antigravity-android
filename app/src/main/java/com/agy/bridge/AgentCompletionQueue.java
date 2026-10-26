@@ -12,8 +12,13 @@ public final class AgentCompletionQueue {
         public final String id;
         public final long completedAt;
         public final boolean nativeSource;
+        public final int outcome;
         public Entry(String id, long completedAt, boolean nativeSource) {
+            this(id, completedAt, nativeSource, 0);
+        }
+        public Entry(String id, long completedAt, boolean nativeSource, int outcome) {
             this.id = id; this.completedAt = completedAt; this.nativeSource = nativeSource;
+            this.outcome = outcome == 1 || outcome == 2 ? outcome : 0;
         }
     }
     public interface Clock { long now(); }
@@ -57,6 +62,14 @@ public final class AgentCompletionQueue {
         }
         pending.put(entry.id, entry);
         save(); contextChanged();
+    }
+    /** Enrich a UI-first completion without adding a second FIFO alert. */
+    public boolean correctOutcome(String id, int outcome) {
+        Entry previous = pending.get(id);
+        if (previous == null) return false;
+        pending.put(id, new Entry(id, previous.completedAt, true, outcome));
+        save();
+        return true;
     }
     public void cancel(String id) {
         if (pending.remove(id) != null) { save(); contextChanged(); }

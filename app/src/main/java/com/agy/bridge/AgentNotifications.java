@@ -38,8 +38,9 @@ public final class AgentNotifications {
     private static CompletionDispatcher dispatcher;
     private static final int RUNNING_ID = 21001;
     private static final int FINISHED_ID = 21002;
-    private static final AgentTaskTracker TRACKER = new AgentTaskTracker(5000);
+    private static final AgentTaskTracker TRACKER = new AgentTaskTracker(0);
 
+    private static AgentProgressQueue progressQueue;
     private final Context context;
     private final NotificationManager notifications;
     private static final Map<String, String> TITLES = new LinkedHashMap<>();
@@ -52,15 +53,19 @@ public final class AgentNotifications {
     }
 
     public void observe(String conversationId, int status, boolean fullyIdle, String stage) {
-        emit(conversationId, status, fullyIdle, stage, false);
+        emit(conversationId, status, fullyIdle, null, false, 0);
     }
 
     public void observeNative(String conversationId, int status, boolean fullyIdle, String stage) {
-        emit(conversationId, status, fullyIdle, stage, true);
+        observeNative(conversationId, status, fullyIdle, stage, 0);
+    }
+
+    public void observeNative(String conversationId, int status, boolean fullyIdle, String stage, int outcome) {
+        emit(conversationId, status, fullyIdle, stage, true, outcome);
     }
 
     private void emit(String conversationId, int status, boolean fullyIdle,
-                      String stage, boolean nativeSource) {
+                      String stage, boolean nativeSource, int outcome) {
         synchronized (TRACKER) {
         // Permission denial does not discard a Core-observed completion.
         // Record exactly when a Core/UI transition reached Android. This is
@@ -68,17 +73,24 @@ public final class AgentNotifications {
         final long detectedAt = System.currentTimeMillis();
         AgentTaskTracker.Change update = TRACKER.observe(
                 conversationId, status, fullyIdle, stage, detectedAt, nativeSource);
-        if (update.event == AgentTaskTracker.Event.NONE) return;
+        if (update.event == AgentTaskTracker.Event.NONE) {
+            if (nativeSource && status == 1 && fullyIdle && outcome != 0) {
+                CompletionDispatcher delivery = completionDispatcher();
+                delivery.handler.post(() -> correctOutcome(conversationId, outcome, delivery));
+            }
+            return;
+        }
         AgyDiagnostics.log(context, "notification", "type=" + update.event + " id=" + shortId(update.conversationId)
                 + " detected_at_ms=" + detectedAt + " source=" + (nativeSource ? "native" : "webview"));
         try {
             if (update.event == AgentTaskTracker.Event.FINISHED) {
-                notifications.cancel(update.conversationId, RUNNING_ID);
+                progressQueue().finished(update.conversationId);
+                if (notifications != null) notifications.cancel(update.conversationId, RUNNING_ID);
                 CompletionDispatcher delivery = completionDispatcher();
                 delivery.handler.post(() -> {
                     try {
                         delivery.queue.enqueue(new AgentCompletionQueue.Entry(
-                                update.conversationId, detectedAt, nativeSource));
+                                update.conversationId, detectedAt, nativeSource, outcome));
                     } catch (IllegalStateException full) {
                         Log.e(TAG, "Notification backlog full; retaining existing unacknowledged events", full);
                     }
@@ -89,13 +101,55 @@ public final class AgentNotifications {
                     delivery.handler.post(() -> delivery.queue.cancel(update.conversationId));
                     notifications.cancel(update.conversationId, FINISHED_ID);
                 }
-                if (notifications != null && notifications.areNotificationsEnabled())
-                    notifications.notify(update.conversationId, RUNNING_ID, working(update));
+                if (update.event == AgentTaskTracker.Event.STARTED) progressQueue().started(update);
+                else progressQueue().progress(update);
             }
         } catch (SecurityException | IllegalArgumentException exc) {
             // The system can deny notifications at any time. Never affect agent state.
             Log.w(TAG, "Notification unavailable: " + exc.getClass().getSimpleName());
         }
+        }
+    }
+
+    private AgentProgressQueue progressQueue() {
+        synchronized (AgentNotifications.class) {
+            if (progressQueue == null) {
+                Handler handler = new Handler(Looper.getMainLooper());
+                progressQueue = new AgentProgressQueue(SystemClock::uptimeMillis,
+                        new AgentProgressQueue.Scheduler() {
+                            public void schedule(Runnable task, long delay) { handler.postDelayed(task, delay); }
+                            public void cancel(Runnable task) { handler.removeCallbacks(task); }
+                        }, event -> {
+                            try {
+                                if (notifications != null && notifications.areNotificationsEnabled())
+                                    notifications.notify(event.conversationId, RUNNING_ID, working(event));
+                            } catch (SecurityException | IllegalArgumentException denied) {
+                                Log.w(TAG, "Progress notification unavailable");
+                            }
+                        }, 1000);
+            }
+            return progressQueue;
+        }
+    }
+
+    // A UI-first completion may beat the native terminal event. Enrich that
+    // existing event without a second FIFO alert or resurrecting a dismissed one.
+    private void correctOutcome(String id, int outcome, CompletionDispatcher delivery) {
+        if (delivery.queue.correctOutcome(id, outcome) || notifications == null) return;
+        try {
+            for (android.service.notification.StatusBarNotification active : notifications.getActiveNotifications()) {
+                if (FINISHED_ID != active.getId() || !id.equals(active.getTag())) continue;
+                Notification old = active.getNotification();
+                String text = completionText(old.when, outcome);
+                Notification corrected = Notification.Builder.recoverBuilder(context, old)
+                        .setContentTitle(title(id) + completionSuffix(outcome))
+                        .setContentText(text).setStyle(new Notification.BigTextStyle().bigText(text))
+                        .setOnlyAlertOnce(true).build();
+                notifications.notify(id, FINISHED_ID, corrected);
+                return;
+            }
+        } catch (SecurityException | IllegalArgumentException denied) {
+            Log.w(TAG, "Completion correction unavailable");
         }
     }
 
@@ -191,14 +245,12 @@ public final class AgentNotifications {
         return b.build();
     }
 
-    private Notification finished(String conversationId, long detectedAt, boolean nativeSource, boolean headsUp) {
+    private Notification finished(String conversationId, long detectedAt, boolean nativeSource, boolean headsUp, int outcome) {
         // Explicit seconds remain visible even when Android shows only "Сейчас".
-        String completionTime = new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                .format(new Date(detectedAt));
-        String message = "Завершено в " + completionTime + ". Открыть диалог.";
+        String message = completionText(detectedAt, outcome);
         Notification.Builder b = builder(headsUp ? CHANNEL_FINISHED : CHANNEL_IN_CHAT)
                 .setSmallIcon(notificationIcon())
-                .setContentTitle(title(conversationId) + " · завершена")
+                .setContentTitle(title(conversationId) + completionSuffix(outcome))
                 .setContentText(message)
                 .setStyle(new Notification.BigTextStyle().bigText(message))
                 .setContentIntent(openConversation(conversationId))
@@ -211,6 +263,16 @@ public final class AgentNotifications {
                     .setDefaults(Notification.DEFAULT_SOUND | (headsUp ? Notification.DEFAULT_VIBRATE : 0));
         }
         return b.build();
+    }
+
+    private static String completionSuffix(int outcome) {
+        return outcome == 1 ? " · ошибка" : outcome == 2 ? " · отменена" : " · завершена";
+    }
+
+    private static String completionText(long at, int outcome) {
+        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(at));
+        String status = outcome == 1 ? "Ошибка" : outcome == 2 ? "Отменено" : "Завершено";
+        return status + " в " + time + ". Открыть диалог.";
     }
 
     /** Must be called after Activity visibility or its committed conversation changes. */
@@ -239,7 +301,7 @@ public final class AgentNotifications {
                 JSONArray entries = new JSONArray(preferences.getString("pending", "[]"));
                 for (int i = 0; i < Math.min(entries.length(), AgentCompletionQueue.MAX_PENDING); i++) {
                     JSONObject e = entries.getJSONObject(i);
-                    restored.add(new AgentCompletionQueue.Entry(e.getString("id"), e.getLong("at"), e.optBoolean("native")));
+                    restored.add(new AgentCompletionQueue.Entry(e.getString("id"), e.getLong("at"), e.optBoolean("native"), e.optInt("outcome", 0)));
                 }
             } catch (Exception ignored) { /* Ignore an incomplete/corrupt saved queue. */ }
             queue = new AgentCompletionQueue(SystemClock::uptimeMillis, new AgentCompletionQueue.Scheduler() {
@@ -258,7 +320,7 @@ public final class AgentNotifications {
             if (owner.notifications == null || !owner.notifications.areNotificationsEnabled()) return false;
             try {
                 owner.notifications.notify(entry.id, FINISHED_ID,
-                        owner.finished(entry.id, entry.completedAt, entry.nativeSource, headsUp));
+                        owner.finished(entry.id, entry.completedAt, entry.nativeSource, headsUp, entry.outcome));
                 AgyDiagnostics.log(owner.context, "notification_posted", "type=FINISHED id=" + shortId(entry.id)
                         + " popup=" + headsUp + " detected_at_ms=" + entry.completedAt
                         + " posted_at_ms=" + System.currentTimeMillis());
@@ -272,7 +334,7 @@ public final class AgentNotifications {
             JSONArray entries = new JSONArray();
             try {
                 for (AgentCompletionQueue.Entry e : pending) entries.put(new JSONObject()
-                        .put("id", e.id).put("at", e.completedAt).put("native", e.nativeSource));
+                        .put("id", e.id).put("at", e.completedAt).put("native", e.nativeSource).put("outcome", e.outcome));
                 preferences.edit().putString("pending", entries.toString())
                         .putLong("next_alert_at", System.currentTimeMillis() + queue.remainingAlertDelay()).apply();
             } catch (org.json.JSONException ignored) { /* Validated primitive fields only. */ }
