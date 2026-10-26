@@ -42,3 +42,8 @@ regions. No audio, model request or permission preset is changed.
 Grey surfaces mode: -e mode surfaces. Checks the model grey surface and opens
 Add/Appearance without changing settings. Captures require both Activity focus
 and the target package active in UiAutomation; otherwise report PENDING.
+
+Unified interface mode: -e mode unified. Checks real Add card bounds above the
+footer, two reopen/Back cycles, shared model/permission card surfaces, original
+draft/permissions unchanged, and Android IME layout. Optional crops contain only
+menus. No setting, audio recording or model request is submitted.

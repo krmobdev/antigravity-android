@@ -2,10 +2,14 @@ const assert=require("node:assert/strict"),fs=require("node:fs"),vm=require("nod
 const source=fs.readFileSync(path.join(__dirname,"../src/mobile/composer.js"),"utf8");
 function setup(mobile){
   let slots=[],cursor=0,effects=[],notifications=[],backCount=0,pop;
+  const listeners=new Map(),frames=new Map();let nextFrame=0,disconnects=0;
   const history={state:{route:1},pushState(s){this.state=s;},back(){backCount++;this.state={route:1};}};
   const ctx={Math,history,location:{href:"https://local/c/test"},agyOriginalContextMenu(){},cWb(){},
-    window:{matchMedia:()=>({matches:mobile,addEventListener(){},removeEventListener(){}}),
-      addEventListener:(name,f)=>{pop=f;},removeEventListener:()=>{pop=null;}},
+    document:{querySelector:()=>({getBoundingClientRect:()=>({top:600})})},
+    requestAnimationFrame:f=>{frames.set(++nextFrame,f);return nextFrame;},cancelAnimationFrame:id=>frames.delete(id),
+    ResizeObserver:class{observe(){}disconnect(){disconnects++;}},
+    window:{innerHeight:800,matchMedia:()=>({matches:mobile,addEventListener(){},removeEventListener(){}}),
+      addEventListener:(name,f)=>{listeners.set(name,f);if(name==="popstate")pop=f;},removeEventListener:name=>{listeners.delete(name);if(name==="popstate")pop=null;}},
     A:{Fragment:"fragment",
       useState(v){const i=cursor++;if(!(i in slots))slots[i]=typeof v==="function"?v():v;return[slots[i],v=>slots[i]=v];},
       useRef(v){const i=cursor++;return slots[i]??(slots[i]={current:v});},
@@ -13,7 +17,7 @@ function setup(mobile){
       createElement(type,props,...children){if(props?.ref)props.ref.current={showModal(){},close(){}};return{type,props:props||{},children};}
     }};
   vm.createContext(ctx);vm.runInContext(source,ctx);
-  return{ctx,history,get pop(){return pop;},get backCount(){return backCount;},
+  return{ctx,history,get pop(){return pop;},get backCount(){return backCount;},get listeners(){return listeners.size;},get frames(){return frames.size;},get disconnects(){return disconnects;},
     render(name,props){cursor=0;return ctx[name](props);},
     cleanup(){effects.forEach(e=>e?.cleanup?.());effects=[];}};
 }
@@ -30,7 +34,7 @@ assert.equal(buttons.length,3);assert.equal(buttons[1].children[1].children[0],"
 assert.equal(buttons[2].children[1].children[0],"Папка");assert.equal(buttons[2].props.disabled,true);buttons[1].props.onClick();
 assert.equal(closed,1);assert.equal(calls,1);
 tree.props.onCancel({preventDefault(){}});assert.equal(closed,2);
-h.pop();assert.equal(closed,3);h.cleanup();assert.equal(h.backCount,1);
+h.pop();assert.equal(closed,3);h.cleanup();assert.equal(h.backCount,1);assert.equal(h.listeners,0);assert.equal(h.frames,0);assert.equal(h.disconnects,1);
 h=setup(false);tree=h.render("zYb",{items});assert.equal(tree.type,h.ctx.agyOriginalContextMenu);h.cleanup();
 h=setup(true);const primary={type:"model",props:{},children:[]},desktop={type:"desktop-settings",props:{},children:[]};
 const permissions={type:"permissions",props:{},children:[]};
@@ -52,3 +56,12 @@ h=setup(false);tree=h.render("AgyMobilePermissions",{conversationId:"fixture"});
 h=setup(false);tree=h.render("AgyDesktopPermissions",{control:permissions});assert.equal(tree,permissions);h.cleanup();
 h=setup(true);tree=h.render("AgyDesktopPermissions",{control:permissions});assert.equal(tree,null);h.cleanup();
 console.log("PASS compact mobile toolbar: short/full model labels, distinct permissions, unchanged desktop scope, no duplicate selector");
+
+// Menu stays above the real footer for tall screens and IME viewport changes.
+h=setup(true);const style=new Map(),node={style:{setProperty:(k,v)=>style.set(k,v)}};
+h.ctx.agyPositionAddMenu(node,{getBoundingClientRect:()=>({top:600})},{offsetTop:0});
+assert.equal(style.get('--agy-menu-bottom'),'208px');assert.equal(style.get('--agy-menu-max-height'),'584px');
+h.ctx.agyPositionAddMenu(node,{getBoundingClientRect:()=>({top:300})},{offsetTop:50});
+assert.equal(style.get('--agy-menu-bottom'),'508px');assert.equal(style.get('--agy-menu-max-height'),'234px');
+h.ctx.agyPositionAddMenu(node,null);assert.equal(style.get('--agy-menu-bottom'),'508px');
+console.log('PASS Add card positioning with IME viewport offsets and complete observer/frame cleanup');

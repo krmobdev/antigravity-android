@@ -161,6 +161,20 @@ def transform(source):
         'sideQuestionControl:y,permissionsSelector:v??(!Ea?A.createElement(AgyMobilePermissions,{conversationId:O,dropdownPlacement:B}):null)}')
     source=once(source,'},ha,A.createElement(DYb,',
         '},A.createElement(AgyDesktopPermissions,{control:ha}),A.createElement(DYb,')
+    source=once(source,'maxHeight:"85dvh"},A.createElement("div",{ref:y=>{n.setHost(y);q?.setPopupNode(y)}',
+        'maxHeight:"85dvh",className:"agy-menu-sheet"},A.createElement("div",{ref:y=>{n.setHost(y);q?.setPopupNode(y)}')
+    source=once(source,'className:aj("bg-card text-foreground rounded-[10px] border border-border shadow-md outline-none no-focus-ring min-w-[160px]',
+        'className:aj("agy-menu-popup bg-card text-foreground rounded-[10px] border border-border shadow-md outline-none no-focus-ring min-w-[160px]')
+    source=once(source,'className:"bg-transparent rounded-xl border border-border overflow-hidden divide-y divide-border"',
+        'className:"agy-settings-group bg-transparent rounded-xl border border-border overflow-hidden divide-y divide-border"')
+    source=once(source,'function iNb({onBack:a}){return A.createElement("div",{className:"sticky top-0',
+        'function iNb({onBack:a}){return A.createElement("div",{className:"agy-settings-backbar sticky top-0')
+    source=once(source,'renderPreview:J,className:"relative p-px rounded-xl bg-card-border"',
+        'renderPreview:J,className:"agy-user-message-frame relative p-px rounded-xl bg-card-border"')
+    source=once(source,'ref:ja,className:"relative flex flex-row items-center gap-2 p-1.5',
+        'ref:ja,className:"agy-user-message-card relative flex flex-row items-center gap-2 p-1.5')
+    source=once(source,'{ref:n,disabled:k,className:q,"aria-label":w,"data-tooltip-id":v?u:void 0,...m}',
+        '{ref:n,disabled:k,className:aj("agy-ui-button",q),"data-agy-variant":a,"data-agy-size":b,"aria-label":w,"data-tooltip-id":v?u:void 0,...m}')
     source=once(source,'var ECb=A.createContext(!1),G_=({title:',
         'var ECb=A.createContext(!1),agyOriginalSettingsPage=({title:')
     source=once(source,'e=aj("w-full bg-transparent",e?"h-full overflow-y-auto":"");',

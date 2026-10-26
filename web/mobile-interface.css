@@ -1,0 +1,100 @@
+/* Shared mobile visual language. Core values, layout/scroll controllers and
+   custom theme colors remain authoritative. No global button sizing rule. */
+@media (max-width:720px),(pointer:coarse){
+ :root{
+  --agy-ui-surface:var(--color-secondary,var(--color-card));
+  --agy-ui-control:var(--agy-control-surface,var(--color-secondary));
+  --agy-ui-line:var(--color-border);
+  --agy-ui-radius:24px;
+  --agy-ui-row-radius:14px;
+ }
+ @supports (background:color-mix(in srgb,#000,#fff)){
+  :root{--agy-ui-line:color-mix(in srgb,var(--color-foreground) 12%,transparent)}
+ }
+ /* Cards and long sheets share colors and corners, retaining Core's height. */
+ .agy-menu-sheet,.agy-menu-popup,.agy-composer-sheet,[data-testid=bottom-sheet]{
+  background:var(--agy-ui-surface)!important;color:var(--color-foreground)!important;
+  border:1px solid var(--agy-ui-line)!important;
+  box-shadow:0 8px 28px #0002;
+ }
+ .agy-menu-sheet{
+  width:calc(100% - 16px)!important;max-width:420px;
+  margin:0 8px max(8px,env(safe-area-inset-bottom));
+  border-radius:var(--agy-ui-radius)!important;
+ }
+ .agy-menu-sheet [data-testid=bottom-sheet-grabber]{display:none}
+ .agy-menu-popup{border-radius:var(--agy-ui-radius);padding:8px}
+ .agy-menu-sheet [role=menuitem],.agy-menu-sheet [role=menuitemradio],
+ .agy-menu-sheet [role=menuitemcheckbox],.agy-menu-sheet [data-testid=model-selector-item],
+ .agy-menu-sheet [data-testid=model-selector-effort-option]{
+  min-height:48px;border-radius:var(--agy-ui-row-radius);color:var(--color-foreground);
+  font-size:15px;line-height:22px
+ }
+ .agy-menu-sheet [data-testid=menu-option-description]{white-space:normal;line-height:1.4}
+ .agy-menu-sheet [data-testid=menu-item-check]{color:var(--color-foreground)}
+ .agy-menu-sheet [role=separator],.agy-menu-popup [role=separator]{
+  border-color:var(--agy-ui-line);margin:8px 12px
+ }
+ /* Compact Add menu, anchored above composer rather than covering its tools. */
+ dialog.agy-composer-sheet{
+  inset:auto auto var(--agy-menu-bottom,80px) max(8px,env(safe-area-inset-left));
+  width:min(330px,calc(100% - 16px));max-width:calc(100% - 16px);
+  max-height:min(var(--agy-menu-max-height,70dvh),75dvh);
+  margin:0;padding:6px;border-radius:var(--agy-ui-radius)!important;
+ }
+ .agy-composer-sheet::backdrop{background:#0003}
+ .agy-composer-sheet header{padding:0 4px 0 12px;gap:4px}
+ .agy-composer-sheet header strong{font-size:13px;font-weight:500;color:var(--color-muted-foreground)}
+ .agy-composer-sheet header button{width:48px;height:48px;min-width:48px;border-radius:50%;background:transparent}
+ .agy-composer-action-group{padding:0;gap:2px}
+ .agy-composer-action-group+.agy-composer-action-group{border-top:1px solid var(--agy-ui-line);padding-top:4px;margin-top:4px}
+ .agy-composer-sheet .agy-composer-action{min-height:52px;padding:4px 10px;gap:12px;border-radius:16px;font-size:16px;line-height:24px}
+ .agy-composer-sheet .agy-composer-action-icon{width:36px;height:36px;border-radius:12px}
+ .agy-composer-extra-controls{padding:8px;border-color:var(--agy-ui-line)}
+ /* Settings groups and navigation are also cards, not a second design. */
+ .agy-settings-page{color:var(--color-foreground)}
+ .agy-settings-page>.flex{gap:20px}
+ .agy-settings-page .agy-settings-group{
+  border-radius:20px;border-color:var(--agy-ui-line);
+  background:var(--agy-ui-surface);overflow:hidden
+ }
+ .agy-settings-group>.agy-settings-row{border-color:var(--agy-ui-line);padding-left:14px;padding-right:14px}
+ .agy-settings-row>div{min-width:0}
+ .agy-settings-row input[type=text],.agy-settings-row input[type=number]{
+  max-width:100%;border-radius:12px;border-color:var(--agy-ui-line);box-shadow:none
+ }
+ [data-testid^=settings-nav-item-]{
+  min-height:52px;margin:2px 8px;padding:10px 14px;border-radius:16px;
+  color:var(--color-foreground)
+ }
+ [data-testid^=settings-nav-item-]:active{background:var(--agy-ui-control)}
+ .agy-settings-backbar{border-color:var(--agy-ui-line);background:var(--agy-ui-surface)}
+ .agy-settings-select-sheet{border-radius:24px 24px 0 0!important}
+ /* Shared action buttons. Custom-size tools and role=switch keep geometry. */
+ .agy-ui-button:not([data-agy-size=custom]):not([role=switch]){
+  border-radius:16px;min-height:48px
+ }
+ .agy-ui-button[data-agy-variant=secondary]:not([role=switch]){
+  background:var(--agy-ui-control);color:var(--color-foreground);border-color:var(--agy-ui-line)
+ }
+ .agy-ui-button[data-agy-variant=ghost]:not([role=switch]){border-radius:50px}
+ .agy-ui-button:focus-visible,.agy-composer-action:focus-visible,
+ [data-testid^=settings-nav-item-]:focus-visible{
+  outline:2px solid var(--color-primary);outline-offset:-3px
+ }
+ /* Virtual list row size is untouched: only paint changes. */
+ [data-testid^=conversation-row-]{border-radius:14px}
+ [data-testid^=conversation-row-][data-selected=true]{
+  background:var(--agy-ui-control);--row-bg:var(--agy-ui-control)
+ }
+ [data-testid=app-icon-new-conversation-button]{border-radius:50%}
+ [data-testid=project-selector-trigger]{border-radius:16px}
+ /* Keep message heights, collapse controls and timeline scroll ownership. */
+ .agy-user-message-frame{border-radius:20px;background:var(--agy-ui-line)}
+ .agy-user-message-card{border-radius:19px;background:var(--agy-ui-surface)}
+ .agy-attachment-card{border-radius:16px;border-color:var(--agy-ui-line);background:var(--agy-ui-surface)}
+ .agy-attachment-dialog{background:var(--color-background);color:var(--color-foreground)}
+ .agy-attachment-preview-header{padding-bottom:8px;border-bottom:1px solid var(--agy-ui-line)}
+ .agy-attachment-preview-header button{border-radius:50%;background:var(--agy-ui-control)}
+ /* Full-screen media, editors and terminal are deliberately not rounded/clipped. */
+}

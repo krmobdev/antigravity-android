@@ -29,6 +29,7 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean capture;
     private boolean backMode;
     private boolean toolbarMode;
+    private boolean unifiedMode;
     private boolean polishMode;
     private boolean surfacesMode;
     private boolean micMode;
@@ -130,6 +131,32 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
+    private void unifiedInterface()throws Exception{
+        closeOwnedSheets();SystemClock.sleep(500);
+        JSONObject initial=state("window.__agyUnifiedDraft=JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(e=>e.textContent));window.__agyUnifiedPermission=document.querySelector('[data-testid=permissions-selector-trigger]')?.getAttribute('aria-label');return JSON.stringify({css:!![...document.styleSheets].find(s=>s.href?.endsWith('/mobile-interface.css'))});");
+        require(initial.optBoolean("css"),"UNIFIED_STYLESHEET_LOADED");
+        for(int cycle=0;cycle<2;cycle++){
+            state("document.querySelector('.agy-composer-add')?.click();return '{}';");SystemClock.sleep(650);
+            JSONObject info=state("const d=document.querySelector('dialog.agy-composer-sheet[open]'),f=document.querySelector('.agy-composer-footer'),r=d?.getBoundingClientRect(),a=f?.getBoundingClientRect(),v=visualViewport;return JSON.stringify({fits:!!r&&r.left>=0&&r.right<=innerWidth+1&&r.top>=(v?.offsetTop||0)&&r.bottom<=a.top-4,compact:!!r&&r.width<=332&&parseFloat(getComputedStyle(d).borderBottomLeftRadius)>=24,rows:!!d&&[...d.querySelectorAll('.agy-composer-action')].every(e=>e.getBoundingClientRect().height>=48)});");
+            require(info.optBoolean("fits")&&info.optBoolean("compact")&&info.optBoolean("rows"),"UNIFIED_ADD_CARD_"+cycle);
+            if(cycle==0)captureRegion("dialog.agy-composer-sheet","UNIFIED_ADD");
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+            info=state("return JSON.stringify({closed:!document.querySelector('dialog.agy-composer-sheet[open]')});");
+            require(info.optBoolean("closed"),"UNIFIED_ADD_BACK_"+cycle);assertHost("UNIFIED_ADD_HOST_"+cycle);
+        }
+        state("document.querySelector('[data-testid=model-selector-trigger]')?.click();return '{}';");SystemClock.sleep(650);
+        JSONObject info=state("const p=document.querySelector('[data-testid=model-selector-panel]'),d=p?.closest('.agy-menu-sheet'),r=d?.getBoundingClientRect();return JSON.stringify({card:!!d&&r.width<=innerWidth-14&&parseFloat(getComputedStyle(d).borderBottomLeftRadius)>=24});");
+        require(info.optBoolean("card"),"UNIFIED_MODEL_CARD");captureRegion(".agy-menu-sheet:has([data-testid=model-selector-panel])","UNIFIED_MODEL");
+        sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+        state("document.querySelector('[data-testid=permissions-selector-trigger]')?.click();return '{}';");SystemClock.sleep(650);
+        info=state("const p=document.querySelector('[data-testid=permissions-project-options]'),d=p?.closest('.agy-menu-sheet');return JSON.stringify({card:!!d&&parseFloat(getComputedStyle(d).borderBottomLeftRadius)>=24});");
+        require(info.optBoolean("card"),"UNIFIED_PERMISSIONS_CARD");captureRegion(".agy-menu-sheet:has([data-testid=permissions-project-options])","UNIFIED_PERMISSIONS");
+        sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+        info=state("return JSON.stringify({same:window.__agyUnifiedPermission===document.querySelector('[data-testid=permissions-selector-trigger]')?.getAttribute('aria-label')&&window.__agyUnifiedDraft===JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(e=>e.textContent))});");
+        require(info.optBoolean("same"),"UNIFIED_DRAFT_AND_PERMISSIONS_PRESERVED");
+        keyboard();
+        report("ANDROID_UNIFIED_INTERFACE","PASS_ADD_MODEL_PERMISSIONS_AND_BACK");
+    }
     private void greySurfaces()throws Exception{
         require(activity.hasWindowFocus(),"GREY_DEV_WINDOW_FOCUSED");
         closeOwnedSheets();SystemClock.sleep(500);captureRegion(".agy-composer-footer","GREY_TOOLBAR");
@@ -550,7 +577,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -573,6 +600,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(unifiedMode){unifiedInterface();ok=true;return;}
             if(surfacesMode){greySurfaces();ok=true;return;}
             if(polishMode){settingsPolish();ok=true;return;}
             if(toolbarMode){compactToolbar();ok=true;return;}

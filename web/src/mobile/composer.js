@@ -210,10 +210,24 @@ function AgyComposerModelControl({primary,permissions,desktop}){
 function agyComposerActionLabel(label){
   return ({Media:"Фото и файлы",Folder:"Папка",Mentions:"Упоминания",Actions:"Действия",Browser:"Браузер","Screen Recording":"Запись экрана"})[label]||label;
 }
+/* Position the Add card above the real footer, including Android IME changes. */
+function agyPositionAddMenu(node,footer,viewport=window.visualViewport){
+  if(!node||!footer)return;
+  const rect=footer.getBoundingClientRect(),top=viewport?.offsetTop||0;
+  node.style.setProperty("--agy-menu-bottom",Math.max(8,window.innerHeight-rect.top+8)+"px");
+  node.style.setProperty("--agy-menu-max-height",Math.max(48,rect.top-top-16)+"px");
+}
 function AgyComposerSheet({items,onClose,extraControls}){
   const dialog=A.useRef(null);
   A.useEffect(()=>{
     const node=dialog.current;node?.showModal();
+    const footer=document.querySelector(".agy-composer-footer"),viewport=window.visualViewport;
+    let frame=0;
+    const position=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>agyPositionAddMenu(node,footer,viewport));};
+    const observer=footer&&typeof ResizeObserver==="function"?new ResizeObserver(position):null;
+    observer?.observe(footer);position();
+    window.addEventListener("resize",position);
+    viewport?.addEventListener("resize",position);viewport?.addEventListener("scroll",position);
     const unregister=typeof agyRegisterMobileOverlay==="function"?agyRegisterMobileOverlay(onClose):()=>{};
     const marker="agy-composer-"+Math.random().toString(36).slice(2);
     history.pushState({...history.state,agyMobileOverlay:marker},"",location.href);
@@ -222,6 +236,9 @@ function AgyComposerSheet({items,onClose,extraControls}){
       unregister();
       window.removeEventListener("popstate",back);
       if(history.state?.agyMobileOverlay===marker)history.back();
+      cancelAnimationFrame(frame);observer?.disconnect();
+      window.removeEventListener("resize",position);
+      viewport?.removeEventListener("resize",position);viewport?.removeEventListener("scroll",position);
       node?.close();
     };
   },[]);

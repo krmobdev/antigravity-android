@@ -309,3 +309,15 @@ Android system picker. Core values, options, callbacks and persistence remain.
 Disabled controls/options, selected option semantics, Back, and custom presets
 are preserved. Outside Settings and on desktop the native/custom select choice
 is unchanged. No replacement settings store or new animation system is added.
+
+### Unified mobile interface
+
+mobile-interface.css applies one palette-derived surface, border, radius and
+focus vocabulary to Core menus, settings/navigation, action buttons, user cards,
+attachment cards and previews. Desktop, custom-size controls, switch tracks,
+code editors, terminal and chat scroll geometry retain their original behavior.
+The Add dialog becomes an inset card above the actual composer footer. A bounded
+resize observer and visualViewport listeners reposition it when Android IME
+changes; all observers/listeners/animation-frame callbacks are removed on close.
+Existing dialog, progressive Back, Core menu choices and audio handlers remain.
+Colors derive from the active theme; no preset or stored color is overwritten.
