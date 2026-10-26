@@ -1,4 +1,4 @@
-window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-phase-v2";
+window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-native-primary-v3";
 function agyAudioError(error){
   // Native recorder already stores a localized message. Reformatting it
   // used to erase the real reason and show the same generic error every time.

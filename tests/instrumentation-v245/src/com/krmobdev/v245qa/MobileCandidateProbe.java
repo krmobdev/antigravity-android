@@ -247,8 +247,16 @@ public final class MobileCandidateProbe extends Instrumentation {
     private void microphoneCapabilities()throws Exception {
         JSONObject build=state("return JSON.stringify({build:window.__AGY_AUDIO_DIAG_BUILD__||'STALE_BUNDLE'});");
         report("VOICE_WEBVIEW_BUNDLE",build.optString("build","STALE_BUNDLE"));
-        require("2026-10-26-phase-v2".equals(build.optString("build")),"VOICE_WEBVIEW_FRESH_BUNDLE");
+        require("2026-10-26-native-primary-v3".equals(build.optString("build")),"VOICE_WEBVIEW_FRESH_BUNDLE");
         JSONObject v=state("return JSON.stringify({secure:window.isSecureContext,hasGetUserMedia:typeof navigator.mediaDevices?.getUserMedia==='function',hasMediaRecorder:typeof MediaRecorder==='function',webm:typeof MediaRecorder==='function'&&MediaRecorder.isTypeSupported('audio/webm;codecs=opus'),mp4:typeof MediaRecorder==='function'&&MediaRecorder.isTypeSupported('audio/mp4')});");
+        JSONObject nativeBridge=state("const api=window.AndroidBridge||window.Android;return JSON.stringify({token:typeof window.__AG_NATIVE_BRIDGE_TOKEN__==='string'&&window.__AG_NATIVE_BRIDGE_TOKEN__.length===64,bridge:!!api,start:typeof api?.startNativeVoice==='function',stop:typeof api?.stopNativeVoice==='function',cancel:typeof api?.cancelNativeVoice==='function',helper:typeof agyNativeMicStart==='function'});");
+        report("VOICE_NATIVE_BRIDGE",nativeBridge.optBoolean("bridge"));
+        report("VOICE_NATIVE_TOKEN",nativeBridge.optBoolean("token"));
+        report("VOICE_NATIVE_START_METHOD",nativeBridge.optBoolean("start"));
+        report("VOICE_NATIVE_STOP_METHOD",nativeBridge.optBoolean("stop"));
+        report("VOICE_NATIVE_CANCEL_METHOD",nativeBridge.optBoolean("cancel"));
+        report("VOICE_NATIVE_HELPER",nativeBridge.optBoolean("helper"));
+        require(nativeBridge.optBoolean("token")&&nativeBridge.optBoolean("bridge")&&nativeBridge.optBoolean("start")&&nativeBridge.optBoolean("stop")&&nativeBridge.optBoolean("cancel")&&nativeBridge.optBoolean("helper"),"VOICE_NATIVE_BRIDGE_READY");
         report("VOICE_SECURE_CONTEXT",v.optBoolean("secure"));
         report("VOICE_GET_USER_MEDIA",v.optBoolean("hasGetUserMedia"));
         report("VOICE_MEDIA_RECORDER",v.optBoolean("hasMediaRecorder"));

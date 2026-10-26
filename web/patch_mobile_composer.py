@@ -27,7 +27,22 @@ def transform(source):
     source=once(source,'var d5a=a=>{var [b,c]',
                 'var d5a=a=>{var [agyPending,setAgyPending]=(0,A.useState)(!1),[b,c]')
     source=once(source,'try{try{q();let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))',
-                'try{let agyPhase="getUserMedia";try{q();setAgyPending(true);let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))')
+                """try{let agyPhase="getUserMedia";try{q();setAgyPending(true);
+                  const agyNative=agyNativeMicStart({name:"NativePrimary"},C=>{
+                    if(C){let bytes=Uint8Array.from(atob(C.data),x=>x.charCodeAt(0));
+                      a(p(I.MediaSchema,{mimeType:C.mimeType,
+                        payload:{case:"inlineData",value:bytes},durationSeconds:C.durationSeconds}));}
+                    q();
+                  },msg=>{q();f(msg)},()=>m.current);
+                  if(agyNative?.recorder){
+                    g.current=agyNative.recorder;n.current=Date.now();c(!0);
+                    l.current=window.setTimeout(()=>r(),3E5);setAgyPending(false);return;
+                  }
+                  if(agyNative?.error){
+                    f("Не удалось начать запись через Android ("+agyNative.error+").");
+                    setAgyPending(false);return;
+                  }
+                  let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))""")
     source=once(source,'catch(y){x(),q(),f(agyAudioError(y))}}finally{w()}',
                 """catch(y){x();q();let native=agyNativeMicStart(y,C=>{
                   if(C){let bytes=Uint8Array.from(atob(C.data),x=>x.charCodeAt(0));
