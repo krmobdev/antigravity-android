@@ -133,12 +133,18 @@ public final class MobileCandidateProbe extends Instrumentation {
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
     private void nativeStartup()throws Exception {
+        JSONObject readyProof=state("return JSON.stringify({current:typeof window.__agStartupReady?.signal==='function'&&window.__agStartupReady.signal.toString().includes('hasRenderedUi')});");
+        require(readyProof.optBoolean("current"),"STARTUP_REAL_READY_PROOF_LOADED");
         Object live=field(activity,"splash");
         require(Boolean.TRUE.equals(field(activity,"webUiReady")),"STARTUP_REAL_UI_READY");
         View liveView=(View)live.getClass().getMethod("view").invoke(live);
         require(!(liveView instanceof WebView)&&liveView.getVisibility()==View.GONE,"STARTUP_NATIVE_DISMISSED_ON_REAL_READY");
         Class<?> state=Class.forName("com.agy.core.CoreRuntimeState",true,target.getClassLoader());
         int before=(Integer)field(state,"readyGeneration");
+        Object actualProgress=field(state,"startup");
+        Object actualSnapshot=actualProgress.getClass().getMethod("snapshot").invoke(actualProgress);
+        require(((Integer)field(actualSnapshot,"stage"))==2&&((Long)field(actualSnapshot,"attempt"))>0,"STARTUP_REAL_CORE_MILESTONE");
+
         Class<?> progressClass=Class.forName("com.agy.core.CoreStartupProgress",true,target.getClassLoader());
         Object model=progressClass.getConstructor().newInstance();
         long attempt=(Long)progressClass.getMethod("begin").invoke(model);
@@ -195,6 +201,16 @@ public final class MobileCandidateProbe extends Instrumentation {
         }finally{
             runOnMainSync(()->{try{box.controller.getClass().getMethod("destroy").invoke(box.controller);}catch(Exception ignored){}((ViewGroup)box.root.getParent()).removeView(box.root);});
         }
+        JSONObject draft=state("return JSON.stringify({empty:[...document.querySelectorAll('.agy-composer [contenteditable=true]')].every(e=>!e.textContent.trim())&&!document.querySelector('.agy-attachment-card')});");
+        if(draft.optBoolean("empty")){
+            runOnMainSync(()->{try{activity.getClass().getMethod("showFatalError",String.class).invoke(activity,"ui_ready_timeout");}catch(Exception error){throw new RuntimeException(error);}});
+            require(liveView.getVisibility()==View.VISIBLE,"STARTUP_MAIN_ERROR_VISIBLE");
+            runOnMainSync(()->liveView.findViewWithTag("startup-retry").performClick());
+            long until=SystemClock.elapsedRealtime()+30000;
+            while(!Boolean.TRUE.equals(field(activity,"webUiReady"))&&SystemClock.elapsedRealtime()<until)SystemClock.sleep(150);
+            require(Boolean.TRUE.equals(field(activity,"webUiReady"))&&liveView.getVisibility()==View.GONE,"STARTUP_MAIN_RETRY_UI_READY");
+            require(before==(Integer)field(state,"readyGeneration"),"STARTUP_MAIN_RETRY_PRESERVES_CORE");
+        }else report("STARTUP_MAIN_RETRY","PENDING_EXISTING_DRAFT_PRESERVED");
     }
     private static final class FrameLayoutBox { android.widget.FrameLayout root; Object controller; View view; }
     private void captureNativeStartup(View owned,String tag)throws Exception{

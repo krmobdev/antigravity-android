@@ -222,3 +222,7 @@ existing reinstall/restart path. Copy/save logs remain explicit native actions;
 raw log tails and private paths are not displayed on the splash.
 The original HTML splash helpers are retained for compatibility but are not
 loaded by the main activity. NativeSplashDotsView is not the active overlay.
+
+The UI deadline is checked by the existing foreground lifecycle poll rather
+than a detached delayed callback. On resume, a still-pending WebView gets a fresh
+deadline so background suspension is not mistaken for a failed UI paint.

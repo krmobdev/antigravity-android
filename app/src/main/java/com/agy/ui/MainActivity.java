@@ -116,7 +116,7 @@ public class MainActivity extends Activity
     private boolean appLoaded = false;
     private boolean activityResumed = false;
     private int loadedGeneration = -1;
-    private int uiLoadAttempt;
+    private long uiDeadline;
     private long splashDeadline;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -151,9 +151,13 @@ public class MainActivity extends Activity
             if (!appLoaded || (loadedGeneration > 0 && generation != loadedGeneration)) {
                 loadCoreUi(generation);
             }
+            if (!webUiReady && !splash.isFatalShown()
+                    && android.os.SystemClock.elapsedRealtime() > uiDeadline) {
+                splash.showFatalError("ui_ready_timeout");
+            }
             return;
         }
-        if (!appLoaded) splash.showProgress(CoreRuntimeState.startup.snapshot());
+        if (!splash.isDismissed()) splash.showProgress(CoreRuntimeState.startup.snapshot());
         if (!appLoaded && CoreRuntimeState.serverUrl == null && !splash.isFatalShown()
                 && android.os.SystemClock.elapsedRealtime() > splashDeadline) {
             splash.showFatalError("core did not start within " + (SPLASH_TIMEOUT_MS / 1000) + "s");
@@ -161,20 +165,14 @@ public class MainActivity extends Activity
     }
 
     private void loadCoreUi(final int generation) {
-        final int expectedAttempt = ++uiLoadAttempt;
+        uiDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
         appLoaded = true;
         loadedGeneration = generation;
         webUiReady = false;
         splash.clearFatal();
         splash.showConnecting();
         webViewHost.loadApp();
-        handler.postDelayed(() -> {
-            if (!isDestroyed() && !isFinishing() && appLoaded
-                    && loadedGeneration == generation && uiLoadAttempt == expectedAttempt
-                    && !webUiReady && !splash.isFatalShown()) {
-                splash.showFatalError("ui_ready_timeout");
-            }
-        }, SPLASH_TIMEOUT_MS);
+
     }
 
     @Override
@@ -421,6 +419,13 @@ public class MainActivity extends Activity
         notificationUiResumed = true;
         AgyDiagnostics.log(this, "activity", "onResume");
         activityResumed = true;
+        // A backgrounded WebView cannot paint: allow a fresh foreground deadline.
+        if (splash != null && !splash.isFatalShown()) {
+            if (appLoaded && !webUiReady)
+                uiDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
+            if (!appLoaded)
+                splashDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
+        }
         activeActivity = this;
         AgentNotifications.contextChanged();
         if (webViewHost != null) {

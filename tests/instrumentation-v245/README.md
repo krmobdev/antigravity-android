@@ -58,3 +58,11 @@ timeout and Retry callback. This fixture never restarts Core or changes user
 data/themes. Optional pictures draw only the owned native view into a bitmap,
 not the screen, chat, other apps or system UI. It does not simulate a successful
 cold install or live Core failure; those require separate startup acceptance.
+
+When the actual draft/attachments are empty, startup mode additionally injects
+a UI-timeout error in MainActivity and clicks its real Retry button. It requires
+a fresh authenticated UI-ready callback with unchanged Core readyGeneration.
+With an existing draft this reload test is PENDING, preserving the draft.
+
+Startup mode also verifies the actual WebView loaded the new DOM-proof gate,
+protecting this acceptance from stale cached JavaScript after APK update.

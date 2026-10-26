@@ -1,26 +1,20 @@
-/**
- * patches/startup_ready/signal.js - shared scope, guard and ready signal.
- *
- * First fragment: if the patch already installed, exit the whole IIFE.
- */
+/** First fragment: one readiness gate for hints, API calls and DOM observers. */
 'use strict';
-
-if (window.__agStartupReady && window.__agStartupReady.__installed) {
-  return;
-}
-
+if (window.__agStartupReady && window.__agStartupReady.__installed) return;
 var global = window;
-var state = { signalled: false, inputSeenAt: 0 };
-
+var state = { signalled: false, scheduled: false, cleanup: null };
 function signal(reason) {
-  if (state.signalled) return;
-  state.signalled = true;
-  try {
-    console.log('[AGY Startup] UI Ready triggered via: ' + (reason || 'unknown'));
-    if (global.Android && typeof global.Android.onUiReady === 'function') {
-      global.Android.onUiReady(global.__AG_NATIVE_BRIDGE_TOKEN__);
-    }
-  } catch (e) {
-    console.warn('[AGY Startup] Android.onUiReady error:', e);
-  }
+  if (state.signalled || state.scheduled || !hasRenderedUi()) return;
+  state.scheduled = true;
+  // Allow actual layout to reach a paint; never replace proof with a timer.
+  global.requestAnimationFrame(function () {
+    global.requestAnimationFrame(function () {
+      state.scheduled = false;
+      if (state.signalled || !hasRenderedUi()) return;
+      state.signalled = true;
+      if (state.cleanup) state.cleanup();
+      if (global.Android && typeof global.Android.onUiReady === 'function')
+        global.Android.onUiReady(global.__AG_NATIVE_BRIDGE_TOKEN__);
+    });
+  });
 }

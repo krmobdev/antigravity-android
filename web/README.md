@@ -324,3 +324,13 @@ Colors derive from the active theme; no preset or stored color is overwritten.
 
 Selected setting segments and unchecked switch tracks use a distinct control
 surface so they remain visible on grey groups in Light/Dark/custom palettes.
+
+### Startup readiness proof
+
+The startup observer no longer signals ready on the old 5.5s fallback. It
+requires a visible input, action, auth/landing control or conversation content
+and two animation frames before notifying the trusted native bridge. Console
+hints and the existing public signal API pass through the same DOM proof.
+An empty/spinner-only/hidden root stays loading; the native deadline presents
+Retry. Observers/timers are released after readiness or deadline. No progress
+percentage or time-based successful completion is fabricated.
