@@ -63,7 +63,7 @@ assert(!unknown.includes('password'));
         self.assertIn('putLong(CACHE_PACKAGE_UPDATE, installedAt)', loader)
         self.assertIn('no-store, max-age=0, must-revalidate', server)
         self.assertIn('relPath.endsWith(".js")', server)
-        self.assertIn('2026-10-26-native-primary-v4', voice)
+        self.assertIn('2026-10-26-native-primary-v6', voice)
 
     def test_compact_attachments_are_scrollable_and_safe(self):
         css = (ROOT / "web/mobile-attachments.css").read_text()

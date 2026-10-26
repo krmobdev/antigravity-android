@@ -1,4 +1,4 @@
-window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-native-primary-v4";
+window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-native-primary-v6";
 function agyAudioError(error){
   // Native recorder already stores a localized message. Reformatting it
   // used to erase the real reason and show the same generic error every time.
@@ -55,6 +55,11 @@ function agyAudioStageError(stage,error){
  * browser getUserMedia fails. User initiation and native bridge token required.
  * Never bypass an explicit browser permission denial.
  */
+function agyNativeMicAvailable(){
+  const api=window.AndroidBridge||window.Android;
+  return typeof window.__AG_NATIVE_BRIDGE_TOKEN__==="string"
+      && typeof api?.startNativeVoice==="function";
+}
 function agyNativeMicStart(browserError,onFinished,onFailure,isCanceled){
   const reason=browserError?.name||"";
   if(reason==="NotAllowedError"||reason==="SecurityError")return null;

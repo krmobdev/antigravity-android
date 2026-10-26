@@ -52,6 +52,10 @@ assert.equal(scope.agyNativeMicStart({name:'UnknownError'},done,fail,()=>false),
         from pathlib import Path
         source=(ROOT/"web/patch_mobile_composer.py").read_text()
         self.assertIn('agyNativeMicStart({name:"NativePrimary"}', source)
+        self.assertIn("oe=(0,A.useMemo)(()=>Yf&&!agyNativeMicAvailable()?", source)
+        self.assertIn("error:ib,hasMicrophone:tb||agyNativeMicAvailable()", source)
+        self.assertNotIn("'isStreamingTranscriptionEnabled:Yf',", source)
+        self.assertIn("a?r(a):!agyNativeMicAvailable()&&navigator?.mediaDevices", source)
         # When a native bridge is present, the Android path must return before
         # reaching WebView's broken hardware capture.
         start=source.index('agyNativeMicStart({name:"NativePrimary"}')
