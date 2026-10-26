@@ -118,6 +118,24 @@ public final class CoreAgentProgress {
         }
     }
 
+    /** Generic Core steps expose a typed tool name, never a public description. */
+    public static int toolType(String name) {
+        if (name == null) return 0;
+        switch (name) {
+            case "view_file": return 8;
+            case "view_code_item": return 13;
+            case "view_file_outline": return 47;
+            case "list_dir": return 9;
+            case "grep_search": return 7;
+            case "find_by_name": return 25;
+            case "code_search": return 73;
+            case "replace_file_content": case "multi_replace_file_content":
+            case "write_to_file": return 5;
+            case "run_command": return 21;
+            default: return 0;
+        }
+    }
+
     public static String label(int type) {
         switch (type) {
             case 8: case 13: case 47: return "Читает исходники";

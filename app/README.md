@@ -193,3 +193,5 @@ Chat file picker forwards multi-select intent and ClipData results, cancels
 pending callbacks when the Activity is destroyed, and uses transient content
 grants instead of persisting access to each attachment. Existing project-folder
 persistable grants and directory selection remain separate.
+
+For generic Core steps, native progress also maps exact allowlisted tool names from the unique latest indexed Step metadata. Older/ambiguous indices, unknown tools and all arguments/descriptions remain excluded.

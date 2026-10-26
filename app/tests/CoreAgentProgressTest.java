@@ -50,6 +50,10 @@ public final class CoreAgentProgressTest {
         delta.accept(u(1,true,3,0,false,false));
         check(delta.accept(u(0,null,4,5,false,false)).status == 0,"new step cannot inherit terminal status");
         check(!delta.accept(u(2,false,4,5,false,false)).fullyIdle,"new run not idle");
+        check(CoreAgentProgress.toolType("view_file")==8,"generic read tool");
+        check(CoreAgentProgress.toolType("replace_file_content")==5,"generic edit tool");
+        check(CoreAgentProgress.toolType("run_command")==21,"generic command never guessed as tests");
+        check(CoreAgentProgress.toolType("unknown private command")==0,"unrecognized tool remains neutral");
         System.out.println("PASS CoreAgentProgress: " + checks + " assertions");
     }
 }

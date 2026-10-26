@@ -159,6 +159,30 @@ public final class NativeAgentStreamClient {
                     JSONObject trajectory = update.optJSONObject("mainTrajectoryUpdate");
                     JSONObject steps = trajectory == null ? null : trajectory.optJSONObject("stepsUpdate");
                     JSONObject error = trajectory == null ? null : trajectory.optJSONObject("lastStepError");
+                    int type = trajectory == null ? 0 : CoreAgentProgress.stepType(trajectory.opt("lastStepType"));
+                    int total = steps == null ? -1 : steps.optInt("totalLength", -1);
+                    // Modern Core may report GENERIC with the exact tool name in
+                    // the latest indexed Step metadata. Ignore older page entries,
+                    // ambiguous indices and all arguments/descriptions.
+                    if ((type == 0 || type == 132) && total > 0 && steps != null) {
+                        org.json.JSONArray indices = steps.optJSONArray("indices");
+                        org.json.JSONArray entries = steps.optJSONArray("steps");
+                        if (indices != null && entries != null && indices.length() == entries.length()) {
+                            JSONObject latest = null;
+                            int matches = 0;
+                            for (int i = 0; i < indices.length(); i++) {
+                                if (indices.optInt(i, -1) == total - 1) {
+                                    latest = entries.optJSONObject(i); matches++;
+                                }
+                            }
+                            if (matches == 1 && latest != null) {
+                                JSONObject metadata = latest.optJSONObject("metadata");
+                                JSONObject tool = metadata == null ? null : metadata.optJSONObject("toolCall");
+                                int mapped = tool == null ? 0 : CoreAgentProgress.toolType(tool.optString("name", ""));
+                                if (mapped != 0) type = mapped;
+                            }
+                        }
+                    }
                     // Omitted status is UNSPECIFIED. Only explicit fullyIdle=true
                     // can complete a task; false is the protobuf boolean default.
                     CoreAgentProgress.Update event = new CoreAgentProgress.Update(
@@ -166,7 +190,7 @@ public final class NativeAgentStreamClient {
                             CoreAgentProgress.status(update.opt("status")),
                             update.optBoolean("fullyIdle", false),
                             steps != null && steps.has("totalLength") ? steps.optInt("totalLength", -1) : -1,
-                            trajectory == null ? 0 : CoreAgentProgress.stepType(trajectory.opt("lastStepType")),
+                            type,
                             error != null && error.length() > 0,
                             trajectory != null && trajectory.optBoolean("killed", false));
                     if (!listener.onState(event)) break;
