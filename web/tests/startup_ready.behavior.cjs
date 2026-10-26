@@ -31,3 +31,8 @@ assert.deepEqual(h.calls,["fixture-token"]);assert.ok(h.cleaned);h.ctx.__agStart
 h=fixture();h.setNodes([h.node()]);h.mutate();h.paint();h.setNodes([]);h.paint();assert.equal(h.calls.length,0,"DOM proof disappeared before paint");
 h.setNodes([h.node()]);h.mutate();h.flush();assert.equal(h.calls.length,1);
 console.log("PASS startup ready: no timed/console/API bypass, visible controls and two frames, hidden/offscreen rejection, lost proof, exactly-once bridge and cleanup");
+
+h=fixture();h.expire();assert.ok(h.cleaned);h.setNodes([h.node()]);
+h.ctx.__agStartupReady.resume();h.flush();
+assert.equal(h.calls.length,1,"foreground resume can recover after observer expiration");assert.ok(h.cleaned);
+console.log("PASS startup foreground resume: expired observers rearm, actual DOM proof required, cleanup preserved");

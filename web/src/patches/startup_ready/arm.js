@@ -1,6 +1,7 @@
 /** Observe real content; expiration only releases observers, never signals ready. */
 function arm() {
   if (!global.document || state.signalled) return;
+  if (state.cleanup) state.cleanup();
   isUiRendered();
   if (state.signalled) return;
   var observer, poller, expiry;

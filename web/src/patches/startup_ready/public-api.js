@@ -9,5 +9,6 @@ if (global.document && global.document.readyState === 'loading') {
 
 global.__agStartupReady = {
   __installed: true,
-  signal: signal
+  signal: signal,
+  resume: arm
 };

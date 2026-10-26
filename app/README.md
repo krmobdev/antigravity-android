@@ -226,3 +226,7 @@ loaded by the main activity. NativeSplashDotsView is not the active overlay.
 The UI deadline is checked by the existing foreground lifecycle poll rather
 than a detached delayed callback. On resume, a still-pending WebView gets a fresh
 deadline so background suspension is not mistaken for a failed UI paint.
+
+On resume, only an unfinished healthy UI is asked to rearm its DOM readiness
+observer, including after a long background pause. Ready pages remain visible
+without a new splash or reload.

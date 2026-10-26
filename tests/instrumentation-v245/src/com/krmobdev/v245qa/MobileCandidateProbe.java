@@ -211,6 +211,24 @@ public final class MobileCandidateProbe extends Instrumentation {
             require(Boolean.TRUE.equals(field(activity,"webUiReady"))&&liveView.getVisibility()==View.GONE,"STARTUP_MAIN_RETRY_UI_READY");
             require(before==(Integer)field(state,"readyGeneration"),"STARTUP_MAIN_RETRY_PRESERVES_CORE");
         }else report("STARTUP_MAIN_RETRY","PENDING_EXISTING_DRAFT_PRESERVED");
+        Activity original=activity;
+        target.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        SystemClock.sleep(550);
+        Intent foreground=target.getPackageManager().getLaunchIntentForPackage("com.agy.dev");
+        foreground.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_REORDER_TO_FRONT|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        target.startActivity(foreground);
+        long resumedUntil=SystemClock.elapsedRealtime()+20000;
+        do{
+            Object current=field(Class.forName("com.agy.ui.MainActivity",true,target.getClassLoader()),"activeActivity");
+            if(current instanceof Activity)activity=(Activity)current;
+            if(activity.hasWindowFocus()&&Boolean.TRUE.equals(field(activity,"webUiReady")))break;
+            SystemClock.sleep(150);
+        }while(SystemClock.elapsedRealtime()<resumedUntil);
+        Object resumedSplash=field(activity,"splash");
+        View resumedView=(View)resumedSplash.getClass().getMethod("view").invoke(resumedSplash);
+        require(activity.hasWindowFocus()&&Boolean.TRUE.equals(field(activity,"webUiReady"))&&resumedView.getVisibility()==View.GONE,"STARTUP_BACKGROUND_RESUME");
+        require(before==(Integer)field(state,"readyGeneration"),"STARTUP_BACKGROUND_CORE_PRESERVED");
+        report("STARTUP_BACKGROUND_ACTIVITY",activity==original?"PASS_SAME_ACTIVITY":"PENDING_OS_RECREATED_ACTIVITY");
     }
     private static final class FrameLayoutBox { android.widget.FrameLayout root; Object controller; View view; }
     private void captureNativeStartup(View owned,String tag)throws Exception{

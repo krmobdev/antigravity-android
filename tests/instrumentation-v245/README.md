@@ -66,3 +66,8 @@ With an existing draft this reload test is PENDING, preserving the draft.
 
 Startup mode also verifies the actual WebView loaded the new DOM-proof gate,
 protecting this acceptance from stale cached JavaScript after APK update.
+
+Startup mode ends with real Home/background and foreground intents, requiring
+a ready UI with hidden splash and unchanged Core generation. It reports whether
+Android retained the same Activity. Long unready/background expiration is covered
+by the DOM-gate behavior test; it is not asserted as a timed on-device scenario.

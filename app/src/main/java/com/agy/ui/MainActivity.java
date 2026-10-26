@@ -430,6 +430,10 @@ public class MainActivity extends Activity
         AgentNotifications.contextChanged();
         if (webViewHost != null) {
             AppLifecycle.resume(webViewHost.getWebView());
+            if (appLoaded && !webUiReady && splash != null && !splash.isFatalShown()) {
+                webViewHost.getWebView().evaluateJavascript(
+                        "window.__agStartupReady && window.__agStartupReady.resume && window.__agStartupReady.resume();", null);
+            }
         }
         navigatePendingConversation();
         refreshTheme();

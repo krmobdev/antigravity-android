@@ -334,3 +334,8 @@ hints and the existing public signal API pass through the same DOM proof.
 An empty/spinner-only/hidden root stays loading; the native deadline presents
 Retry. Observers/timers are released after readiness or deadline. No progress
 percentage or time-based successful completion is fabricated.
+
+Native foreground resume rearms an unfinished readiness observer after its
+deadline cleanup. Rearming first clears old watchers and still requires the
+same visible-DOM/two-frame proof; a paused WebView cannot permanently lose its
+ready signal. Already-ready pages are untouched.
