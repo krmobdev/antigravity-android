@@ -195,3 +195,14 @@ grants instead of persisting access to each attachment. Existing project-folder
 persistable grants and directory selection remain separate.
 
 For generic Core steps, native progress also maps exact allowlisted tool names from the unique latest indexed Step metadata. Older/ambiguous indices, unknown tools and all arguments/descriptions remain excluded.
+
+
+### Native PCM capture lifecycle
+
+NativePcmCapture retains the original mono 16kHz PCM16 Core transcription
+transport. PcmCaptureSession owns each capture generation, closes AudioRecord
+once on read/limit/overflow/stop, and isolates late workers from new recordings.
+The native queue holds at most 20 frames (40ms each); overflow is an explicit
+error rather than silent speech loss. Poll batches remain at most eight frames.
+Activity background and bridge detach cancel capture. No raw audio is logged
+or persisted. Fault/race tests use fake sources and never acquire a microphone.

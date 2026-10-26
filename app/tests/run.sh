@@ -36,3 +36,6 @@ java -cp "$OUT" com.agy.gateway.GatewayAuthTokenTest
 
 javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/ui/webview/WebAudioOrigin.java" "$ROOT/app/tests/WebAudioOriginTest.java"
 java -cp "$OUT" WebAudioOriginTest
+
+javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/bridge/PcmCaptureSession.java" "$ROOT/app/tests/PcmCaptureSessionTest.java"
+java -cp "$OUT" com.agy.bridge.PcmCaptureSessionTest

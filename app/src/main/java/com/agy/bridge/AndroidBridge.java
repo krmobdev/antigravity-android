@@ -48,6 +48,7 @@ public final class AndroidBridge {
 
     /** Host activity, used to dismiss the native splash once the UI has painted. */
     public void setActivity(MainActivity activity) {
+        if (activity == null) cancelNativeVoiceOnBackground();
         this.activityRef = activity != null ? new WeakReference<MainActivity>(activity) : null;
         ui.setActivity(activity);
     }
