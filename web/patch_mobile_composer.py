@@ -62,6 +62,59 @@ def transform(source):
     # when its Core feature is available (Yf); otherwise offer audio attachment.
     # Native Android recording is a compatibility implementation ONLY for
     # the upstream audio-attachment branch, never a forced UI mode.
+    # Original Core speech transcription expects raw little-endian signed
+    # 16kHz PCM chunks. Android WebView's getUserMedia fails on some phones
+    # even when the app has RECORD_AUDIO; use native AudioRecord as a transport
+    # to THE SAME upstream streaming transcription RPC and Lexical editor.
+    start='let Ya=la(await fa(navigator.mediaDevices.getUserMedia({audio:{channelCount:1,sampleRate:{ideal:48E3},echoCancellation:!0,noiseSuppression:!0}})));'
+    end='Ea.connect(na);u(!0);da();'
+    if source.count(start)!=1 or source.count(end)!=1:
+        raise ValueError("Upstream streaming microphone anchor changed")
+    start_index=source.index(start)
+    end_index=source.index(end,start_index)+len(end)
+    old_stream=source[start_index:end_index]
+    if len(old_stream)!=811 or 'audio-streaming-processor' not in old_stream:
+        raise ValueError("Unsafe upstream streaming microphone patch")
+    source=once(source,old_stream,"""let agyNativePcm=agyNativePcmAvailable(),Ya=null;
+      if(!agyNativePcm)
+        Ya=la(await fa(navigator.mediaDevices.getUserMedia({audio:{channelCount:1,sampleRate:{ideal:48E3},echoCancellation:!0,noiseSuppression:!0}})));
+      if(Za.signal.aborted){
+        if(agyNativePcm)agyNativePcmStop();
+        else Ya.getTracks().forEach(Ua=>Ua.stop());
+      }else{
+        var Aa=[];M.current=0;
+        var agyPcmChunk=Ua=>{
+          var lb=M.current++,cb=L.current;
+          cb&&n?n.sendAudioChunk(p(Via,{sessionId:cb,data:Ua,sequenceNumber:lb})).catch(zb=>{
+            console.error("[AudioStreaming] Native PCM chunk transport failed",zb?.name||"Error")
+          }):Aa.push({data:Ua,seq:lb});
+        };
+        if(agyNativePcm){
+          agyNativePcmStart(agyPcmChunk,code=>{
+            ma("Ошибка распознавания Android ("+code+").");ja()
+          });
+        }else{
+          H.current=Ya;var va=C?.audioContext;
+          if(!va)throw Error("Streaming audio feature is not available");
+          G.current=va;
+          va.state==="suspended"&&la(await fa(va.resume()));
+          var Ea=va.createMediaStreamSource(Ya),
+              na=new AudioWorkletNode(va,"audio-streaming-processor");
+          J.current=na;
+          na.port.onmessage=Ua=>{
+            if(Ua.data!=="done")agyPcmChunk(new Uint8Array(Ua.data))
+          };
+          Ea.connect(na);
+        }
+        u(!0);da();""")
+    source=once(source,'ma=(0,A.useCallback)(fa=>{y(fa);ha.current?.(fa)},[]),ja=(0,A.useCallback)(()=>{H.current',
+                'ma=(0,A.useCallback)(fa=>{y(fa);ha.current?.(fa)},[]),ja=(0,A.useCallback)(()=>{agyNativePcmStop();H.current')
+    source=once(source,'ia=(0,A.useCallback)(()=>\n{var fa=L.current;',
+                'ia=(0,A.useCallback)(()=>\n{agyNativePcmStop();var fa=L.current;')
+    source=once(source,'error:x,hasMicrophone:B,isAudioStreamingAvailable:!!n&&D',
+                'error:x,hasMicrophone:B||agyNativePcmAvailable(),isAudioStreamingAvailable:!!n&&D')
+    source=once(source,'ma(gp(Za)),u(!1),ja()}finally{R.current=!1}',
+                'ma(/^ERR_NATIVE_[A-Z_]+$/.test(Za?.message||"")?"Ошибка микрофона Android ("+Za.message+").":gp(Za)),u(!1),ja()}finally{R.current=!1}')
     source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',
                 'isRecording:Ob,starting:agyStarting,error:ib,hasMicrophone:tb}=d5a(Qb)')
     source=once(source,'audioPhase:Ob?"recording":"idle",error:ib',

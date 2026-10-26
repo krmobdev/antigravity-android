@@ -32,6 +32,7 @@ public final class AndroidBridge {
     private final EngineConfigJson config;
     private final String blobBridgeToken = createBlobBridgeToken();
     private final NativeVoiceRecorder nativeVoiceRecorder;
+    private final NativePcmCapture nativePcmCapture=new NativePcmCapture();
     private volatile WeakReference<MainActivity> activityRef;
 
     public AndroidBridge(Context context, RuntimeManager runtime,
@@ -163,9 +164,38 @@ public final class AndroidBridge {
         if (matchesNativeBridgeToken(token)) nativeVoiceRecorder.cancel();
     }
 
+    /**
+     * Native PCM feeds the ORIGINAL Core streaming transcription RPC.
+     * The bridge only provides raw 16k/16-bit/mono samples: no local STT.
+     * Every call requires the trusted document token.
+     */
+    @JavascriptInterface
+    public String nativePcmReadiness(String token) {
+        return matchesNativeBridgeToken(token)
+                ? nativePcmCapture.capability(getActivity()) : "ERR_UNAUTHORIZED";
+    }
+
+    @JavascriptInterface
+    public String startNativePcm(String token) {
+        return matchesNativeBridgeToken(token)
+                ? nativePcmCapture.start(getActivity()) : "ERR_UNAUTHORIZED";
+    }
+
+    @JavascriptInterface
+    public String readNativePcm(String token) {
+        return matchesNativeBridgeToken(token)
+                ? nativePcmCapture.poll() : "ERR_UNAUTHORIZED";
+    }
+
+    @JavascriptInterface
+    public void stopNativePcm(String token) {
+        if (matchesNativeBridgeToken(token)) nativePcmCapture.stop();
+    }
+
     /** No JS token required because this is invoked by the native lifecycle. */
     public void cancelNativeVoiceOnBackground() {
         nativeVoiceRecorder.cancel();
+        nativePcmCapture.stop();
     }
 
     /** Saves a downloaded blob only for scripts holding the top-level document token. */

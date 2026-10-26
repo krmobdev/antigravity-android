@@ -29,6 +29,8 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean capture;
     private boolean micMode;
     private boolean micUiMode;
+    private boolean micPcmUiMode;
+    private boolean micVisualMode;
     private Context target;
     private Activity activity;
     private WebView web;
@@ -268,6 +270,36 @@ public final class MobileCandidateProbe extends Instrumentation {
             state("const t=window.__agyMicTest;if(t){window.AndroidBridge=t.api;navigator.mediaDevices.getUserMedia=t.original;delete window.__agyMicTest;}return '{}';");
         }
     }
+    /** Test the original speech-to-text button without recording audio. */
+    private void microphonePcmButtonRouting()throws Exception {
+        JSONObject before=state("const b=document.querySelector('button[data-tooltip-id=\\\"input-send-button-record-tooltip\\\"]');return JSON.stringify({exists:!!b,disabled:!!b?.disabled});");
+        require(before.optBoolean("exists")&&!before.optBoolean("disabled"),"VOICE_STT_BUTTON_VISIBLE");
+        JSONObject armed=state("const api=window.AndroidBridge,orig=navigator.mediaDevices?.getUserMedia;window.__agyPcmTest={api,orig,pcm:0,file:0,browser:0};const t=window.__agyPcmTest;window.AndroidBridge={startNativePcm(){t.pcm++;return 'ERR_NATIVE_TEST'},readNativePcm(){return ''},stopNativePcm(){},startNativeVoice(){t.file++;return 'ERR_NATIVE_TEST'}};navigator.mediaDevices.getUserMedia=()=>{t.browser++;return Promise.reject({name:'StubbedByTest'})};return JSON.stringify({armed:window.AndroidBridge!==api&&navigator.mediaDevices.getUserMedia!==orig});");
+        require(armed.optBoolean("armed"),"VOICE_STT_MOCK_INTERCEPTS");
+        try{
+            state("document.querySelector('button[data-tooltip-id=\\\"input-send-button-record-tooltip\\\"]').click();return '{}';");
+            SystemClock.sleep(800);
+            JSONObject data=state("const t=window.__agyPcmTest;return JSON.stringify({pcm:t.pcm,file:t.file,browser:t.browser});");
+            report("VOICE_STT_NATIVE_PCM_CALLS",data.optInt("pcm",-1));
+            report("VOICE_STT_ATTACHMENT_CALLS",data.optInt("file",-1));
+            report("VOICE_STT_WEB_CAPTURE_CALLS",data.optInt("browser",-1));
+            require(data.optInt("pcm")==1&&data.optInt("file")==0&&data.optInt("browser")==0,"VOICE_STT_NATIVE_ROUTING");
+        }finally{
+            state("const t=window.__agyPcmTest;if(t){window.AndroidBridge=t.api;navigator.mediaDevices.getUserMedia=t.orig;delete window.__agyPcmTest;}return '{}';");
+        }
+    }
+    /** Inspect actual WebView CSS states; do not access any microphone. */
+    private void microphoneVisualStyles()throws Exception {
+        JSONObject r=state("const mic=document.querySelector('button[data-tooltip-id=\\\"input-send-button-record-tooltip\\\"]'),root=mic?.closest('.agy-composer');if(!mic||!root)return JSON.stringify({found:false,mic:!!mic,root:!!root});const sample=document.createElement('button');sample.type='button';sample.setAttribute('data-tooltip-id','input-send-button-record-tooltip');sample.className='bg-red-500 text-white';sample.setAttribute('aria-label','Stop recording');root.appendChild(sample);const normal=getComputedStyle(mic),glyph=getComputedStyle(mic,'::after'),active=getComputedStyle(sample),stop=getComputedStyle(sample,'::after');const out={found:true,width:normal.width,height:normal.height,mask:glyph.webkitMaskImage||glyph.maskImage||'',bg:active.backgroundColor,stopBg:stop.backgroundColor,realClass:mic.className.includes('bg-red-500')};sample.remove();return JSON.stringify(out);");
+        report("VOICE_STYLE_STRUCTURE",r.toString());
+        require(r.optBoolean("found"),"VOICE_STYLE_BUTTON_FOUND");
+        report("VOICE_STYLE_MIC_SIZE",r.optString("width")+"x"+r.optString("height"));
+        report("VOICE_STYLE_STOP_BACKGROUND",r.optString("bg"));
+        require("48px".equals(r.optString("width"))&&"48px".equals(r.optString("height")),"VOICE_STYLE_TOUCH_SIZE");
+        require(r.optString("mask").contains("svg"),"VOICE_STYLE_MIC_GLYPH");
+        require(!"rgb(239, 68, 68)".equals(r.optString("bg")),"VOICE_STYLE_NO_RED_DISK");
+        require("rgb(220, 69, 75)".equals(r.optString("stopBg")),"VOICE_STYLE_STOP_ICON");
+    }
     private void microphoneCapabilities()throws Exception {
         JSONObject build=state("return JSON.stringify({build:window.__AGY_AUDIO_DIAG_BUILD__||'STALE_BUNDLE'});");
         report("VOICE_WEBVIEW_BUNDLE",build.optString("build","STALE_BUNDLE"));
@@ -283,6 +315,13 @@ public final class MobileCandidateProbe extends Instrumentation {
         require(nativeBridge.optBoolean("token")&&nativeBridge.optBoolean("bridge")&&nativeBridge.optBoolean("start")&&nativeBridge.optBoolean("stop")&&nativeBridge.optBoolean("cancel")&&nativeBridge.optBoolean("helper"),"VOICE_NATIVE_BRIDGE_READY");
         JSONObject ready=state("const api=window.AndroidBridge||window.Android;return JSON.stringify({status:api.nativeVoiceReadiness(window.__AG_NATIVE_BRIDGE_TOKEN__)});");
         report("VOICE_NATIVE_READINESS",ready.optString("status","MISSING"));
+        JSONObject pcm=state("const api=window.AndroidBridge||window.Android;return JSON.stringify({start:typeof api.startNativePcm==='function',read:typeof api.readNativePcm==='function',stop:typeof api.stopNativePcm==='function',status:api.nativePcmReadiness(window.__AG_NATIVE_BRIDGE_TOKEN__)});");
+        report("VOICE_NATIVE_PCM_START",pcm.optBoolean("start"));
+        report("VOICE_NATIVE_PCM_READ",pcm.optBoolean("read"));
+        report("VOICE_NATIVE_PCM_STOP",pcm.optBoolean("stop"));
+        report("VOICE_NATIVE_PCM_READINESS",pcm.optString("status","MISSING"));
+        require(pcm.optBoolean("start")&&pcm.optBoolean("read")&&pcm.optBoolean("stop")
+            &&"READY".equals(pcm.optString("status")),"VOICE_NATIVE_PCM_READY");
         report("VOICE_SECURE_CONTEXT",v.optBoolean("secure"));
         report("VOICE_GET_USER_MEDIA",v.optBoolean("hasGetUserMedia"));
         report("VOICE_MEDIA_RECORDER",v.optBoolean("hasMediaRecorder"));
@@ -305,7 +344,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -325,6 +364,8 @@ public final class MobileCandidateProbe extends Instrumentation {
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
             if(micMode){microphoneCapabilities();ok=true;return;}
             if(micUiMode){microphoneButtonRouting();ok=true;return;}
+            if(micPcmUiMode){microphonePcmButtonRouting();ok=true;return;}
+            if(micVisualMode){microphoneVisualStyles();ok=true;return;}
             boolean uiOk=true;
             try{ui();}catch(Throwable e){uiOk=false;report("UI_PROBE_ERROR",e.getClass().getSimpleName());
                 report("UI_PROBE_DETAIL",String.valueOf(e.getMessage()).replaceAll("[^a-zA-Z0-9_ .:-]","").substring(0,Math.min(100,String.valueOf(e.getMessage()).replaceAll("[^a-zA-Z0-9_ .:-]","").length()))); }

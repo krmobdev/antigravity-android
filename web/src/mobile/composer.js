@@ -102,6 +102,61 @@ function agyNativeMicCancel(){
       api.cancelNativeVoice(window.__AG_NATIVE_BRIDGE_TOKEN__);
   }catch(e){}
 }
+/*
+ * Transport adapter only. Uses native 16kHz PCM when Android WebView cannot
+ * capture audio. The original Core streamAudioTranscription RPC and Lexical
+ * transcript editor remain unchanged.
+ */
+let agyNativePcmSession=null;
+function agyNativePcmAvailable(){
+  const api=window.AndroidBridge||window.Android;
+  return typeof window.__AG_NATIVE_BRIDGE_TOKEN__==="string"
+    && typeof api?.startNativePcm==="function"
+    && typeof api?.readNativePcm==="function"
+    && typeof api?.stopNativePcm==="function";
+}
+function agyNativePcmStop(){
+  const current=agyNativePcmSession;
+  if(!current)return;
+  current.alive=false;
+  if(current.timer!==null)clearTimeout(current.timer);
+  agyNativePcmSession=null;
+  try{current.api.stopNativePcm(current.token)}catch(e){}
+}
+function agyNativePcmStart(onChunk,onError){
+  if(!agyNativePcmAvailable())throw Error("ERR_NATIVE_PCM_UNAVAILABLE");
+  agyNativePcmStop();
+  const api=window.AndroidBridge||window.Android;
+  const token=window.__AG_NATIVE_BRIDGE_TOKEN__;
+  let status;
+  try{status=api.startNativePcm(token)}
+  catch(e){throw Error("ERR_NATIVE_PCM_BRIDGE")}
+  if(status!=="OK")
+    throw Error(/^ERR_[A-Z_]{2,48}$/.test(status)?status:"ERR_NATIVE_PCM_START");
+  const session={api,token,alive:true,timer:null};
+  agyNativePcmSession=session;
+  const read=()=>{
+    if(!session.alive)return;
+    try{
+      const value=api.readNativePcm(token);
+      if(typeof value!=="string")throw Error("ERR_NATIVE_PCM_REPLY");
+      if(/^ERR_[A-Z_]{2,48}$/.test(value))throw Error(value);
+      if(value){
+        if(value.length>32*1024)throw Error("ERR_NATIVE_PCM_FRAME");
+        const binary=atob(value),data=new Uint8Array(binary.length);
+        for(let i=0;i<binary.length;i++)data[i]=binary.charCodeAt(i);
+        if(data.length)onChunk(data);
+      }
+    }catch(e){
+      const code=e?.message;
+      agyNativePcmStop();
+      onError(/^ERR_[A-Z_]{2,48}$/.test(code)?code:"ERR_NATIVE_PCM_READ");
+      return;
+    }
+    session.timer=setTimeout(read,45);
+  };
+  session.timer=setTimeout(read,45);
+}
 /* Compact mobile composer; all settings keep their original controllers. */
 function useAgyMobileLayout(){
   const query="(max-width: 720px), (pointer: coarse)";
