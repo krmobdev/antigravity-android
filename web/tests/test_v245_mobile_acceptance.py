@@ -22,6 +22,32 @@ class MobileAcceptanceTest(unittest.TestCase):
         self.assertIn('!!oe.error||Ya.length>0', patcher)
         self.assertIn('@media (max-width:720px),(pointer:coarse)', css)
 
+    def test_voice_errors_remain_specific_and_private(self):
+        import subprocess
+        js = r"""
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const raw=fs.readFileSync('web/src/mobile/composer.js','utf8');
+const snippet=raw.slice(0,raw.indexOf('/* Compact mobile composer'));
+const box={};
+vm.createContext(box);
+vm.runInContext(snippet,box);
+const device={name:'NotReadableError',message:'/private/secret/path'};
+const readable=box.agyAudioError(device);
+assert(/занят|недоступен/.test(readable));
+assert.strictEqual(box.agyAudioError(readable),readable);
+const denied=box.agyAudioError({name:'NotAllowedError'});
+assert.strictEqual(box.agyAudioError(denied),denied);
+const unsupported=box.agyAudioError({name:'NotSupportedError'});
+assert.strictEqual(box.agyAudioError(unsupported),unsupported);
+const unknown=box.agyAudioError({name:'InvalidStateError',message:'password=SECRET'});
+assert(unknown.includes('InvalidStateError'));
+assert(!unknown.includes('SECRET'));
+assert(!unknown.includes('password'));
+"""
+        result = subprocess.run(["node", "-e", js], cwd=ROOT,
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_compact_attachments_are_scrollable_and_safe(self):
         css = (ROOT / "web/mobile-attachments.css").read_text()
         js = (ROOT / "web/src/mobile/attachments.js").read_text()

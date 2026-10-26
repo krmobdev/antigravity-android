@@ -1,4 +1,17 @@
 function agyAudioError(error){
+  // Native recorder already stores a localized message. Reformatting it
+  // used to erase the real reason and show the same generic error every time.
+  const known=[
+    "Нет доступа к микрофону. Разрешите запись звука в настройках приложения.",
+    "Микрофон не найден. Проверьте подключение устройства.",
+    "Микрофон занят или недоступен. Закройте другое приложение с записью.",
+    "Запись голоса не поддерживается текущим Android WebView. Проверьте обновление системного WebView.",
+    "WebView заблокировал доступ к микрофону. Проверьте настройки безопасности.",
+    "Запись была прервана. Попробуйте ещё раз.",
+    "Запись пуста. Проверьте микрофон и попробуйте снова.",
+    "Ошибка записи. Проверьте микрофон и попробуйте снова."
+  ];
+  if(typeof error==="string" && known.includes(error)) return error;
   const name=error?.name||"";
   if(name==="NotAllowedError"||name==="PermissionDeniedError")
     return "Нет доступа к микрофону. Разрешите запись звука в настройках приложения.";
@@ -12,8 +25,10 @@ function agyAudioError(error){
     return "WebView заблокировал доступ к микрофону. Проверьте настройки безопасности.";
   if(name==="AbortError")
     return "Запись была прервана. Попробуйте ещё раз.";
-  return typeof error==="string"&&error.startsWith("Нет доступа к микрофону.")?error:
-    "Не удалось начать запись. Проверьте доступ к микрофону и доступность голосового ввода.";
+  // Return a safe exception class, never an arbitrary browser error message
+  // that might include private paths or account data.
+  const safeClass=typeof name==="string"&&/^[A-Za-z]{2,36}Error$/.test(name)?name:"UnknownError";
+  return "Не удалось начать запись ("+safeClass+"). Проверьте поддержку микрофона в Android WebView.";
 }
 /* Compact mobile composer; all settings keep their original controllers. */
 function useAgyMobileLayout(){

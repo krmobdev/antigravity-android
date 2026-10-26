@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
     private boolean capture;
+    private boolean micMode;
     private Context target;
     private Activity activity;
     private WebView web;
@@ -243,7 +244,26 @@ public final class MobileCandidateProbe extends Instrumentation {
         // Inspect stock menus last so a Back/navigation fault cannot hide attachment results.
         modelMenus();
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));start();}
+    private void microphoneCapabilities()throws Exception {
+        JSONObject v=state("return JSON.stringify({secure:window.isSecureContext,hasGetUserMedia:typeof navigator.mediaDevices?.getUserMedia==='function',hasMediaRecorder:typeof MediaRecorder==='function',webm:typeof MediaRecorder==='function'&&MediaRecorder.isTypeSupported('audio/webm;codecs=opus'),mp4:typeof MediaRecorder==='function'&&MediaRecorder.isTypeSupported('audio/mp4')});");
+        report("VOICE_SECURE_CONTEXT",v.optBoolean("secure"));
+        report("VOICE_GET_USER_MEDIA",v.optBoolean("hasGetUserMedia"));
+        report("VOICE_MEDIA_RECORDER",v.optBoolean("hasMediaRecorder"));
+        report("VOICE_WEBM_OPUS",v.optBoolean("webm"));
+        report("VOICE_MP4",v.optBoolean("mp4"));
+        AtomicReference<String> currentUrl=new AtomicReference<>("");
+        runOnMainSync(()->currentUrl.set(web.getUrl()));
+        java.net.URI u=new java.net.URI(currentUrl.get());
+        String origin=u.getScheme()+"://"+u.getHost()+":"+u.getPort();
+        ClassLoader runtime=target.getClassLoader();
+        Class<?> state=Class.forName("com.agy.core.CoreRuntimeState",true,runtime);
+        String actualServer=String.valueOf(state.getField("serverUrl").get(null));
+        Class<?> allowed=Class.forName("com.agy.ui.webview.WebAudioOrigin",true,runtime);
+        boolean trusted=(Boolean)allowed.getMethod("allowed",String.class,String.class).invoke(null,origin,actualServer);
+        report("VOICE_TRUSTED_ORIGIN",trusted);
+        report("VOICE_ANDROID_RECORD_AUDIO_GRANTED",activity.checkSelfPermission("android.permission.RECORD_AUDIO")==android.content.pm.PackageManager.PERMISSION_GRANTED);
+    }
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));micMode="mic".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -261,6 +281,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(micMode){microphoneCapabilities();ok=true;return;}
             boolean uiOk=true;
             try{ui();}catch(Throwable e){uiOk=false;report("UI_PROBE_ERROR",e.getClass().getSimpleName());
                 report("UI_PROBE_DETAIL",String.valueOf(e.getMessage()).replaceAll("[^a-zA-Z0-9_ .:-]","").substring(0,Math.min(100,String.valueOf(e.getMessage()).replaceAll("[^a-zA-Z0-9_ .:-]","").length()))); }
