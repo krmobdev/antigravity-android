@@ -118,3 +118,17 @@ binary/size limits, object URL cleanup/late reads, concurrent five-file cap,
 cancelled selection, failed read and repeated selection. Web selftest and
 complete Java compilation passed. Android File Picker, sending against the
 account's model, background return and visual theme checks remain PENDING.
+
+## Composer implementation checkpoint
+
+New spacious rounded multiline layout and 48 px minimum controls on coarse/
+narrow viewports. The adaptive + bottom sheet renders the existing action list;
+model, reasoning, environment, permissions, queue/send/stop and voice code is
+retained. No artificial scrolling/animations were introduced. Existing Lexical
+Enter and Android resize/visualViewport handling are retained. System Back uses
+the dialog's temporary same-route history entry.
+
+Browser behaviour/source checks cover mobile/desktop switching, existing action
+callbacks, disabled state, cancellation/Back cleanup and unchanged send/voice
+logic. Real Android keyboard, light/dark/custom presets, large font, TalkBack and
+long-chat fling checks remain PENDING.

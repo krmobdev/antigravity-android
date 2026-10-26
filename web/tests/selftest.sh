@@ -55,4 +55,6 @@ node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
     "$ROOT/web/src/patches/web_optimizations/sidebar-reconcile.js" \
     "$ROOT/web/src/patches/web_optimizations/agent-notifications.js"
 node "$ROOT/web/tests/mobile_attachments.behavior.cjs"
+node "$ROOT/web/tests/mobile_composer.behavior.cjs"
+python3 "$ROOT/web/tests/test_mobile_ui_patch.py"
 echo "web build selftest: OK"

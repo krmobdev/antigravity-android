@@ -170,6 +170,8 @@ python3 "$SCRIPT_DIR/patch_scroll_timeline_only.py" "$GEN_DIR/main.js" \
 
 python3 "$SCRIPT_DIR/patch_mobile_attachments.py" "$GEN_DIR/main.js" \
     || die "Mobile attachment client anchors incompatible"
+python3 "$SCRIPT_DIR/patch_mobile_composer.py" "$GEN_DIR/main.js" \
+    || die "Mobile composer client anchors incompatible"
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
     "${#bundle_names[@]}" "$src_count"

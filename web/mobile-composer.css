@@ -1,0 +1,21 @@
+/* Scoped to the input panel: native chat scrolling and scrollbar are untouched. */
+@media (max-width:720px),(pointer:coarse){
+  .agy-composer{padding-left:max(4px,env(safe-area-inset-left));padding-right:max(4px,env(safe-area-inset-right));padding-bottom:max(4px,env(safe-area-inset-bottom));min-width:0}
+  .agy-composer-surface{padding:8px!important;border-radius:24px!important}
+  .agy-composer [contenteditable=true]{min-height:88px;max-height:min(240px,30dvh);overflow-y:auto;font-size:16px!important;line-height:1.5;padding:12px!important;overflow-wrap:anywhere}
+  .agy-composer button,.agy-composer [role=button]{min-width:48px;min-height:48px;touch-action:manipulation}
+  .agy-composer-footer{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;padding-top:4px}
+  .agy-composer-footer>div:first-child{flex-wrap:wrap;gap:4px;min-width:0}
+  .agy-composer-footer>div:first-child>div{flex-wrap:wrap;max-width:100%}
+  .agy-composer-footer>div:last-child{align-self:end}
+  .agy-composer-footer button{border-radius:16px}
+  .agy-composer-add{font-size:28px;line-height:1;border:1px solid currentColor;border-radius:50%!important;opacity:.85}
+}
+.agy-composer-sheet{position:fixed;inset:auto 0 0;width:100%;max-width:640px;max-height:min(80dvh,var(--agy-vvh,80vh));margin:0 auto;border-width:1px;border-style:solid;border-radius:24px 24px 0 0;padding:12px max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overflow-y:auto}
+.agy-composer-sheet::backdrop{background:rgba(0,0,0,.45)}
+.agy-composer-sheet header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.agy-composer-sheet button{min-width:48px;min-height:48px;border-radius:12px}
+.agy-composer-action-group{display:flex;flex-direction:column;gap:4px;padding:6px 0}
+.agy-composer-action{display:flex;align-items:center;gap:16px;width:100%;padding:12px;text-align:left}
+.agy-composer-action:disabled{opacity:.45}
+.agy-composer-action:focus-visible,.agy-composer-sheet button:focus-visible{outline:2px solid currentColor;outline-offset:-2px}

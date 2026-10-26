@@ -255,3 +255,16 @@ Native dialog focus and a temporary same-route history entry support Back.
 
 Tests: node web/tests/mobile_attachments.behavior.cjs, plus web/tests/selftest.sh.
 These do not substitute for Android picker/IME/theme/device acceptance.
+
+## KR mobile composer
+
+The pinned composer patch preserves Lexical, send/stop/queue handling,
+model/reasoning/environment selectors, permissions and voice controls.
+Scoped mobile CSS increases multiline input space and controls to 48 CSS px
+(Android dp at the existing viewport scale). Attachments remain above input.
+The responsive + sheet receives only existing supported actions; there is no
+invented camera capability. Desktop keeps its original menu. Dialog focus,
+same-route history and existing native Back handling close overlays first.
+The existing visualViewport/Android resize path handles IME; no independent
+scroll physics, global ScrollTimeline modification or new animation is added.
+Actual themes/presets/IME/TalkBack/fling acceptance remains device testing.
