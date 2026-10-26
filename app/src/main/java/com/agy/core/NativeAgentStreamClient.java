@@ -159,12 +159,12 @@ public final class NativeAgentStreamClient {
                     JSONObject trajectory = update.optJSONObject("mainTrajectoryUpdate");
                     JSONObject steps = trajectory == null ? null : trajectory.optJSONObject("stepsUpdate");
                     JSONObject error = trajectory == null ? null : trajectory.optJSONObject("lastStepError");
-                    int type = trajectory == null ? 0 : CoreAgentProgress.stepType(trajectory.opt("lastStepType"));
+                    int stepTypeCode = trajectory == null ? 0 : CoreAgentProgress.stepType(trajectory.opt("lastStepType"));
                     int total = steps == null ? -1 : steps.optInt("totalLength", -1);
                     // Modern Core may report GENERIC with the exact tool name in
                     // the latest indexed Step metadata. Ignore older page entries,
                     // ambiguous indices and all arguments/descriptions.
-                    if ((type == 0 || type == 132) && total > 0 && steps != null) {
+                    if ((stepTypeCode == 0 || stepTypeCode == 132) && total > 0 && steps != null) {
                         org.json.JSONArray indices = steps.optJSONArray("indices");
                         org.json.JSONArray entries = steps.optJSONArray("steps");
                         if (indices != null && entries != null && indices.length() == entries.length()) {
@@ -179,7 +179,7 @@ public final class NativeAgentStreamClient {
                                 JSONObject metadata = latest.optJSONObject("metadata");
                                 JSONObject tool = metadata == null ? null : metadata.optJSONObject("toolCall");
                                 int mapped = tool == null ? 0 : CoreAgentProgress.toolType(tool.optString("name", ""));
-                                if (mapped != 0) type = mapped;
+                                if (mapped != 0) stepTypeCode = mapped;
                             }
                         }
                     }
@@ -190,7 +190,7 @@ public final class NativeAgentStreamClient {
                             CoreAgentProgress.status(update.opt("status")),
                             update.optBoolean("fullyIdle", false),
                             steps != null && steps.has("totalLength") ? steps.optInt("totalLength", -1) : -1,
-                            type,
+                            stepTypeCode,
                             error != null && error.length() > 0,
                             trajectory != null && trajectory.optBoolean("killed", false));
                     if (!listener.onState(event)) break;
