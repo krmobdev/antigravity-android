@@ -113,6 +113,72 @@ public final class MobileCandidateProbe extends Instrumentation {
             small.recycle();if(small!=full)full.recycle();
         }catch(Exception e){report("SCREENSHOT","UNAVAILABLE");}
     }
+    // Stock drawer primitives keep DOM nodes mounted even when closed.
+    // A nonzero rectangle alone must never be treated as an open sheet.
+    private JSONObject stockSheets()throws Exception{
+        return state("const a=[...document.querySelectorAll('[data-testid=bottom-sheet]')];const v=a.filter(e=>{const r=e.getBoundingClientRect(),c=getComputedStyle(e);return c.display!=='none'&&c.visibility!=='hidden'&&Number(c.opacity)>0&&!e.closest('[aria-hidden=true]')&&r.height>0&&r.bottom>0&&r.top<innerHeight;});return JSON.stringify({total:a.length,visible:v.length});");
+    }
+    private void modelMenus()throws Exception{
+        JSONObject info=state("const b=document.querySelector('[data-testid=model-selector-trigger]');b?.click();return JSON.stringify({available:!!b});");
+        if(!info.optBoolean("available")){report("ANDROID_MODEL_MENUS","PENDING_UNAVAILABLE");return;}
+        info=waitState("const p=document.querySelector('[data-testid=model-selector-panel]'),d=p?.closest('[data-testid=bottom-sheet]');return JSON.stringify({ready:!!d&&d.getBoundingClientRect().height>0,rounded:!!d&&parseFloat(getComputedStyle(d).borderTopLeftRadius)>=24,rows:!!p&&[...p.querySelectorAll('[role=menuitem]')].filter(x=>x.getBoundingClientRect().height>0).every(x=>x.getBoundingClientRect().height>=47.5)});","ready");
+        require(info.optBoolean("ready")&&info.optBoolean("rounded")&&info.optBoolean("rows"),"ANDROID_MODEL_SHARED_STYLE");
+        SystemClock.sleep(500);captureComposer("MODEL");
+        info=state("const g=document.querySelector('[data-testid=model-selector-effort-group]'),r=g?.closest('button,[role=menuitem],[role=button]');r?.click();return JSON.stringify({available:!!r});");
+        if(info.optBoolean("available")){
+            info=waitState("const rows=[...document.querySelectorAll('[data-testid=model-selector-effort-option]')].filter(x=>x.getBoundingClientRect().height>0);return JSON.stringify({ready:rows.length>0,sized:rows.every(x=>(x.closest('button,[role=menuitem],[role=menuitemradio]')||x).getBoundingClientRect().height>=47.5)});","ready");
+            require(info.optBoolean("ready")&&info.optBoolean("sized"),"ANDROID_EFFORT_SHARED_STYLE");
+            SystemClock.sleep(400);captureComposer("EFFORT");
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(450);
+        }
+        // Close only visible sheets; stock drawers can remain in the DOM.
+        for(int i=0;i<5;i++){
+            info=stockSheets();
+            report("ANDROID_STOCK_BEFORE_USAGE_"+i,info.optInt("visible")+"/"+info.optInt("total"));
+            if(info.optInt("visible")==0)break;
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(550);
+        }
+        state("document.querySelector('[data-testid=model-selector-trigger]')?.click();return '{}';");SystemClock.sleep(500);
+        info=state("const p=document.querySelector('[data-testid=model-selector-panel]'),r=[...(p?.querySelectorAll('[role=menuitem],button')||[])].find(x=>/View Usage/.test(x.textContent));r?.click();return JSON.stringify({available:!!r});");
+        if(info.optBoolean("available")){
+            SystemClock.sleep(700);
+            info=state("const d=document.querySelector('[data-testid=bottom-sheet]');return JSON.stringify({rounded:!!d&&parseFloat(getComputedStyle(d).borderTopLeftRadius)>=24});");
+            require(info.optBoolean("rounded"),"ANDROID_USAGE_SHARED_STYLE");captureComposer("USAGE");
+        }else report("ANDROID_USAGE_SHARED_STYLE","PENDING_UNAVAILABLE");
+        for(int i=0;i<5;i++){
+            info=stockSheets();
+            report("ANDROID_STOCK_AFTER_USAGE_"+i,info.optInt("visible")+"/"+info.optInt("total"));
+            if(info.optInt("visible")==0)break;
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(550);
+        }
+        info=stockSheets();
+        report("ANDROID_STOCK_FINAL",info.optInt("visible")+"/"+info.optInt("total"));
+        require(info.optInt("visible")==0,"ANDROID_BACK_CLOSES_STOCK_SHEETS");
+        info=state("return JSON.stringify({secure:window.isSecureContext,audio:typeof navigator.mediaDevices?.getUserMedia==='function',recorder:typeof MediaRecorder==='function'});");
+        require(info.optBoolean("secure")&&info.optBoolean("audio")&&info.optBoolean("recorder"),"ANDROID_MICROPHONE_BROWSER_CAPABILITY");
+        require(target.getPackageManager().getPackageInfo(target.getPackageName(),android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions!=null,"ANDROID_MANIFEST_READABLE");
+        String[] permissions=target.getPackageManager().getPackageInfo(target.getPackageName(),android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions;
+        require(java.util.Arrays.asList(permissions).contains("android.permission.RECORD_AUDIO"),"ANDROID_MICROPHONE_DECLARED");
+        report("ANDROID_LIVE_VOICE_RECORDING","PENDING_USER_TAP_NO_AUDIO_CAPTURED_BY_PROBE");
+    }
+    private boolean keyboardVisible(){
+        AtomicReference<Boolean> visible=new AtomicReference<>(false);
+        runOnMainSync(()->{
+            if(Build.VERSION.SDK_INT>=30){android.view.WindowInsets insets=activity.getWindow().getDecorView().getRootWindowInsets();visible.set(insets!=null&&insets.isVisible(android.view.WindowInsets.Type.ime()));}
+        });return visible.get();
+    }
+    private void keyboard()throws Exception{
+        state("document.querySelector('.agy-composer [contenteditable=true]').focus();return '{}';");
+        runOnMainSync(()->{web.requestFocus();((android.view.inputmethod.InputMethodManager)target.getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(web,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);});
+        long until=SystemClock.elapsedRealtime()+3000;
+        while(!keyboardVisible()&&SystemClock.elapsedRealtime()<until)SystemClock.sleep(150);
+        if(!keyboardVisible()){report("ANDROID_IME_LAYOUT","PENDING_IME_NOT_SHOWN");return;}
+        SystemClock.sleep(350);
+        JSONObject info=state("const r=document.querySelector('.agy-composer-surface').getBoundingClientRect(),v=window.visualViewport;return JSON.stringify({fits:!!v&&r.bottom<=v.offsetTop+v.height+2&&r.top>=v.offsetTop-2});");
+        require(info.optBoolean("fits"),"ANDROID_IME_LAYOUT");
+        sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(400);
+        require(!keyboardVisible(),"ANDROID_BACK_DISMISSES_IME");
+    }
     private void ui()throws Exception{
         JSONObject info=state("return JSON.stringify({composer:!!document.querySelector('.agy-composer')});");
         if(!info.optBoolean("composer")){
@@ -128,6 +194,10 @@ public final class MobileCandidateProbe extends Instrumentation {
         report("ANDROID_EMPTY_COMPOSER_HEIGHT",info.optDouble("height"));
         report("ANDROID_FOOTER_HEIGHT",info.optDouble("footerHeight"));
         require(info.optBoolean("compact")&&info.optBoolean("sameRow"),"ANDROID_COMPACT_SINGLE_ROW");
+        info=state("const p=document.querySelector('.agy-composer');return JSON.stringify({busy:!!p.querySelector('[contenteditable=true]')?.textContent.trim()||!!p.querySelector('.agy-attachment-card')});");
+        boolean busy=info.optBoolean("busy");if(busy)capture=false;
+        modelMenus();
+        if(busy){report("ANDROID_MUTATING_UI_FIXTURES","PENDING_USER_DRAFT_PRESERVED");return;}
         info=state("const p=document.querySelector('.agy-composer input[type=file]'),d=new DataTransfer();d.items.add(new File(['<script>window.__agyProbeExecuted=true</script>'], 'v245-probe.md',{type:'text/markdown'}));d.items.add(new File([Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII='),c=>c.charCodeAt(0))],'v245-probe.png',{type:'image/png'}));if(p){p.files=d.files;p.dispatchEvent(new Event('change',{bubbles:true}));}return JSON.stringify({selected:!!p});");
         require(info.optBoolean("selected"),"ANDROID_ATTACHMENT_INPUT");
         info=waitState("return JSON.stringify({ready:document.querySelectorAll('.agy-attachment-card').length===2});","ready");
@@ -155,6 +225,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(500);
         info=state("return JSON.stringify({closed:!document.querySelector('dialog.agy-composer-sheet[open]')});");
         require(info.optBoolean("closed"),"ANDROID_BACK_CLOSES_SHEET");
+        keyboard();
         report("ANDROID_MOBILE_UI","PASS_LOCAL_FIXTURES_NO_SEND");
         SystemClock.sleep(800);captureComposer("COMPOSER");
     }

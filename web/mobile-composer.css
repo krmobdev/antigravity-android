@@ -54,3 +54,13 @@
  [data-testid=bottom-sheet] [role=separator]{margin:8px 12px;border-color:var(--color-border)}
  .agy-composer-audio-error{padding:8px 10px;font-size:14px;line-height:20px;color:var(--color-foreground);background:var(--agy-mobile-icon);border-radius:14px}
 }
+
+@media (max-width:720px),(pointer:coarse){
+ [data-testid=bottom-sheet] .agy-mobile-sheet-header{background:var(--agy-mobile-surface);border:0;padding:4px 8px}
+ [data-testid=bottom-sheet] .agy-mobile-sheet-header span{font-size:16px;font-weight:600;color:var(--color-foreground)}
+ [data-testid=bottom-sheet] [data-testid=model-selector-panel] [role=menuitem],
+ [data-testid=bottom-sheet] [data-testid=model-selector-panel] button{color:var(--color-foreground)}
+ [data-testid=bottom-sheet] [data-testid=model-selector-effort-group]{font-size:15px}
+ [data-testid=bottom-sheet] [data-testid=model-selector-effort-option]{font-size:15px;padding:0}
+ [data-testid=bottom-sheet] [data-testid=model-selector-effort-option]::before{display:none}
+}

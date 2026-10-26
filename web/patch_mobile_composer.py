@@ -14,6 +14,12 @@ def transform(source):
         if source.count(MARKER)!=1 or "var zYb=AgyMobileContextMenu;" not in source:
             raise ValueError("Incomplete composer integration")
         return source
+    source=once(source,'className:h,finalFocus:k}){var l=A.useRef(null),m=A.useContext(BYa);DC(a,()=>{b(!1)});',
+        'className:h,finalFocus:k,onBack:agyOnBack}){var l=A.useRef(null),m=A.useContext(BYa);DC(a,()=>{b(!1)});A.useEffect(()=>{if(!a)return;return agyRegisterMobileOverlay(()=>{if(agyOnBack)agyOnBack();else b(false);});},[a,b,agyOnBack]);')
+    source=once(source,'A.createElement(EK,{open:n.open,onOpenChange:n.setIsOpen,finalFocus:h,maxHeight:"85dvh"}',
+        'A.createElement(EK,{open:n.open,onOpenChange:n.setIsOpen,onBack:()=>{if(n.path.length)n.pop();else n.setIsOpen(false);},finalFocus:h,maxHeight:"85dvh"}')
+    source=once(source,'function z0a({title:a,onBack:b}){return A.createElement("div",{className:"sticky top-0',
+        'function z0a({title:a,onBack:b}){return A.createElement("div",{className:"agy-mobile-sheet-header sticky top-0')
     # Legacy recorder swallowed its own errors by clearing state after setting it.
     source=once(source,'catch(y){x(),f(gp(y)),q()}',
                 'catch(y){x(),q(),f(agyAudioError(y))}')
