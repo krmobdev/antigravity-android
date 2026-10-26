@@ -10,7 +10,20 @@
 - New safe stage-specific error reporting for `getUserMedia`, `MediaRecorder` construction, `start`, recording event.
 - Prefer an explicitly WebView-supported `audio/webm;codecs=opus` MIME type, retain fallback.
 - Do not print raw browser exception messages; may contain private content.
-- This code was copied from the separate Realme worktree, but **AnimaBridge command execution began returning 403 Forbidden before we could run build/tests**. Do NOT call this branch tested or release ready.
+- The exact source on this WIP branch was validated, built and installed locally after agent restart. Live microphone recording is NOT yet proven; do not treat this as release-ready.
+
+## Validated on Realme after AnimaBridge restart (26 Oct 2026)
+- Agent 3.5.0 connected; local Termux job execution restored.
+- `bash web/tests/selftest.sh`: PASS.
+- `python -m unittest discover -s web/tests -p 'test_*.py'`: PASS (25 tests).
+- `bash app/tests/run.sh`: PASS.
+- `git diff --check`: PASS.
+- `bash modules/builder/build_apk.sh --dev --out dist/antigravity-v2.4.5-audio-capture-dev.apk`: PASS; APK signature verified.
+- SHA-256: `46c1c2ebadc595b040fc7c1a2dd8170ca2c746e0aaf998011c4c3126a59a90f5`.
+- Size: 103,506,336 bytes. Package: `com.agy.dev`, debug signing, internally `versionName=2.4.0` (release metadata still pending).
+- Copied to `/storage/emulated/0/Download/antigravity-v2.4.5-audio-capture-dev.apk` on Realme; copy's SHA-256 matches.
+- Installed via Shizuku `pm install -r`: Success, production `com.krmobdev.antigravity` not replaced.
+- **Live user-initiated microphone recording has not yet been confirmed.** Ask owner to tap mic in new dev APK and provide exact phase/error text.
 
 ## Next tasks
 1. When command access resumes: `bash web/tests/selftest.sh`, `python -m unittest discover -s web/tests -p 'test_*.py'`, then full Gradle-free dev APK build. Fix any new patch anchor or bundle syntax failures before installing.
