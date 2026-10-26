@@ -299,6 +299,12 @@ public final class MobileCandidateProbe extends Instrumentation {
         require(r.optString("mask").contains("svg"),"VOICE_STYLE_MIC_GLYPH");
         require(!"rgb(239, 68, 68)".equals(r.optString("bg")),"VOICE_STYLE_NO_RED_DISK");
         require("rgb(220, 69, 75)".equals(r.optString("stopBg")),"VOICE_STYLE_STOP_ICON");
+        JSONObject sw=state("const host=document.createElement('div');host.dataset.testid='bottom-sheet';const track=document.createElement('button');track.type='button';track.setAttribute('role','switch');track.className='relative inline-flex items-center rounded-full shrink-0 h-6 w-11 bg-secondary';const action=document.createElement('button');action.type='button';action.className='h-6 w-11';host.append(track,action);document.body.appendChild(host);const t=getComputedStyle(track),a=getComputedStyle(action);const out={trackWidth:track.getBoundingClientRect().width,trackHeight:track.getBoundingClientRect().height,actionMinHeight:a.minHeight,actionMinWidth:a.minWidth};host.remove();return JSON.stringify(out);");
+        report("SETTINGS_SWITCH_SIZE",sw.optDouble("trackWidth")+"x"+sw.optDouble("trackHeight"));
+        report("SETTINGS_ACTION_MINIMUM",sw.optString("actionMinWidth")+"x"+sw.optString("actionMinHeight"));
+        require(Math.abs(sw.optDouble("trackWidth")-44)<1&&Math.abs(sw.optDouble("trackHeight")-24)<1,"SETTINGS_SWITCH_NATIVE_SIZE");
+        require("48px".equals(sw.optString("actionMinHeight")),"SETTINGS_ACTION_TOUCH_SIZE");
+
     }
     private void microphoneCapabilities()throws Exception {
         JSONObject build=state("return JSON.stringify({build:window.__AGY_AUDIO_DIAG_BUILD__||'STALE_BUNDLE'});");

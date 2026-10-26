@@ -43,10 +43,12 @@
  .agy-composer-action-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:50%;background:var(--agy-mobile-icon)}
  .agy-composer-action:active,[data-testid=bottom-sheet] [role=menuitem]:active{background:var(--agy-mobile-icon)}
  [data-testid=bottom-sheet-grabber]{width:36px!important;height:4px!important;background:var(--color-muted-foreground)!important;opacity:.4}
- [data-testid=bottom-sheet] button,[data-testid=bottom-sheet] [role=menuitem],[data-testid=model-selector-item],[data-testid=model-selector-effort-option]{
+ /* Mobile settings: keep the stock 44×24px role=switch track.
+    The 48px touch rule applies to action buttons only. */
+ [data-testid=bottom-sheet] button:not([role="switch"]),[data-testid=bottom-sheet] [role=menuitem],[data-testid=model-selector-item],[data-testid=model-selector-effort-option]{
   min-height:48px;touch-action:manipulation;font-size:15px;line-height:22px;border-radius:14px;
  }
- [data-testid=bottom-sheet] button{min-width:48px}
+ [data-testid=bottom-sheet] button:not([role="switch"]){min-width:48px}
  [data-testid=bottom-sheet] [data-testid=model-selector-panel]{max-height:65dvh}
  [data-testid=model-selector-item],[data-testid=model-selector-effort-option]{padding:12px}
  [data-testid=bottom-sheet] [data-highlighted]{background:var(--agy-mobile-icon)}
