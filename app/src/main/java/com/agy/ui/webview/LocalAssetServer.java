@@ -59,7 +59,13 @@ public final class LocalAssetServer {
                 String encoding = MimeTypes.isTextMime(mime) ? "UTF-8" : null;
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Access-Control-Allow-Origin", "*");
-                headers.put("Cache-Control", "public, max-age=31536000, immutable");
+                // These URLs are reused across APK updates: caching them as
+                // immutable used to keep stale JavaScript after upgrading.
+                boolean mutable = relPath.endsWith(".js") || relPath.endsWith(".css")
+                        || relPath.endsWith(".html") || relPath.endsWith(".json");
+                headers.put("Cache-Control", mutable
+                        ? "no-store, max-age=0, must-revalidate"
+                        : "public, max-age=31536000, immutable");
                 headers.put("Content-Length", String.valueOf(target.length()));
                 InputStream bis = new BufferedInputStream(new FileInputStream(target), 64 * 1024);
                 return new WebResourceResponse(mime, encoding, 200, "OK", headers, bis);

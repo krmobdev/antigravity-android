@@ -28,7 +28,7 @@ class MobileAcceptanceTest(unittest.TestCase):
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const raw=fs.readFileSync('web/src/mobile/composer.js','utf8');
 const snippet=raw.slice(0,raw.indexOf('/* Compact mobile composer'));
-const box={};
+const box={window:{}};
 vm.createContext(box);
 vm.runInContext(snippet,box);
 const device={name:'NotReadableError',message:'/private/secret/path'};
@@ -47,6 +47,17 @@ assert(!unknown.includes('password'));
         result = subprocess.run(["node", "-e", js], cwd=ROOT,
                                 capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_updated_web_bundle_invalidates_old_resource_cache(self):
+        loader = (ROOT / "app/src/main/java/com/agy/ui/webview/AppLoader.java").read_text()
+        server = (ROOT / "app/src/main/java/com/agy/ui/webview/LocalAssetServer.java").read_text()
+        voice = (ROOT / "web/src/mobile/composer.js").read_text()
+        self.assertIn("lastUpdateTime", loader)
+        self.assertIn("webView.clearCache(true)", loader)
+        self.assertIn('putLong(CACHE_PACKAGE_UPDATE, installedAt)', loader)
+        self.assertIn('no-store, max-age=0, must-revalidate', server)
+        self.assertIn('relPath.endsWith(".js")', server)
+        self.assertIn('2026-10-26-phase-v2', voice)
 
     def test_compact_attachments_are_scrollable_and_safe(self):
         css = (ROOT / "web/mobile-attachments.css").read_text()
