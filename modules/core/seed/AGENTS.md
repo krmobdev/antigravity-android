@@ -6,6 +6,19 @@
 
 ---
 
+## 0. Mandatory Git workflow — owner's single-branch rule
+
+**All developers and AI agents MUST work in exactly one shared development branch: `dev`.**
+
+- Before editing, read this `AGENTS.md`, check `git status`, and synchronize with the current `dev` head without overwriting dirty files.
+- Put every development change and handoff commit on `dev`; report its commit SHA. No separate `feature/*`, `review/*`, `fix/*`, personal agent branches, or development worktrees unless the owner **explicitly** authorizes an exception.
+- Existing historical branches are not active development targets. Do not create additional branches.
+- Never commit to `main`, overwrite the owner's signing key, push a release tag, or force-push without explicit owner approval.
+- Preserve pre-existing uncommitted changes. If the current checkout is dirty or on another branch, reconcile it safely before switching; **do not** reset, clean, or discard work automatically.
+- This branch policy takes precedence over prior handoff instructions and assistant-created temporary workflows.
+
+---
+
 ## 1. Platform & Environment Identity
 
 - **Platform:** Native Android (Linux kernel 6.1+, ARM64 / `aarch64` architecture, **ARMv8.0-A+ baseline** with ARMv8.0 LSE emulation and native ARMv8.1-A+ LSE atomics).
