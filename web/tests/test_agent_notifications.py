@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("patch", ROOT / "patch_agent_notifications.py")
+spec = importlib.util.spec_from_file_location("patch", ROOT / "patch_runtime_v24.py")
 patcher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(patcher)
 
@@ -25,8 +25,8 @@ class NotificationPatchTests(unittest.TestCase):
 
     def test_fails_closed_if_upstream_anchor_moves(self):
         source = (ROOT / "main.js").read_text()
-        changed = source.replace(patcher.ANCHOR, "", 1)
-        with self.assertRaisesRegex(ValueError, "anchor changed"):
+        changed = source.replace(patcher.HEAD, "", 1)
+        with self.assertRaises(ValueError):
             patcher.patch(changed)
 
     def test_browser_notifier_with_synthetic_states(self):

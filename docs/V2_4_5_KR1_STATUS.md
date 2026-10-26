@@ -139,3 +139,19 @@ KR versionName 2.4.5-kr1, versionCode 19 (stable v2.4.1-kr1 was 18).
 Package com.krmobdev.antigravity, release non-debuggable. Both output filenames
 carry the new version, so stable APKs in dist are not overwritten. The owner-only
 interactive helper targets the new filenames/version; the agent never runs it.
+
+## Broad-regression discovery and migration
+
+The first broad web unittest discovery FAILED (1 failure, 11 errors): legacy
+wrappers still imported v2.3 patchers/names and a pre-token bridge harness.
+git diff against baseline 1cc88bd confirmed those wrapper/patcher/input files
+were unchanged, so this was existing test drift, not evidence of a new v2.4
+runtime failure. Tests are migrated to the actual patch_runtime_v24 and
+patch_sidebar_reconcile APIs and real Hca/NDa/router behaviour harness, retaining
+fail-closed/idempotence/source-integrity checks. No failing tests are skipped.
+The browser notifier harness now checks its token argument and verifies that
+raw toolSummary is not forwarded; public stages are exclusively native enums.
+
+The taskset 0-3 regression shell's first child reported affinity [0,1,2,3,4,6],
+while a direct taskset 0-3 Python probe reported [0,1,2,3]. Android/runtime can
+widen child affinity; exclusive efficiency-core execution is not claimed.

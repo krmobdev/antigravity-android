@@ -3,17 +3,9 @@
  * not via DOM text scraping or a timer looking for "Working...".
  */
 (function () {
-  function compactStage(state) {
-    try {
-      var steps = state.trajectorySlice && state.trajectorySlice.stepsInSlice;
-      var last = steps && steps.length ? steps[steps.length - 1] : null;
-      var step = last && last.step;
-      var metadata = step && step.metadata;
-      var value = metadata && (metadata.toolSummary || metadata.description);
-      if (typeof value === 'string' && value.trim()) {
-        return value.replace(/\s+/g, ' ').slice(0, 120);
-      }
-    } catch (_) {}
+  function compactStage() {
+    // Public stages come from the native Core enum reducer. Never forward
+    // potentially private toolSummary/description from the WebView.
     return 'Агент выполняет задачу';
   }
 
