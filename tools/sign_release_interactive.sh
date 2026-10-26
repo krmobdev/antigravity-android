@@ -5,10 +5,10 @@ set -euo pipefail
 edition="${1:-}"
 case "$edition" in
   standard)
-    name="Antigravity-Android-v2.4.1-kr1"
+    name="Antigravity-Android-v2.4.5-kr1"
     ;;
   bypass)
-    name="Antigravity-Android-v2.4.1-kr1-region-bypass"
+    name="Antigravity-Android-v2.4.5-kr1-region-bypass"
     ;;
   *)
     echo "Usage: bash tools/sign_release_interactive.sh {standard|bypass}" >&2
@@ -37,7 +37,7 @@ actual="$(printf '%s\n' "$details" | awk '/certificate SHA-256 digest:/ { if (di
 badging="$(aapt dump badging "$output" | sed -n '1p')"
 printf '%s\n' "$badging"
 case "$badging" in
-  *"name='com.krmobdev.antigravity'"*"versionCode='18'"*"versionName='2.4.1-kr1'"*) ;;
+  *"name='com.krmobdev.antigravity'"*"versionCode='19'"*"versionName='2.4.5-kr1'"*) ;;
   *) echo "ERROR: wrong package or version. DO NOT PUBLISH." >&2; exit 1 ;;
 esac
 sha256sum "$output"

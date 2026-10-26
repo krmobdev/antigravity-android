@@ -132,3 +132,10 @@ Browser behaviour/source checks cover mobile/desktop switching, existing action
 callbacks, disabled state, cancellation/Back cleanup and unchanged send/voice
 logic. Real Android keyboard, light/dark/custom presets, large font, TalkBack and
 long-chat fling checks remain PENDING.
+
+## Candidate identity
+
+KR versionName 2.4.5-kr1, versionCode 19 (stable v2.4.1-kr1 was 18).
+Package com.krmobdev.antigravity, release non-debuggable. Both output filenames
+carry the new version, so stable APKs in dist are not overwritten. The owner-only
+interactive helper targets the new filenames/version; the agent never runs it.

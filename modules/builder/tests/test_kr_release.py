@@ -17,13 +17,14 @@ class KrRelease(unittest.TestCase):
     def test_fork_release(self):
         m,j,r=self.generate(fork=True)
         for value in ('package="com.krmobdev.antigravity"','android:debuggable="false"',
-                      'android:versionName="2.4.1-kr1"','android:versionCode="18"',
+                      'android:versionName="2.4.5-kr1"','android:versionCode="19"',
                       'com.krmobdev.antigravity.permission.INTERNAL_BROADCAST',
                       'com.krmobdev.antigravity.fileprovider'):
             self.assertIn(value,m)
         for value in ('package com.agy;','APPLICATION_ID = "com.krmobdev.antigravity"',
                       'PORT = 45159','GATEWAY_PORT = 45162'):
             self.assertIn(value,j)
+        self.assertGreater(int(__import__("re").search(r'android:versionCode="([0-9]+)"',m).group(1)),18)
         self.assertIn("Antigravity",r)
         self.assertNotIn("Antigravity KR",r)
     def test_old_modes_unchanged(self):

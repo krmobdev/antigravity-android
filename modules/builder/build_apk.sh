@@ -85,10 +85,10 @@ if [ -n "$CUSTOM_OUT" ]; then
     EDITION_LABEL="CUSTOM OUTPUT ($OUT_APK)"
 elif [ "$KR_RELEASE_MODE" = "1" ]; then
     if [ "$NO_BYPASS" = "0" ]; then
-        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.1-kr1-region-bypass.apk"
+        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.5-kr1-region-bypass.apk"
         EDITION_LABEL="KR RELEASE REGION BYPASS (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
     else
-        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.1-kr1.apk"
+        OUT_APK="$DIST_DIR/${BASE_PREFIX}-v2.4.5-kr1.apk"
         EDITION_LABEL="KR RELEASE STANDARD (com.krmobdev.antigravity, ports 45159/45162, non-debuggable)"
     fi
 elif [ "$DEV_MODE" = "1" ]; then
