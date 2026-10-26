@@ -25,6 +25,18 @@
 - Installed via Shizuku `pm install -r`: Success, production `com.krmobdev.antigravity` not replaced.
 - **Live user-initiated microphone recording has not yet been confirmed.** Ask owner to tap mic in new dev APK and provide exact phase/error text.
 
+## WebView stale-bundle regression and verified fix (26 October 2026)
+- Owner still saw the previous generic `UnknownError` after installing the earlier audio-capture dev APK.
+- APK forensic check confirmed `agyAudioStageError` and new microphone staging code was **in the APK**, but `LocalAssetServer` set `Cache-Control: public, max-age=31536000, immutable` on the same JS paths that are replaced on every update.
+- `AppLoader` now calls `webView.clearCache(true)` **once when package lastUpdateTime changes**, storing the update stamp in private preferences. This clears only WebView resource cache, not cookies, web storage, accounts or projects.
+- Mutable JS/CSS/HTML/JSON are served with `Cache-Control: no-store, max-age=0, must-revalidate`.
+- QA reads `window.__AGY_AUDIO_DIAG_BUILD__` from the **actual** Android WebView to verify the loaded JS bundle.
+- `python -m unittest discover -s web/tests -p 'test_*.py'`: **26 PASS**; `bash web/tests/selftest.sh`: PASS; `bash app/tests/run.sh`: PASS; Android QA compilation: PASS.
+- Debug APK built locally and signing verified: `dist/antigravity-v2.4.5-mic-cachefix-dev.apk`; package `com.agy.dev`, SHA-256 `679153f865a10ba8d140c33c2902efffac563fd3ed60e8f6651356fe14908240`.
+- Copied to Android `/storage/emulated/0/Download/antigravity-v2.4.5-mic-cachefix-dev.apk` with matching SHA-256, installed via Shizuku (Success). Production package is unchanged.
+- Actual Android QA: `VOICE_WEBVIEW_BUNDLE=2026-10-26-phase-v2`, `VOICE_WEBVIEW_FRESH_BUNDLE=PASS`, `VOICE_TRUSTED_ORIGIN=true`, `VOICE_SYNTHETIC_RECORDER=PASS`, `INSTRUMENTATION_CODE: 0`.
+- **Open:** end-to-end physical microphone capture has NOT yet passed a user-initiated test on this fixed-cache APK; do not declare mic working or release signed.
+
 ## Next tasks
 1. When command access resumes: `bash web/tests/selftest.sh`, `python -m unittest discover -s web/tests -p 'test_*.py'`, then full Gradle-free dev APK build. Fix any new patch anchor or bundle syntax failures before installing.
 2. Verify `com.agy.dev` package and install **only dev APK**, never production package.
