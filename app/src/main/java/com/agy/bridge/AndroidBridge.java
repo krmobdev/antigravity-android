@@ -31,12 +31,14 @@ public final class AndroidBridge {
     private final EngineBridge engine;
     private final EngineConfigJson config;
     private final String blobBridgeToken = createBlobBridgeToken();
+    private final NativeVoiceRecorder nativeVoiceRecorder;
     private volatile WeakReference<MainActivity> activityRef;
 
     public AndroidBridge(Context context, RuntimeManager runtime,
                          ShizukuBridge shizuku, ThemeManager theme) {
         Context appContext = context.getApplicationContext();
         this.diagnosticContext = appContext;
+        this.nativeVoiceRecorder = new NativeVoiceRecorder(appContext);
         this.agentNotifications = new AgentNotifications(appContext);
         this.themeBridge = new ThemeBridge(theme);
         this.engine = new EngineBridge(runtime);
@@ -130,6 +132,33 @@ public final class AndroidBridge {
     /** Native-only token inserted into the trusted top-level document. */
     public String getBlobBridgeToken() {
         return blobBridgeToken;
+    }
+
+    /**
+     * Recorder bridge is token-bound because addJavascriptInterface is visible
+     * to embedded frames. Only the trusted top-level page receives the token.
+     * Each recording is started by an explicit microphone button interaction.
+     */
+    @JavascriptInterface
+    public String startNativeVoice(String token) {
+        if (!matchesNativeBridgeToken(token)) return "ERR_UNAUTHORIZED";
+        return nativeVoiceRecorder.start(getActivity());
+    }
+
+    @JavascriptInterface
+    public String stopNativeVoice(String token) {
+        if (!matchesNativeBridgeToken(token)) return "{\"ok\":false,\"error\":\"ERR_UNAUTHORIZED\"}";
+        return nativeVoiceRecorder.stop();
+    }
+
+    @JavascriptInterface
+    public void cancelNativeVoice(String token) {
+        if (matchesNativeBridgeToken(token)) nativeVoiceRecorder.cancel();
+    }
+
+    /** No JS token required because this is invoked by the native lifecycle. */
+    public void cancelNativeVoiceOnBackground() {
+        nativeVoiceRecorder.cancel();
     }
 
     /** Saves a downloaded blob only for scripts holding the top-level document token. */

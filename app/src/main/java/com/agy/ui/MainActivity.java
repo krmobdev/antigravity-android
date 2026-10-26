@@ -385,6 +385,7 @@ public class MainActivity extends Activity
     @Override
     protected void onPause() {
         notificationUiResumed = false;
+        if (androidBridge != null) androidBridge.cancelNativeVoiceOnBackground();
         AgentNotifications.contextChanged();
         AgyDiagnostics.log(this, "activity", "onPause");
         activityResumed = false;

@@ -29,7 +29,18 @@ def transform(source):
     source=once(source,'try{try{q();let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))',
                 'try{let agyPhase="getUserMedia";try{q();setAgyPending(true);let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))')
     source=once(source,'catch(y){x(),q(),f(agyAudioError(y))}}finally{w()}',
-                'catch(y){x(),q(),f(agyAudioStageError(agyPhase,y))}finally{setAgyPending(false)}}finally{w()}')
+                """catch(y){x();q();let native=agyNativeMicStart(y,C=>{
+                  if(C){let bytes=Uint8Array.from(atob(C.data),x=>x.charCodeAt(0));
+                    a(p(I.MediaSchema,{mimeType:C.mimeType,
+                       payload:{case:"inlineData",value:bytes},durationSeconds:C.durationSeconds}));}
+                  q();
+                },msg=>{q();f(msg)},()=>m.current);
+                if(native?.recorder){g.current=native.recorder;n.current=Date.now();c(!0);
+                  l.current=window.setTimeout(()=>r(),3E5)}
+                else f(agyAudioStageError(agyPhase,y)+(native?.error?" / Android: "+native.error:""))
+              }finally{setAgyPending(false)}}finally{w()}""")
+    source=once(source,'g.current=null;k.current=[];m.current=!1;',
+                'g.current?.__agyNative&&agyNativeMicCancel();g.current=null;k.current=[];m.current=!1;')
     source=once(source,'isRecording:b,\nerror:e,hasMicrophone:v}',
                 'isRecording:b,starting:agyPending,\nerror:e,hasMicrophone:v}')
     source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',

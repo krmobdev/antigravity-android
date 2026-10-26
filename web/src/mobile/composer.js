@@ -45,6 +45,53 @@ function agyAudioStageError(stage,error){
   const kind=typeof raw==="string"&&/^[A-Za-z][A-Za-z0-9]{1,35}$/.test(raw)?raw:"UnknownError";
   return "Не удалось начать запись на этапе "+place+" ("+kind+"). "+agyAudioError(error);
 }
+/**
+ * Recording fallback uses Android's native AAC/MP4 recorder only after
+ * browser getUserMedia fails. User initiation and native bridge token required.
+ * Never bypass an explicit browser permission denial.
+ */
+function agyNativeMicStart(browserError,onFinished,onFailure,isCanceled){
+  const reason=browserError?.name||"";
+  if(reason==="NotAllowedError"||reason==="SecurityError")return null;
+  const api=window.AndroidBridge||window.Android;
+  const token=window.__AG_NATIVE_BRIDGE_TOKEN__;
+  if(!token||typeof api?.startNativeVoice!=="function")return null;
+  let status;
+  try{status=api.startNativeVoice(token)}catch(e){return{error:"ERR_NATIVE_BRIDGE"}}
+  if(status!=="OK")return{error:/^ERR_[A-Z_]{2,48}$/.test(status)?status:"ERR_NATIVE_START"};
+  const native={
+    __agyNative:true,state:"recording",
+    stop(){
+      if(this.state==="inactive")return;
+      this.state="inactive";
+      if(isCanceled()){
+        try{api.cancelNativeVoice(token)}catch(e){}
+        onFinished(null);
+        return;
+      }
+      try{
+        const raw=api.stopNativeVoice(token);
+        const result=JSON.parse(raw);
+        if(!result.ok)throw new Error(result.error||"ERR_NATIVE_STOP");
+        if(result.mimeType!=="audio/mp4"||!result.data||result.data.length>22*1024*1024)
+          throw new Error("ERR_AUDIO_FORMAT");
+        onFinished(result);
+      }catch(e){
+        const code=e?.message||"ERR_NATIVE_STOP";
+        onFailure("Не удалось завершить запись через Android ("+
+          (/^ERR_[A-Z_]{2,48}$/.test(code)?code:"ERR_NATIVE_STOP")+").");
+      }
+    }
+  };
+  return{recorder:native};
+}
+function agyNativeMicCancel(){
+  try{
+    const api=window.AndroidBridge||window.Android;
+    if(typeof api?.cancelNativeVoice==="function"&&window.__AG_NATIVE_BRIDGE_TOKEN__)
+      api.cancelNativeVoice(window.__AG_NATIVE_BRIDGE_TOKEN__);
+  }catch(e){}
+}
 /* Compact mobile composer; all settings keep their original controllers. */
 function useAgyMobileLayout(){
   const query="(max-width: 720px), (pointer: coarse)";
