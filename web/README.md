@@ -235,3 +235,23 @@ bash web/tests/selftest.sh
 4. Проверку, что исходный `main.js` остался неизменным.
 5. Проверку генерации всех файлов и валидность путей в `index.html`.
 6. Верификацию отсутствия повторных IIFE-оберток в сгенерированных бандлах.
+
+## KR mobile attachments
+
+Version-pinned patch_mobile_attachments.py replaces only the composer attachment
+renderer and adjusts its existing picker/upload hooks. Canonical selectedMedia,
+Core format/size validation and artifact uploader remain in use. Max 5 is kept
+until higher Core/API compatibility is actually proven; a lower Core flag is
+respected. Concurrent picker batches reserve slots. File inputs reset after
+selection, including repeated selection after removal/failure.
+
+Cards open a preview and have separate removal controls. Text is rendered as a
+text node in pre, UTF-8 only, max 1 MiB, binary/NUL refused; HTML/Markdown never
+executes. Raster images/audio/video use local Blob URLs revoked on removal,
+preview close and unmount (including late reads). Unsupported document preview
+explains the limitation and retains the existing Core openFile action where
+available. No new uploads or permanent URI grants are introduced for preview.
+Native dialog focus and a temporary same-route history entry support Back.
+
+Tests: node web/tests/mobile_attachments.behavior.cjs, plus web/tests/selftest.sh.
+These do not substitute for Android picker/IME/theme/device acceptance.

@@ -168,7 +168,8 @@ python3 "$SCRIPT_DIR/patch_sidebar_reconcile.py" "$GEN_DIR/main.js" "$GEN_DIR/ma
 python3 "$SCRIPT_DIR/patch_scroll_timeline_only.py" "$GEN_DIR/main.js" \
     || die "OverlayScrollbar ScrollTimeline anchor mismatch; refusing build"
 
-
+python3 "$SCRIPT_DIR/patch_mobile_attachments.py" "$GEN_DIR/main.js" \
+    || die "Mobile attachment client anchors incompatible"
 
 printf 'web: generated %d bundle(s) from %d fragment(s)\n' \
     "${#bundle_names[@]}" "$src_count"

@@ -186,3 +186,8 @@ bash modules/builder/tests/run_all.sh
 - **Исправление**: В `05_stage_assets.py` внедрен автоматический запуск `bash web/build.sh` перед стадированием ассетов, а файл `src.manifest` добавлен в список игнорирования `web_ignore`.
 
 KR local aapt steps default missing/empty `ANDROID_DATA` to `/data`, preserving an explicitly configured value.
+
+Web staging builds a disposable source snapshot and copies only runtime assets
+from it. It does not regenerate or overwrite existing web/generated files in the
+shared checkout. Build/test scripts, source fragments and Python cache files
+are excluded from APK assets.

@@ -95,3 +95,26 @@ subscriptions continue through UI-first IDLE until Core confirms completion.
 Automated reducer/coalescer/tracker/FIFO tests and complete Android source
 compilation ran locally. Real background/screen-off notifications, native/UI
 race acceptance and Pixel 7 checks remain PENDING until separately recorded.
+
+## Attachment implementation checkpoint
+
+Audit confirmed existing multiple selection, max-media-attachments default 5,
+format/size validation, Core saveMediaAsArtifact/deleteMediaArtifact and send
+error handling. Ten files are not proven compatible; cap 5 is retained and a
+lower server flag remains effective. No server acceptance is fabricated.
+
+Added consistent 200x96 cards, explicit remove, raster image/fullscreen viewing,
+safe UTF-8 plain-text/code/Markdown/JSON preview up to 1 MiB, and readable format
+limitations with existing openFile fallback where supported. Audio/video
+preview uses the original payload. Object URLs are cleaned on all viewer exits.
+
+Picker batch reservations prevent concurrent additions exceeding the cap;
+same-file re-selection works. Chat picker no longer persists blanket grants;
+project tree permissions are unchanged. Builder stages web from a disposable
+snapshot to preserve the initial uncommitted generated/main.js exactly.
+
+Source-level behaviour tests passed for viewing vs removal, unsafe text,
+binary/size limits, object URL cleanup/late reads, concurrent five-file cap,
+cancelled selection, failed read and repeated selection. Web selftest and
+complete Java compilation passed. Android File Picker, sending against the
+account's model, background return and visual theme checks remain PENDING.

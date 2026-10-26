@@ -327,6 +327,10 @@ public class MainActivity extends Activity
     @Override
     protected void onDestroy() {
         activityResumed = false;
+        if (filePathCallback != null) {
+            filePathCallback.onReceiveValue(null);
+            filePathCallback = null;
+        }
         AgyDiagnostics.log(this, "activity", "onDestroy");
         if (activeActivity == this) {
             activeActivity = null;
@@ -476,6 +480,9 @@ public class MainActivity extends Activity
             try {
                 Intent defaultIntent = fileChooserParams.createIntent();
                 if (defaultIntent != null) {
+                    defaultIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    if (fileChooserParams.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE)
+                        defaultIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                     chooserIntent = Intent.createChooser(defaultIntent, "Select Media / Files");
                 }
             } catch (Throwable t) {
@@ -586,7 +593,7 @@ public class MainActivity extends Activity
                 } catch (Throwable t) {
                     Log.w(TAG, "parseResult error: " + t.getMessage());
                 }
-                if (results == null && resultCode == RESULT_OK && data != null) {
+                if (resultCode == RESULT_OK && data != null && (results == null || data.getClipData() != null)) {
                     ClipData clipData = data.getClipData();
                     if (clipData != null && clipData.getItemCount() > 0) {
                         results = new Uri[clipData.getItemCount()];
@@ -599,18 +606,9 @@ public class MainActivity extends Activity
                         results = new Uri[]{Uri.parse(data.getDataString())};
                     }
                 }
-                if (results != null) {
-                    for (Uri uri : results) {
-                        if (uri != null) {
-                            try {
-                                grantUriPermission(getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            } catch (Throwable ignored) {}
-                            try {
-                                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            } catch (Throwable ignored) {}
-                        }
-                    }
-                }
+                // Chat uploads consume transient picker grants. Do not retain
+                // permanent access to every attachment; project tree grants
+                // use their separate directory-picker lifecycle above.
                 filePathCallback.onReceiveValue(results);
                 filePathCallback = null;
             }

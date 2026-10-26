@@ -6,6 +6,7 @@ import sys
 import os
 import shutil
 import subprocess
+import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
@@ -30,25 +31,25 @@ def stage_assets(staging_dir, no_bypass=False):
 
     web_src = os.path.join(PROJECT_ROOT, "web")
     if os.path.isdir(web_src):
-        web_build_script = os.path.join(web_src, "build.sh")
-        if os.path.isfile(web_build_script):
-            print(f"[*] Building web bundles via {web_build_script}...")
-            subprocess.check_call(["bash", web_build_script], cwd=PROJECT_ROOT)
-
-        print(f"[*] Staging web assets from {web_src} -> {web_dst}...")
-        if os.path.exists(web_dst):
-            shutil.rmtree(web_dst)
-        def web_ignore(directory, files):
-            ignored = set()
-            rel_dir = os.path.relpath(directory, web_src)
-            if rel_dir == ".":
-                for name in files:
-                    if name in ("main.js", "src", "tests", "src.manifest") or name.endswith((".py", ".sh", ".cjs")):
-                        ignored.add(name)
-            return ignored
-
-        shutil.copytree(web_src, web_dst, ignore=web_ignore)
-        print(f"[OK] Staged web assets.")
+        # Build a disposable source snapshot, never regenerate over a user's
+        # pre-existing web/generated changes in the shared checkout.
+        with tempfile.TemporaryDirectory(prefix="agy_web_", dir=staging_dir) as scratch:
+            web_snapshot = os.path.join(scratch, "web")
+            shutil.copytree(web_src, web_snapshot)
+            web_build_script = os.path.join(web_snapshot, "build.sh")
+            if os.path.isfile(web_build_script):
+                subprocess.check_call(["bash", web_build_script], cwd=PROJECT_ROOT)
+            if os.path.exists(web_dst):
+                shutil.rmtree(web_dst)
+            def web_ignore(directory, files):
+                ignored = set()
+                if os.path.relpath(directory, web_snapshot) == ".":
+                    for name in files:
+                        if name in ("main.js", "src", "tests", "src.manifest", "__pycache__") or name.endswith((".py", ".sh", ".cjs", ".pyc")):
+                            ignored.add(name)
+                return ignored
+            shutil.copytree(web_snapshot, web_dst, ignore=web_ignore)
+        print("[OK] Staged web assets from disposable build snapshot.")
 
     env_src = os.path.join(PROJECT_ROOT, "env", "dist", "env")
     env_dst = os.path.join(assets_dir, "env")

@@ -188,3 +188,8 @@ Core errors/cancellation enrich the existing completion FIFO entry (persisted
 outcome) or update an already posted completion silently. UI IDLE no longer
 cancels the native observer before Core's terminal event. Channels, read/unread,
 Core running, navigation and FIFO timing remain independent.
+
+Chat file picker forwards multi-select intent and ClipData results, cancels
+pending callbacks when the Activity is destroyed, and uses transient content
+grants instead of persisting access to each attachment. Existing project-folder
+persistable grants and directory selection remain separate.
