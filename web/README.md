@@ -321,3 +321,6 @@ resize observer and visualViewport listeners reposition it when Android IME
 changes; all observers/listeners/animation-frame callbacks are removed on close.
 Existing dialog, progressive Back, Core menu choices and audio handlers remain.
 Colors derive from the active theme; no preset or stored color is overwritten.
+
+Selected setting segments and unchecked switch tracks use a distinct control
+surface so they remain visible on grey groups in Light/Dark/custom palettes.

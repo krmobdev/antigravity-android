@@ -70,6 +70,15 @@
  [data-testid^=settings-nav-item-]:active{background:var(--agy-ui-control)}
  .agy-settings-backbar{border-color:var(--agy-ui-line);background:var(--agy-ui-surface)}
  .agy-settings-select-sheet{border-radius:24px 24px 0 0!important}
+ /* Visible selected segments and unchecked switch tracks on grey cards. */
+ .agy-settings-group .agy-settings-row button[data-pressed],
+ .agy-settings-group .agy-settings-row button[aria-pressed=true],
+ .agy-settings-group .agy-settings-row button[data-state=on]{
+  background-color:var(--agy-ui-control)!important;color:var(--color-foreground)
+ }
+ .agy-settings-group [role=switch]:not([aria-checked=true]):not([data-checked]){
+  background-color:var(--agy-ui-control)!important
+ }
  /* Shared action buttons. Custom-size tools and role=switch keep geometry. */
  .agy-ui-button:not([data-agy-size=custom]):not([role=switch]){
   border-radius:16px;min-height:48px

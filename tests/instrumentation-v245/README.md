@@ -47,3 +47,6 @@ Unified interface mode: -e mode unified. Checks real Add card bounds above the
 footer, two reopen/Back cycles, shared model/permission card surfaces, original
 draft/permissions unchanged, and Android IME layout. Optional crops contain only
 menus. No setting, audio recording or model request is submitted.
+
+Settings polish also requires selected-theme and switch-track backgrounds to
+contrast with the containing settings group in both Light and Dark modes.

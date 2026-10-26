@@ -207,6 +207,8 @@ public final class MobileCandidateProbe extends Instrumentation {
                 state("window.__agyPolishThemeRow()?.querySelector('[aria-label=\""+mode+"\"]')?.click();return '{}';");SystemClock.sleep(900);
                 info=state("const e=window.__agyPolishSection("+JSONObject.quote(mode+" Theme")+");return JSON.stringify({ready:!!e});");
                 require(info.optBoolean("ready"),"POLISH_"+mode+"_THEME_APPLIED");
+                info=state("const row=window.__agyPolishThemeRow(),group=row.closest('.agy-settings-group'),active=row.querySelector('button[data-pressed],button[aria-pressed=true]'),switches=[...document.querySelectorAll('.agy-settings-group [role=switch]')];const bg=e=>getComputedStyle(e).backgroundColor;return JSON.stringify({contrast:!!active&&bg(active)!=='rgba(0, 0, 0, 0)'&&bg(active)!==bg(group)&&switches.every(e=>bg(e)!==bg(e.closest('.agy-settings-group')))});");
+                require(info.optBoolean("contrast"),"POLISH_"+mode+"_SELECTED_AND_SWITCH_CONTRAST");
                 SystemClock.sleep(300);captureRegion(".agy-settings-page","SETTINGS_"+mode.toUpperCase());
                 state("window.__agyPolishSection("+JSONObject.quote(mode+" Theme")+")?.querySelector('.agy-settings-select-trigger')?.click();return '{}';");
                 info=waitState("return JSON.stringify({ready:!!document.querySelector('.agy-settings-select-sheet [role=listbox]'),native:[...document.querySelectorAll('.agy-settings-page select')].some(e=>e.getBoundingClientRect().width>0),selected:document.querySelectorAll('.agy-settings-select-sheet [role=option][aria-selected=true]').length});","ready");
