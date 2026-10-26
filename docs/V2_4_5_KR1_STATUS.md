@@ -53,8 +53,14 @@ Baseline and adapted tests both ran locally:
 - git diff --check: PASS.
 - Existing generated/main.js hash: unchanged.
 
-PTY UI and real Core terminal RPC creation/input/interactive/recreation are
-PENDING. Unit/patch tests do not establish these runtime behaviours.
+Real isolated Core RPC smoke PASS on the attached Realme RMX3301:
+python modules/runner/test_pty_rpc.py (exit 0). Two terminal generations verified
+CreateTerminal, TTY stdin/stdout, interactive read and input, output stream
+reconnection, ListTerminals retention, CloseTerminal and recreation. The test
+uses temporary HOME/runtime, a random port and packaged TLS certificate; no
+production data, APK installation or model requests.
+
+PTY UI and Pixel 7 acceptance remain PENDING.
 
 ## Remaining work
 

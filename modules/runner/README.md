@@ -264,3 +264,9 @@ bash modules/runner/stop_core.sh /data/user/0/com.agy.dev/files/standalone_runti
 Both standard and bypass cache identities include the upstream-derived PTY
 shell patch. Freshly patched Core must match the expected SHA-256 before cache
 write or assembly; this prevents accepting an incompatible binary.
+
+Run `python modules/runner/test_pty_rpc.py` on Android/Termux for an isolated
+real-Core PTY smoke: creation, interactive TTY/input, stream reconnect, close
+and recreation. It uses temporary runtime/home, a random port and packaged TLS
+trust. It never installs an APK or accesses production accounts. This is
+distinct from manual WebView terminal UI acceptance.
