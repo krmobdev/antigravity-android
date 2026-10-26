@@ -1,4 +1,10 @@
 /* Injected into the pinned client scope; uses canonical selectedMedia state. */
+function agyRegisterMobileOverlay(close){
+  const previous=window.__AGY_CLOSE_MOBILE_OVERLAY__;
+  const handler=()=>{close();return true;};
+  window.__AGY_CLOSE_MOBILE_OVERLAY__=handler;
+  return()=>{if(window.__AGY_CLOSE_MOBILE_OVERLAY__===handler)window.__AGY_CLOSE_MOBILE_OVERLAY__=previous;};
+}
 function agyAttachmentKind(media) {
   const mime=(media.mimeType||"").toLowerCase(), name=(media.description||"").toLowerCase();
   if (/^image\/(png|jpeg|gif|webp)$/.test(mime)) return "image";
@@ -43,10 +49,12 @@ function AgyAttachmentPreview({media,onClose,openExternal}) {
   },[media,kind]);
   A.useEffect(()=>{
     const node=dialog.current;node?.showModal();
+    const unregister=agyRegisterMobileOverlay(onClose);
     const marker="agy-attachment-"+Math.random().toString(36).slice(2);
     history.pushState({...history.state,agyMobileOverlay:marker},"",location.href);
     const back=()=>onClose();window.addEventListener("popstate",back);
     return()=>{
+      unregister();
       window.removeEventListener("popstate",back);
       if(history.state?.agyMobileOverlay===marker)history.back();
       node?.close();

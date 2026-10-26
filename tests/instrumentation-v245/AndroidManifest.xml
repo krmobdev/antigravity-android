@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.krmobdev.v245qa">
+<uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28"/>
+<application android:label="AGY v2.4.5 QA" android:hasCode="true"/>
+<instrumentation android:name="com.krmobdev.v245qa.MobileCandidateProbe" android:targetPackage="com.agy.dev" android:functionalTest="true"/>
+</manifest>

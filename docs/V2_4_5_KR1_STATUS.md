@@ -1,4 +1,6 @@
-# Antigravity v2.4.5-kr1 — итог подготовки кандидата
+# Antigravity v2.4.5-kr1 — подготовка кандидата
+
+**UI revision in progress:** owner rejected the oversized composer screenshot. The earlier APK hashes below describe the previous UI and will be replaced after compact-layout acceptance. Dev installation succeeded through Shizuku stdin; the earlier Download installation limitation is resolved by that supported local path. Actual Android attachment previews/removal and synthetic native background notifications passed; Android Back failed and is being fixed.
 
 **Исходники и две unsigned APK подготовлены. Ручная Android-приёмка, подпись и
 публикация ещё не выполнены.** APK собраны локально на Realme RMX3301 в Termux,

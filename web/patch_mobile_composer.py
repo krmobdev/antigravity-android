@@ -24,6 +24,17 @@ def transform(source):
                 'ref:Us,className:"agy-composer-surface relative flex flex-col gap-0 p-1 rounded-')
     source=once(source,'className:"@container/input-footer flex w-full items-center justify-between gap-1 p-0.5"',
                 'className:"agy-composer-footer @container/input-footer flex w-full items-center justify-between gap-1 p-0.5"')
+    settings_start='A.createElement("div",{className:"flex items-center gap-0 min-w-0"},K!==void 0'
+    if source.count(settings_start)!=1:raise ValueError("Composer settings anchor mismatch")
+    left=source.index(settings_start)
+    settings_end=',ca)),A.createElement("div",{className:"shrink-0 flex items-center gap-0.5"}'
+    right=source.index(settings_end,left)+len(',ca)')
+    desktop=source[left:right]
+    pair='A.createElement("div",{className:"flex items-center gap-1 min-w-0"},h,k)'
+    extra=once(desktop,pair,'A.createElement("div",{className:"flex items-center gap-1 min-w-0"},k)')
+    source=source[:left]+'A.createElement(AgyComposerModelControl,{primary:h,desktop:'+desktop+'})'+source[right:]
+    source=once(source,'A.createElement(zYb,{items:ia,dropdownPlacement:r,onOpenChange:Ma=>{Ma&&la()}})',
+        'A.createElement(zYb,{items:ia,extraControls:'+extra+',dropdownPlacement:r,onOpenChange:Ma=>{Ma&&la()}})')
     return source
 
 if __name__=="__main__":

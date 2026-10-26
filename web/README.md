@@ -268,3 +268,5 @@ same-route history and existing native Back handling close overlays first.
 The existing visualViewport/Android resize path handles IME; no independent
 scroll physics, global ScrollTimeline modification or new animation is added.
 Actual themes/presets/IME/TalkBack/fling acceptance remains device testing.
+
+Composer revision after owner screenshots: empty input is compact (40 px editable minimum), +/model/send share a single footer row, and extra controls retain their original handlers in the mobile sheet. Native Back closes registered overlays before walking WebView history, with a bounded fallback for an unresponsive renderer. Android geometry now checks an upper bound as well as touch targets.

@@ -111,5 +111,9 @@ function media(name,mime,text){return{description:name,mimeType:mime,payload:{ca
   const zero=context.u5a(items=>added.push(...items),0,false,error=>errors.push(error),0);
   const pendingBefore=pending.length;await zero.handleMediaFiles(batch);
   check(pending.length===pendingBefore,"Core zero attachment capability is respected");
+  h=harness();let nativeClosed=0;
+  h.render("AgyAttachmentPreview",{media:text,onClose:()=>nativeClosed++});
+  check(h.ctx.window.__AGY_CLOSE_MOBILE_OVERLAY__()===true&&nativeClosed===1,"native Back explicitly closes top overlay");
+  h.cleanup();check(!h.ctx.window.__AGY_CLOSE_MOBILE_OVERLAY__,"native Back handler removed on close");
   console.log("PASS mobile attachments:",checks,"behaviour assertions");
 })().catch(error=>{console.error(error);process.exitCode=1;});

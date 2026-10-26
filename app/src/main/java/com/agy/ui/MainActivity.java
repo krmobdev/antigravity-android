@@ -428,11 +428,37 @@ public class MainActivity extends Activity
         }
     }
 
+    private boolean backNavigationPending;
+
     @Override
     public void onBackPressed() {
-        if (!BackNavigator.handle(webViewHost != null ? webViewHost.getWebView() : null)) {
-            super.onBackPressed();
+        if (backNavigationPending) return;
+        final WebView web = webViewHost != null ? webViewHost.getWebView() : null;
+        if (web == null) { super.onBackPressed(); return; }
+        backNavigationPending = true;
+        final java.util.concurrent.atomic.AtomicBoolean decided = new java.util.concurrent.atomic.AtomicBoolean();
+        final Runnable fallback = () -> {
+            if (!decided.compareAndSet(false, true)) return;
+            backNavigationPending = false;
+            if (!isDestroyed() && !isFinishing()) navigateBackNormally(web);
+        };
+        // A paused/broken renderer must never trap Android Back.
+        handler.postDelayed(fallback, 300);
+        try {
+            web.evaluateJavascript("(function(){try{return typeof window.__AGY_CLOSE_MOBILE_OVERLAY__==='function'&&window.__AGY_CLOSE_MOBILE_OVERLAY__()===true}catch(e){return false}})()", result -> {
+                if (!decided.compareAndSet(false, true)) return;
+                handler.removeCallbacks(fallback);
+                backNavigationPending = false;
+                if (!"true".equals(result) && !isDestroyed() && !isFinishing()) navigateBackNormally(web);
+            });
+        } catch (RuntimeException unavailable) {
+            handler.removeCallbacks(fallback);
+            fallback.run();
         }
+    }
+
+    private void navigateBackNormally(WebView web) {
+        if (!BackNavigator.handle(web)) super.onBackPressed();
     }
 
     private void requestStoragePermissions() {

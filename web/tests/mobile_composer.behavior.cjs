@@ -32,4 +32,7 @@ assert.equal(closed,1);assert.equal(calls,1);
 tree.props.onCancel({preventDefault(){}});assert.equal(closed,2);
 h.pop();assert.equal(closed,3);h.cleanup();assert.equal(h.backCount,1);
 h=setup(false);tree=h.render("zYb",{items});assert.equal(tree.type,h.ctx.agyOriginalContextMenu);h.cleanup();
+h=setup(true);const primary={type:"model",props:{},children:[]},desktop={type:"desktop-settings",props:{},children:[]};
+tree=h.render("AgyComposerModelControl",{primary,desktop});assert.equal(tree.children[0],primary);h.cleanup();
+h=setup(false);tree=h.render("AgyComposerModelControl",{primary,desktop});assert.equal(tree,desktop);h.cleanup();
 console.log("PASS mobile composer: adaptive menu, supported actions, disabled state, close/Back cleanup, desktop fallback");
