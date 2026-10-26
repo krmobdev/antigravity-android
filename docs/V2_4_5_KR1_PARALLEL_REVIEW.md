@@ -1,3 +1,5 @@
+> Historical report. The sole working branch is dev. See V2_4_5_KR1_INDEPENDENT_AUDIT.md for current verification; old APK hashes are not a current release handoff.
+
 # v2.4.5-kr1 — параллельный QA / передача после лимита (26.10.2026)
 
 Рабочая ветка: `review/v2.4.5-handoff-20261026`.

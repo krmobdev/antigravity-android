@@ -30,3 +30,40 @@ These tests do not exercise native capture errors or late worker races.
 No live audio captured by this audit. Owner-reported functional dictation is
 preserved as evidence, separate from fresh automated checks. No release signing,
 main merge, release tag or publishing authorized.
+
+
+## Completed follow-up milestones
+
+- 809200eac8b63e371106c11bbd325866e1216623: PCM session ownership, exactly-once
+  AudioRecord cleanup on read/overflow/limit failures, stale worker isolation,
+  Activity detach cleanup. New fake-source fault/race tests PASS; no microphone
+  acquired by tests. Upstream sample format and Core STT/editor routing retained.
+- 3c3abff28f834a93fd40b9b713030b7dcd9408ef: Android Back, Escape and physical
+  backdrop taps pop one active menu level. Drawer-local Settings path and
+  disposed-overlay cleanup prevent root closure and stale callbacks.
+- Realme device probe: four repeated model/effort/Usage cycles using alternating
+  real Android Back keys and backdrop touches PASS; Developer and Models return
+  to Settings root PASS; Activity/WebView survive; draft preserved.
+  INSTRUMENTATION_CODE=0 and ANDROID_PROGRESSIVE_BACK=PASS_REAL_KEYS_AND_BACKDROP_NO_SEND.
+- Initial device attempt FAILED before WebView was available. The test itself
+  sent Back while the launch window was waiting for focus. Corrected to dismiss
+  only a verified external Android Settings window; subsequent device run PASS.
+- Current Android dictation routing probe with both capture paths stubbed PASS:
+  native PCM start=1, browser capture=0, AAC attachment=0, INSTRUMENTATION_CODE=0.
+  This is routing evidence, not a fresh spoken-word/transcript/send acceptance.
+- Fresh local regression PASS: Java plus PCM fault tests; Web selftest and actual
+  patched-drawer behavior; 35 Python Web tests; modules core 17, patches 14,
+  io 13, env 25, builder 8. Real isolated Core PTY two generations PASS:
+  create, tty stdin/stdout, interactive read/input, stream reconnect, close/reopen.
+- Dev APK compiled locally (238 Java classes), verified and installed with Shizuku
+  directly into com.agy.dev. Production untouched. This is a public-debug-key QA
+  build with internal dev version metadata, not an unsigned KR release artifact.
+
+Still open: native PCM network/pre-session bounds review, fresh full voice
+speech/edit/send acceptance, attachment metadata/delete-target CSS review and
+real model/picker sends, visual settings Light/Dark/presets, real agent background
+and screen-off notifications, long-chat fling/TalkBack, Pixel 7 Android 17 and
+Android 8/12 availability. Existing unsigned release hashes remain stale.
+No final release acceptance or release APK handoff is claimed by these milestones.
+
+QA APK SHA-256: e35f732ccac46ee3bfd3df00ac948d73404d7610a7038ecdab7c6519d1b1b45e
