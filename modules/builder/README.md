@@ -184,3 +184,5 @@ bash modules/builder/tests/run_all.sh
 ### 8. Интеграция веб-сборщика и предотвращение утечки манифестов (исправлено)
 - **Проблема**: В `05_stage_assets.py` веб-ассеты копировались «как есть» из `web/` без предварительного запуска сборки, из-за чего изменения в `web/src/` могли не попадать в APK. Кроме того, в фильтре `web_ignore` отсутствовал `src.manifest`, в результате чего манифест исходников попадал в ресурсы APK.
 - **Исправление**: В `05_stage_assets.py` внедрен автоматический запуск `bash web/build.sh` перед стадированием ассетов, а файл `src.manifest` добавлен в список игнорирования `web_ignore`.
+
+KR local aapt steps default missing/empty `ANDROID_DATA` to `/data`, preserving an explicitly configured value.

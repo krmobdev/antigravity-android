@@ -108,3 +108,7 @@ bash modules/patches/tests/run_all.sh
 - `test_elf_scanner.py`: валидация ELF64, fallback на Program Headers для stripped-бинарников и проверка границ.
 - `test_pclntab_scanner.py`: валидация кодирования опкодов AArch64 `MOVZ X0, #imm`, прямой поиск в `funcnametab` и кэширование.
 - `test_full_pipeline.py`: E2E тест на реальном pristine-бинарнике `language_server` (dry-run, apply, sha256 check, verify, idempotence, fail-closed validation).
+
+## KR PTY patch
+
+Derived from upstream `67670cf`: `pty_shell` replaces exactly one 9-byte Go string in the pinned Core context, preserves size, and refuses missing, ambiguous or incompatible signatures even with `--allow-missing`. Android must resolve `/bin///sh` to `/system/bin/sh`; verify on each supported device. Both runtime cache hashes include this patch.

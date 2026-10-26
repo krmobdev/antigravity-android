@@ -14,6 +14,9 @@ java -cp "$OUT" AgentTaskTrackerTest
 java -cp "$OUT" com.agy.bridge.AgentCompletionQueueTest
 java -cp "$OUT" ConnectFrameReaderTest
 
+javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/core/CoreShellEnvironment.java" "$ROOT/app/tests/CoreShellEnvironmentTest.java"
+java -cp "$OUT" CoreShellEnvironmentTest
+
 
 # Isolated security tests run against pure-Java parts of the production
 # GatewayAuthToken and file writer, with Android API stubs for FileModeUtil.

@@ -19,8 +19,8 @@ import assemble
 import manifest_verifier
 import pipeline
 
-TARGET_SHA_FULL = "1d9750dd874faf2db976756dbb3476e72c2b29779793331f324151d0cb940bb7"
-TARGET_SHA_NO_BYPASS = "401c73945b2fca57bd1620ca792ed8952eb704c406d1314f4d307e736f5a5a22"
+TARGET_SHA_FULL = "f25135e4b4a2c4a8e4cb319dc36b13eb98fa4718fa80aaae5a7819935370ff27"
+TARGET_SHA_NO_BYPASS = "abf5881f9983fbad00c1cdf903c81f84cf36b8a21364b3476f6d19568b528527"
 DEFAULT_DEST = "/data/user/0/com.agy/files/standalone_runtime"
 
 def prepare(dest_runtime_dir: str = DEFAULT_DEST, no_bypass: bool = False) -> bool:
@@ -68,6 +68,11 @@ def prepare(dest_runtime_dir: str = DEFAULT_DEST, no_bypass: bool = False) -> bo
             print(f"\n[2/4] Applying modules/patches pipeline (skip_gates={no_bypass})...")
             ok_patch = pipeline.run_pipeline(staged_bin, dry_run=False, verify=False, allow_missing=True, skip_gates=no_bypass)
             assert ok_patch, "Patch pipeline failed!"
+            import hashlib
+            with open(staged_bin, "rb") as core:
+                actual_sha = hashlib.sha256(core.read()).hexdigest()
+            if actual_sha != target_sha:
+                raise ValueError("Patched Core SHA-256 mismatch; refusing assembly")
             print("  [OK] Patches applied and verified.")
             try:
                 shutil.copyfile(staged_bin, cached_patched)

@@ -258,3 +258,9 @@ python3 modules/runner/probe_server.py 45159 10
 # Корректная остановка:
 bash modules/runner/stop_core.sh /data/user/0/com.agy.dev/files/standalone_runtime
 ```
+
+## KR PTY cache integrity
+
+Both standard and bypass cache identities include the upstream-derived PTY
+shell patch. Freshly patched Core must match the expected SHA-256 before cache
+write or assembly; this prevents accepting an incompatible binary.

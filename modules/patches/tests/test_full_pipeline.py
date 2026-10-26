@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(MODULES_ROOT, "core", "unpack"))
 import pipeline
 import extractor
 
-EXPECTED_FINAL_SHA = "1d9750dd874faf2db976756dbb3476e72c2b29779793331f324151d0cb940bb7"
+EXPECTED_FINAL_SHA = "f25135e4b4a2c4a8e4cb319dc36b13eb98fa4718fa80aaae5a7819935370ff27"
 
 class TestFullPipeline(unittest.TestCase):
     def setUp(self):
@@ -34,6 +34,7 @@ class TestFullPipeline(unittest.TestCase):
         self.assertTrue(ok)
 
     def test_02_apply_and_verify(self):
+        initial_size = os.path.getsize(self.staged_bin)
         # 1. Apply patches
         manifest_out = os.path.join(self.tmp_dir, "runtime.manifest.json")
         ok_apply = pipeline.run_pipeline(self.staged_bin, allow_missing=False, manifest_path=manifest_out)
@@ -44,6 +45,7 @@ class TestFullPipeline(unittest.TestCase):
         with open(self.staged_bin, "rb") as f:
             final_sha = pipeline.sha256_bytes(f.read())
         self.assertEqual(final_sha, EXPECTED_FINAL_SHA)
+        self.assertEqual(os.path.getsize(self.staged_bin), initial_size)
 
         # 2. Verify pipeline
         ok_verify = pipeline.run_pipeline(self.staged_bin, verify=True, allow_missing=False)
@@ -52,6 +54,8 @@ class TestFullPipeline(unittest.TestCase):
         # 3. Idempotent re-apply
         ok_reapply = pipeline.run_pipeline(self.staged_bin, allow_missing=False)
         self.assertTrue(ok_reapply)
+        with open(self.staged_bin, "rb") as f:
+            self.assertEqual(pipeline.sha256_bytes(f.read()), final_sha)
 
     def test_03_full_pipeline_without_allow_missing(self):
         # With all modules including crash_suppressor present, allow_missing=False succeeds
@@ -66,7 +70,7 @@ class TestFullPipeline(unittest.TestCase):
         self.assertTrue(ok)
         with open(target, "rb") as f:
             sha = pipeline.sha256_bytes(f.read())
-        self.assertEqual(sha, "401c73945b2fca57bd1620ca792ed8952eb704c406d1314f4d307e736f5a5a22")
+        self.assertEqual(sha, "abf5881f9983fbad00c1cdf903c81f84cf36b8a21364b3476f6d19568b528527")
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,9 +31,8 @@ public final class CoreEnvironment {
         String inheritedPath = env.get("PATH");
         env.put("PATH", bin.getAbsolutePath()
                 + (inheritedPath == null || inheritedPath.isEmpty() ? "" : ":" + inheritedPath));
-        // The core's PTY spawner uses $SHELL (or falls back to /bin/bash, which
-        // does not exist on Android). Point it at the bridge in runtime/bin.
-        env.put("SHELL", new File(bin, "bash").getAbsolutePath());
+        File prefix = new File(files, com.agy.install.EnvPaths.PREFIX_DIR);
+        CoreShellEnvironment.apply(env, prefix, bin, new File("/system/bin/sh"));
         env.put("LANG", "C.UTF-8");
         env.put("LC_ALL", "C.UTF-8");
         // Pure-Go resolver keeps DNS independent of Android's missing /etc.
