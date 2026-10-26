@@ -1,159 +1,154 @@
-# v2.4.5-kr1 preparation — in progress
+# Antigravity v2.4.5-kr1 — итог подготовки кандидата
 
-All commands run on the owner's Android in Termux via AnimaBridge.
-No cloud builds, CI, signing, release tags or publication.
+**Исходники и две unsigned APK подготовлены. Ручная Android-приёмка, подпись и
+публикация ещё не выполнены.** APK собраны локально на Realme RMX3301 в Termux,
+без Gradle, облачных сборок и GitHub Actions.
 
-## Starting point
+## Git и сохранность исходного состояния
 
-- Authoritative origin: https://github.com/krmobdev/antigravity-android.git
-- Remote default branch: main.
-- Fetched main and ls-remote both confirmed
-  1cc88bd40667f60e819c5ca415dc7cd69294632d; local divergence 0/0.
-- Working branch: feature/v2.4.5-kr1, explicitly requested by owner.
-- Pre-existing uncommitted web/generated/main.js preserved; SHA-256:
-  4345a61da96e68aa6b0f1e358f0e2109c5d3dca2bc79feabda629e7ced553ebb.
-  It is excluded from preparation commits. Web build must not overwrite it.
-- Stable v2.4.1-kr1 sources remain available unchanged in main/history;
-  stable APKs, tags and history must not be modified.
+- Checkout: `~/anima-workspace/antigravity-android`.
+- Origin: https://github.com/krmobdev/antigravity-android.git.
+- Перед началом fetch и ls-remote подтвердили main:
+  `1cc88bd40667f60e819c5ca415dc7cd69294632d`, расхождение 0/0.
+- Работа выполнена в `feature/v2.4.5-kr1`; изменения регулярно коммитились и
+  отправлялись без force-push. Main, стабильные теги/история и production APK
+  v2.4.1-kr1 не изменялись.
+- Исходное незакоммиченное изменение `web/generated/main.js` сохранено и не
+  включено в коммиты. До и после всех сборок его SHA-256:
+  `4345a61da96e68aa6b0f1e358f0e2109c5d3dca2bc79feabda629e7ced553ebb`.
+- Builder собирает web в disposable source snapshot; исходный generated-файл
+  не перезаписывается. Отдельный staging regression проверил это трижды.
+- Код APK собран из `6f188844dc53f35e35276ea62b1f161057dab333`.
+  Последующие изменения документации/owner-helper не меняют содержимое APK.
 
-## PTY source adaptation
+## Реализовано и проверено
 
-Derived from upstream 67670cffdec8f31adfa7036dc561c97e30e3a06a.
-The local pristine Core is 181358800 bytes, SHA-256
-3971986e8bad5a26f087fc2c81ad28bd6cf19bee4492df98f3f7e0e4f2dc224d.
-It contains exactly one /bin/bash at 0x428fe3f, in Go's packed string table
-between send-pack and --config=. The patch pins this context and the total
-clean/replacement count. Missing or ambiguous signatures fail closed even in
-legacy allow-missing mode. No fixed write offset is used.
+| Этап | Изменения | Фактические проверки |
+|---|---|---|
+| PTY | CoreEnvironment/CoreShellEnvironment; upstream-derived pty_shell; pipeline/manifest; runtime cache SHA; ANDROID_DATA для aapt | Java shell policy, patch unit/integration, реальные Core RPC: create, tty stdin/stdout, интерактивный read/input, reconnect, close и повторное создание — PASS |
+| Уведомления | CoreAgentProgress, native stream/observer, tracker, coalescing, outcome в completion FIFO | 32 проверки reducer, параллельные задачи/дубли/rehydration/stale step counts, отмена/ошибка, terminal/new-run races, FIFO/persistence/correction, Android compilation — PASS |
+| Вложения | Карточки 200x96, просмотр вместо удаления, отдельное удаление, UTF-8 pre-viewer, image/audio/video preview, picker lifecycle | 21 behaviour assertion, многократный/отменённый выбор, ошибка чтения, конкурентный лимит, Blob URL cleanup/late reads, unsafe/binary/large text — PASS |
+| Composer | Просторный multiline input, минимум 48 CSS px на мобильном viewport, адаптивный + sheet | Mobile/desktop menu, существующие actions/disabled, close/Back cleanup, исходная send/stop/queue/model/voice логика сохранена; source/browser harness — PASS |
 
-On the attached device /bin resolves to /system/bin; /bin///sh resolves to
-executable /system/bin/sh. This path assumption needs confirmation on other
-supported devices, including Pixel 7.
+### PTY: совместимость без форсирования
 
-Shell environment prefers executable prefix bash, runtime bash, then system sh.
-TERM is xterm-256color; readable prefix terminfo is used when present and an
-inherited foreign TERMINFO is removed. Missing executable shells fail explicitly.
+Наш pristine Core: 181358800 байт, SHA-256
+`3971986e8bad5a26f087fc2c81ad28bd6cf19bee4492df98f3f7e0e4f2dc224d`.
 
-Runtime hashes were independently reproduced locally, not merely copied:
-- bypass: f25135e4b4a2c4a8e4cb319dc36b13eb98fa4718fa80aaae5a7819935370ff27
-- standard: abf5881f9983fbad00c1cdf903c81f84cf36b8a21364b3476f6d19568b528527
+В нём ровно одна строка /bin/bash (0x428fe3f), в Go string table между send-pack
+и --config=. Модуль не использует фиксированный offset записи: проверяет
+контекст, точное число clean/replacement signatures, длину и idempotence.
+Несовместимость/отсутствие/неоднозначность отклоняются даже при allow-missing.
 
-aapt version works without ANDROID_DATA on this phone, but upstream's conservative
-default /data is retained in both aapt entrypoints for stripped Android shells;
-an explicitly configured value remains unchanged.
+На подключённом Android /bin ведёт в /system/bin, /bin///sh — в исполняемый
+/system/bin/sh. На Pixel 7 это ещё нужно подтвердить. Проверены оба Core:
+standard `abf5881f9983fbad00c1cdf903c81f84cf36b8a21364b3476f6d19568b528527`;
+bypass `f25135e4b4a2c4a8e4cb319dc36b13eb98fa4718fa80aaae5a7819935370ff27`.
 
-## Actual checks
+Shell выбирается по исполняемости: prefix bash → runtime bash → system sh.
+TERM=xterm-256color; TERMINFO использует читаемую базу prefix; чужое
+унаследованное значение удаляется. Отсутствие shell завершается явной ошибкой.
+Прямой PTY smoke использует временные HOME/runtime, случайный loopback port и
+упакованный TLS-сертификат. Production/accounts/model quota не затрагиваются.
 
-Baseline and adapted tests both ran locally:
-- bash app/tests/run.sh: PASS, including completion FIFO/persistence/cancellation,
-  tracker, Connect framing, auth, and 13 shell-policy assertions.
-- bash modules/patches/tests/run_all.sh: PASS (14 tests after adaptation).
-  Includes real-Core apply/verify/reapply, both editions' hashes, byte size,
-  dry-run, bad/multiple/missing/path-context signatures and unchanged-on-failure.
-- git diff --check: PASS.
-- Existing generated/main.js hash: unchanged.
+### Уведомления: достоверность и границы
 
-Real isolated Core RPC smoke PASS on the attached Realme RMX3301:
-python modules/runner/test_pty_rpc.py (exit 0). Two terminal generations verified
-CreateTerminal, TTY stdin/stdout, interactive read and input, output stream
-reconnection, ListTerminals retention, CloseTerminal and recreation. The test
-uses temporary HOME/runtime, a random port and packaged TLS certificate; no
-production data, APK installation or model requests.
+Используются поля bundled Core schema:
+mainTrajectoryUpdate.lastStepType, stepsUpdate.totalLength, lastStepError,
+killed и CASCADE_RUN_STATUS_CANCELING. Публичные тексты — фиксированный whitelist.
+Команда не объявляется тестом: для run-command выводится «Выполняет команду».
+При неизвестном событии — «Агент выполняет задачу». Raw toolSummary больше не
+передаётся из WebView. Таймер только объединяет полученные события.
 
-PTY UI and Pixel 7 acceptance remain PENDING.
+Watermarks каждой беседы переживают reconnect в том же процессе. Ниже предыдущего
+step count, conflicting equal-index types и retired trajectories отбрасываются.
+В schema нет глобального event sequence: универсальную защиту от всех возможных
+неупорядоченных событий и cold-start сценариев без ручной приёмки не заявляем.
+Холодный старт ждёт новых данных Core. Каналы, FIFO spacing, navigation,
+Core running и read/unread не менялись. UI-first IDLE не обрывает native stream
+до подтверждения результата Core.
 
-## Remaining work
+### Вложения и Composer: реальные ограничения
 
-1. Real isolated Core PTY smoke and Android UI acceptance.
-2. Native Core stage schema audit, notifications implementation and tests.
-3. Attachment/API audit and manager implementation/tests.
-4. Mobile composer implementation/tests, preserving all settings and scroll fix.
-5. Full regression and sequential standard/bypass unsigned KR builds.
-6. Version metadata, APK manifests, security checks, SHA-256, bilingual release
-   notes/changelog and owner signing handoff.
-7. Pixel 7 and any device/user-only acceptance must be listed as pending until
-   actually performed.
+Сохранены исходные format/size checks, Core artifact upload/delete и ошибки
+отправки. Не заявлена совместимость десяти файлов. Cap не более 5 и ниже, если
+так сообщает текущий Core flag; нулевой лимит остаётся нулём.
 
-No release-ready claim is made by this checkpoint.
+Текстовый просмотр до 1 МиБ — только UTF-8 text node внутри pre, без HTML/Markdown
+execution. NUL/binary/oversize отклоняются. SVG не исполняется как изображение.
+Неподдерживаемый preview объясняется; существующий Core openFile остаётся там,
+где поддерживается. Превью не имитирует успешную отправку. Реальную отправку
+разных форматов выбранной моделью ещё нужно проверить.
 
-## Native progress implementation checkpoint
+Разрешения chat picker временные; постоянные project-tree grants сохранены.
+Не добавлены JS inertia, тяжёлые анимации или глобальный ScrollTimeline override.
 
-Protocol source: bundled protobuf descriptors in web/main.js (Core client).
-AgentStateUpdate.mainTrajectoryUpdate contains lastStepType, stepsUpdate.totalLength,
-lastStepError and killed; status CANCELING is value 3. The stage reducer consumes
-only these typed values, never descriptions/arguments/commands/file contents.
-There is no global event sequence number in this schema. Lower step counts,
-equal-index type conflicts, retired trajectories and finished-run RUNNING
-replays are filtered conservatively. Per-conversation watermarks survive
-native stream reconnects in-process; cold start waits for fresh Core data.
+## Полная программная регрессия
 
-Notifications retain their task tag/ID and coalesce rapid observed stages.
-Terminal outcomes persist with existing completion queue entries; UI-first
-completion can be enriched silently without a duplicate FIFO alert. Native
-subscriptions continue through UI-first IDLE until Core confirms completion.
+- app/tests/run.sh — PASS (tracker, stage/coalescing, completion FIFO/auth/Connect,
+  shell policy; complete Java compile — 229 classes).
+- modules/core — 17 tests PASS.
+- modules/patches — 14 tests PASS.
+- modules/io — 13 tests PASS.
+- modules/env — 25 tests PASS.
+- modules/builder — 8 tests PASS.
+- web unittest discovery — 20 tests PASS, без skips.
+- web selftest — PASS: Hca/NDa reconnect, React Working, navigation, sidebar,
+  native completion proof, mobile attachments/composer и scroll fix.
+- web staging regression — PASS: standard/bypass/rebuild, protected generated
+  input, отсутствие исходников/build helpers в assets.
+- Реальный isolated Core PTY smoke — PASS, две terminal generations.
+- Обе финальные unsigned KR APK — successful builds, manifest/ZIP/zipalign,
+  Core SHA/signatures, mobile/scroll hooks и credential filename/text scans PASS.
+  Текстовый scan охватывает малые текстовые assets и изменённые Git text files;
+  это ограниченный scan, не математическая гарантия отсутствия любых секретов.
 
-Automated reducer/coalescer/tracker/FIFO tests and complete Android source
-compilation ran locally. Real background/screen-off notifications, native/UI
-race acceptance and Pixel 7 checks remain PENDING until separately recorded.
+Первый расширенный web прогон выявил 1 failure/11 errors в старых v2.3 wrappers.
+Их идентичность baseline подтверждена git diff. Обёртки перенесены на фактически
+используемые v2.4 patch_runtime_v24/sidebar APIs и актуальный token-gated bridge.
+После исправления — все 20 PASS; тесты не отключались.
 
-## Attachment implementation checkpoint
+Все сборки шли последовательно через taskset -c 0-3. Direct Python probe
+подтвердил [0,1,2,3], но один shell child сообщил [0,1,2,3,4,6]; исключительное
+выполнение всех дочерних процессов на efficiency cores не заявляем.
 
-Audit confirmed existing multiple selection, max-media-attachments default 5,
-format/size validation, Core saveMediaAsArtifact/deleteMediaArtifact and send
-error handling. Ten files are not proven compatible; cap 5 is retained and a
-lower server flag remains effective. No server acceptance is fabricated.
+## Финальные APK
 
-Added consistent 200x96 cards, explicit remove, raster image/fullscreen viewing,
-safe UTF-8 plain-text/code/Markdown/JSON preview up to 1 MiB, and readable format
-limitations with existing openFile fallback where supported. Audio/video
-preview uses the original payload. Object URLs are cleaned on all viewer exits.
+Package `com.krmobdev.antigravity`; versionName `2.4.5-kr1`; versionCode `19`
+(стабильный был 18); debuggable=false. Подписи v1/v2/v3 нет: owner signing required.
 
-Picker batch reservations prevent concurrent additions exceeding the cap;
-same-file re-selection works. Chat picker no longer persists blanket grants;
-project tree permissions are unchanged. Builder stages web from a disposable
-snapshot to preserve the initial uncommitted generated/main.js exactly.
+| Файл в dist | Байт | SHA-256 |
+|---|---:|---|
+| antigravity-v2.4.5-kr1-unsigned.apk | 103458757 | 283ab03a1a114d563120a8bf1520a9bbe7f1053029d1e77aa5d94dc1aa1d342c |
+| antigravity-v2.4.5-kr1-region-bypass-unsigned.apk | 103458797 | 853a1d8b6f0c6d1e137f6c3963ca5582bfd01e9f91e3f83cc741a05509e26990 |
 
-Source-level behaviour tests passed for viewing vs removal, unsafe text,
-binary/size limits, object URL cleanup/late reads, concurrent five-file cap,
-cancelled selection, failed read and repeated selection. Web selftest and
-complete Java compilation passed. Android File Picker, sending against the
-account's model, background return and visual theme checks remain PENDING.
+Обе содержат одинаковый набор из 405 entries; различаются только
+assets/runtime/bin/liblanguage_server.so и assets/runtime/manifest.json.
+Порядок ZIP entries может различаться и не является изменением функциональности.
+Отчёт: `dist/v2.4.5-kr1-verification.json`; контрольные суммы:
+[V2_4_5_KR1_SHA256SUMS.txt](V2_4_5_KR1_SHA256SUMS.txt).
 
-## Composer implementation checkpoint
+Также собрана отдельная debug QA APK `dist/antigravity-v2.4.5-kr1-dev-qa.apk`,
+package com.agy.dev, с публичным debug key. Это не релизный артефакт.
+Её установка не выполнена: AnimaBridge отклонял Download с PATH_DENIED;
+effective allowed_roots оставался только anima-workspace. Shizuku ready,
+но install_apk требует enabled Download. Доверенный ADB transport / локальный
+wireless connect service отсутствовали. Production не удалялась/не обновлялась.
 
-New spacious rounded multiline layout and 48 px minimum controls on coarse/
-narrow viewports. The adaptive + bottom sheet renders the existing action list;
-model, reasoning, environment, permissions, queue/send/stop and voice code is
-retained. No artificial scrolling/animations were introduced. Existing Lexical
-Enter and Android resize/visualViewport handling are retained. System Back uses
-the dialog's temporary same-route history entry.
+## Что осталось владельцу
 
-Browser behaviour/source checks cover mobile/desktop switching, existing action
-callbacks, disabled state, cancellation/Back cleanup and unchanged send/voice
-logic. Real Android keyboard, light/dark/custom presets, large font, TalkBack and
-long-chat fling checks remain PENDING.
+**НЕ ПРОЙДЕНО; обязательно ручная приёмка:**
 
-## Candidate identity
+- Реальные Core agent stages в фоне и при выключенном экране; несколько задач,
+  ошибки/отмена, reconnect/cold start, delivery и сохранение read/unread/FIFO.
+- PTY WebView UI и Pixel 7 (на Realme реальные Core terminal RPC уже PASS).
+- Android File Picker, реальная отправка/ошибки выбранной модели, возврат из фона.
+- Composer с IME, вырезами/навигацией, крупным шрифтом/TalkBack,
+  Light/Dark/пользовательскими пресетами; реальный длинный чат/fling.
+- Android app launch/crash acceptance и обновление production поверх v2.4.1-kr1.
+  Успешная сборка/Java/RPC не доказывает отсутствие UI crashes.
 
-KR versionName 2.4.5-kr1, versionCode 19 (stable v2.4.1-kr1 was 18).
-Package com.krmobdev.antigravity, release non-debuggable. Both output filenames
-carry the new version, so stable APKs in dist are not overwritten. The owner-only
-interactive helper targets the new filenames/version; the agent never runs it.
-
-## Broad-regression discovery and migration
-
-The first broad web unittest discovery FAILED (1 failure, 11 errors): legacy
-wrappers still imported v2.3 patchers/names and a pre-token bridge harness.
-git diff against baseline 1cc88bd confirmed those wrapper/patcher/input files
-were unchanged, so this was existing test drift, not evidence of a new v2.4
-runtime failure. Tests are migrated to the actual patch_runtime_v24 and
-patch_sidebar_reconcile APIs and real Hca/NDa/router behaviour harness, retaining
-fail-closed/idempotence/source-integrity checks. No failing tests are skipped.
-The browser notifier harness now checks its token argument and verifies that
-raw toolSummary is not forwarded; public stages are exclusively native enums.
-
-The taskset 0-3 regression shell's first child reported affinity [0,1,2,3,4,6],
-while a direct taskset 0-3 Python probe reported [0,1,2,3]. Android/runtime can
-widen child affinity; exclusive efficiency-core execution is not claimed.
-
-Final review also tests a Core attachment capability of zero: it remains zero, rather than being raised to one. Mobile attachment behaviour now passes 21 assertions. Artifact verification compares entry sets/content, allowing ZIP entry order differences; the two preliminary editions differed only in Core and its runtime manifest. Final artifacts are rebuilt after this correction.
+[Owner handoff и подпись](HANDOFF_V2_4_5_KR1.md).
+Релизный keystore/пароли агент не читал, не копировал и не использовал;
+новый релизный ключ не создавался. Неподписанные APK не публиковались.
+Merge main, release tags, GitHub Release и Actions не выполнялись.

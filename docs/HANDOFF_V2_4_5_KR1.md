@@ -24,7 +24,9 @@ taskset -c 0-3 bash modules/builder/build_apk.sh --kr-release --region-bypass --
 - `dist/antigravity-v2.4.5-kr1-unsigned.apk`
 - `dist/antigravity-v2.4.5-kr1-region-bypass-unsigned.apk`
 
-Для интерактивного helper владелец использует копии в Downloads:
+Helper сначала проверяет копии в Downloads, а при их отсутствии автоматически
+берёт unsigned APK из dist текущего checkout. Обязательное предварительное
+копирование через AnimaBridge не требуется. Имена возможных копий в Downloads:
 - `Antigravity-Android-v2.4.5-kr1-unsigned.apk`
 - `Antigravity-Android-v2.4.5-kr1-region-bypass-unsigned.apk`
 
@@ -41,7 +43,8 @@ bash tools/sign_release_interactive.sh bypass
 
 Пароли вводятся только в интерактивные запросы apksigner. Не передавать их в чат,
 Git, параметры команд или журналы. Helper отказывается заменять подписанные APK
-и проверяет прежний сертификат, package ID и новую версию.
+и до подписи сверяет unsigned SHA-256 с контрольным файлом этого checkout;
+после подписи проверяет прежний сертификат, package ID и новую версию.
 
 Ожидаемый публичный SHA-256 сертификата:
 `23:AD:AC:86:42:3F:72:98:B0:A8:CC:D4:87:58:E6:E1:9B:E7:65:4D:4F:BD:EC:18:4E:18:4B:7E:16:03:0D:95`.

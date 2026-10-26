@@ -1,0 +1,43 @@
+{
+  "source_commit": "6f188844dc53f35e35276ea62b1f161057dab333",
+  "artifacts": [
+    {
+      "file": "antigravity-v2.4.5-kr1-unsigned.apk",
+      "bytes": 103458757,
+      "sha256": "283ab03a1a114d563120a8bf1520a9bbe7f1053029d1e77aa5d94dc1aa1d342c",
+      "core_sha256": "abf5881f9983fbad00c1cdf903c81f84cf36b8a21364b3476f6d19568b528527",
+      "package": "com.krmobdev.antigravity",
+      "versionName": "2.4.5-kr1",
+      "versionCode": 19,
+      "debuggable": false,
+      "unsigned": true,
+      "zip_integrity": true,
+      "zipalign": true,
+      "mobile_and_scroll_hooks": true,
+      "credential_filename_scan": true,
+      "credential_text_scan": true
+    },
+    {
+      "file": "antigravity-v2.4.5-kr1-region-bypass-unsigned.apk",
+      "bytes": 103458797,
+      "sha256": "853a1d8b6f0c6d1e137f6c3963ca5582bfd01e9f91e3f83cc741a05509e26990",
+      "core_sha256": "f25135e4b4a2c4a8e4cb319dc36b13eb98fa4718fa80aaae5a7819935370ff27",
+      "package": "com.krmobdev.antigravity",
+      "versionName": "2.4.5-kr1",
+      "versionCode": 19,
+      "debuggable": false,
+      "unsigned": true,
+      "zip_integrity": true,
+      "zipalign": true,
+      "mobile_and_scroll_hooks": true,
+      "credential_filename_scan": true,
+      "credential_text_scan": true
+    }
+  ],
+  "edition_differences": [
+    "assets/runtime/manifest.json",
+    "assets/runtime/bin/liblanguage_server.so"
+  ],
+  "git_change_credential_filename_scan": true,
+  "manual_acceptance": "PENDING: docs/HANDOFF_V2_4_5_KR1.md"
+}
