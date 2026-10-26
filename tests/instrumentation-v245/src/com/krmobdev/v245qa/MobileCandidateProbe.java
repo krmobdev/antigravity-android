@@ -262,6 +262,11 @@ public final class MobileCandidateProbe extends Instrumentation {
         boolean trusted=(Boolean)allowed.getMethod("allowed",String.class,String.class).invoke(null,origin,actualServer);
         report("VOICE_TRUSTED_ORIGIN",trusted);
         report("VOICE_ANDROID_RECORD_AUDIO_GRANTED",activity.checkSelfPermission("android.permission.RECORD_AUDIO")==android.content.pm.PackageManager.PERMISSION_GRANTED);
+        // Probe MediaRecorder on a synthetic, silent output-only audio stream.
+        // Never request microphone permission or access an audioinput device.
+        state("window.__agySynth={done:false,result:'pending',bytes:0};try{const C=window.AudioContext||window.webkitAudioContext;const ctx=new C(),osc=ctx.createOscillator(),dest=ctx.createMediaStreamDestination();osc.connect(dest);const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'';const rec=new MediaRecorder(dest.stream,mime?{mimeType:mime}:{});rec.ondataavailable=e=>{window.__agySynth.bytes+=e.data.size};rec.onerror=e=>{window.__agySynth.done=true;window.__agySynth.result=e?.error?.name||'RecorderError'};rec.onstop=()=>{window.__agySynth.done=true;window.__agySynth.result=window.__agySynth.bytes>0?'PASS':'EMPTY';osc.stop();ctx.close()};osc.start();rec.start(100);setTimeout(()=>{if(rec.state!=='inactive')rec.stop()},1000)}catch(e){window.__agySynth.done=true;window.__agySynth.result=e?.name||'UnknownError'}return '{}';");
+        JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
+        report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
     @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));micMode="mic".equals(b.getString("mode"));start();}
     @Override public void onStart(){
