@@ -157,6 +157,20 @@ function agyNativePcmStart(onChunk,onError){
   };
   session.timer=setTimeout(read,45);
 }
+// The current drawer owns its child path; unrelated hidden drawers cannot pop it.
+function useAgyMobilePathBack(depth,pop){
+  const owner=A.useContext(agySheetBackContext);
+  A.useLayoutEffect(()=>{
+    if(!owner||depth===0)return;
+    const back=()=>{pop();return true;};owner.current=back;
+    return()=>{if(owner.current===back)owner.current=null;};
+  },[owner,depth,pop]);
+}
+function agySheetRequestChange(open,details,change,stepBack){
+  if(open)change(true);
+  else if(details?.reason==="close-press")change(false);
+  else stepBack();
+}
 /* Compact mobile composer; all settings keep their original controllers. */
 function useAgyMobileLayout(){
   const query="(max-width: 720px), (pointer: coarse)";

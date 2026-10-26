@@ -14,8 +14,16 @@ def transform(source):
         if source.count(MARKER)!=1 or "var zYb=AgyMobileContextMenu;" not in source:
             raise ValueError("Incomplete composer integration")
         return source
+    source=once(source,'const BYa=A.createContext(0);',
+                'const BYa=A.createContext(0),agySheetBackContext=A.createContext(null);')
     source=once(source,'className:h,finalFocus:k}){var l=A.useRef(null),m=A.useContext(BYa);DC(a,()=>{b(!1)});',
-        'className:h,finalFocus:k,onBack:agyOnBack}){var l=A.useRef(null),m=A.useContext(BYa);DC(a,()=>{b(!1)});A.useEffect(()=>{if(!a)return;return agyRegisterMobileOverlay(()=>{if(agyOnBack)agyOnBack();else b(false);});},[a,b,agyOnBack]);')
+        'className:h,finalFocus:k,onBack:agyOnBack}){var agyNestedBack=A.useRef(null),agyLatestBack=A.useRef(null);var agyStepBack=()=>{if(agyNestedBack.current?.()===true)return;if(agyOnBack)agyOnBack();else b(false);};agyLatestBack.current=agyStepBack;var l=A.useRef(null),m=A.useContext(BYa);DC(a,agyStepBack);A.useEffect(()=>{if(!a)return;return agyRegisterMobileOverlay(()=>agyLatestBack.current());},[a]);')
+    source=once(source,'(r||t?.reason!=="escape-key"&&t?.reason!=="outside-press"||!EC(l.current))&&b(r)',
+        '(r||t?.reason!=="escape-key"&&t?.reason!=="outside-press"||!EC(l.current))&&agySheetRequestChange(r,t,b,agyStepBack)')
+    source=once(source,'A.createElement(BYa.Provider,{value:m+1},e)',
+        'A.createElement(BYa.Provider,{value:m+1},A.createElement(agySheetBackContext.Provider,{value:agyNestedBack},e))')
+    source=once(source,'var k=y0a(!0);c=k.path.length;',
+        'var k=y0a(!0);useAgyMobilePathBack(k.path.length,k.pop);c=k.path.length;')
     source=once(source,'A.createElement(EK,{open:n.open,onOpenChange:n.setIsOpen,finalFocus:h,maxHeight:"85dvh"}',
         'A.createElement(EK,{open:n.open,onOpenChange:n.setIsOpen,onBack:()=>{if(n.path.length)n.pop();else n.setIsOpen(false);},finalFocus:h,maxHeight:"85dvh"}')
     source=once(source,'function z0a({title:a,onBack:b}){return A.createElement("div",{className:"sticky top-0',

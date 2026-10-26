@@ -1,9 +1,19 @@
 /* Injected into the pinned client scope; uses canonical selectedMedia state. */
+const agyMobileOverlayStack=[];
+function agyCloseMobileOverlay(){
+  const top=agyMobileOverlayStack[agyMobileOverlayStack.length-1];
+  if(!top)return false;
+  top.close();return true;
+}
 function agyRegisterMobileOverlay(close){
-  const previous=window.__AGY_CLOSE_MOBILE_OVERLAY__;
-  const handler=()=>{close();return true;};
-  window.__AGY_CLOSE_MOBILE_OVERLAY__=handler;
-  return()=>{if(window.__AGY_CLOSE_MOBILE_OVERLAY__===handler)window.__AGY_CLOSE_MOBILE_OVERLAY__=previous;};
+  const entry={close};agyMobileOverlayStack.push(entry);
+  window.__AGY_CLOSE_MOBILE_OVERLAY__=agyCloseMobileOverlay;
+  return()=>{
+    const index=agyMobileOverlayStack.indexOf(entry);
+    if(index>=0)agyMobileOverlayStack.splice(index,1);
+    if(!agyMobileOverlayStack.length&&window.__AGY_CLOSE_MOBILE_OVERLAY__===agyCloseMobileOverlay)
+      window.__AGY_CLOSE_MOBILE_OVERLAY__=undefined;
+  };
 }
 function agyAttachmentKind(media) {
   const mime=(media.mimeType||"").toLowerCase(), name=(media.description||"").toLowerCase();

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
     private boolean capture;
+    private boolean backMode;
     private boolean micMode;
     private boolean micUiMode;
     private boolean micPcmUiMode;
@@ -126,6 +127,66 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
+    private void backdropTap()throws Exception {
+        JSONObject point=state("const e=[...document.querySelectorAll('[data-testid=bottom-sheet]')].find(e=>!e.closest('[aria-hidden=true]')&&e.getBoundingClientRect().height>0&&getComputedStyle(e).visibility!=='hidden');const r=e?.getBoundingClientRect();return JSON.stringify({x:innerWidth/2,y:r?Math.max(4,r.top/2):4,width:innerWidth});");
+        final int[] location=new int[2];runOnMainSync(()->web.getLocationOnScreen(location));
+        float scale=web.getWidth()/(float)point.getDouble("width");
+        float x=location[0]+(float)point.getDouble("x")*scale,y=location[1]+(float)point.getDouble("y")*scale;
+        long now=SystemClock.uptimeMillis();
+        android.view.MotionEvent down=android.view.MotionEvent.obtain(now,now,android.view.MotionEvent.ACTION_DOWN,x,y,0);
+        android.view.MotionEvent up=android.view.MotionEvent.obtain(now,now+60,android.view.MotionEvent.ACTION_UP,x,y,0);
+        sendPointerSync(down);sendPointerSync(up);down.recycle();up.recycle();SystemClock.sleep(600);
+    }
+    private void assertHost(String tag)throws Exception {
+        require(!activity.isFinishing()&&!activity.isDestroyed(),tag+"_ACTIVITY");
+        JSONObject info=state("return JSON.stringify({alive:!!document.querySelector('#root')});");
+        require(info.optBoolean("alive"),tag+"_WEBVIEW");
+    }
+    private void progressiveBack()throws Exception {
+        capture=false;
+        state("window.__agyDraftBeforeBack=JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(x=>x.textContent));return '{}';");
+        for(int i=0;i<6&&stockSheets().optInt("visible")>0;i++){
+            state("window.__AGY_CLOSE_MOBILE_OVERLAY__?.();return '{}';");SystemClock.sleep(450);
+        }
+        for(int cycle=0;cycle<4;cycle++){
+            JSONObject info=state("const b=document.querySelector('[data-testid=model-selector-trigger]');b?.click();return JSON.stringify({available:!!b});");
+            require(info.optBoolean("available"),"BACK_MODEL_TRIGGER_"+cycle);SystemClock.sleep(450);
+            info=state("const g=document.querySelector('[data-testid=model-selector-effort-group]'),r=g?.closest('button,[role=menuitem],[role=button]');r?.click();return JSON.stringify({available:!!r});");
+            require(info.optBoolean("available"),"BACK_EFFORT_TRIGGER_"+cycle);SystemClock.sleep(450);
+            info=state("const e=document.querySelector('[data-testid=model-selector-effort-option]');return JSON.stringify({ready:!!e&&!e.closest('[inert]')});");
+            require(info.optBoolean("ready"),"BACK_EFFORT_OPEN_"+cycle);
+            if(cycle%2==0)sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);else backdropTap();
+            SystemClock.sleep(600);assertHost("BACK_FROM_EFFORT_"+cycle);
+            info=state("const p=document.querySelector('[data-testid=model-selector-panel]');return JSON.stringify({ready:!!p&&!p.closest('[inert]')&&!p.closest('[aria-hidden=true]')});");
+            require(info.optBoolean("ready")&&stockSheets().optInt("visible")==1,"BACK_EFFORT_TO_MODEL_"+cycle);
+            state("const p=document.querySelector('[data-testid=model-selector-panel]'),r=[...(p?.querySelectorAll('[role=menuitem],button')||[])].find(x=>/View Usage/.test(x.textContent));r?.click();return '{}';");
+            SystemClock.sleep(600);
+            info=state("return JSON.stringify({nested:[...document.querySelectorAll('.agy-mobile-sheet-header')].some(e=>!e.closest('[inert]')&&getComputedStyle(e).visibility!=='hidden')});");
+            require(info.optBoolean("nested"),"BACK_USAGE_OPEN_"+cycle);
+            if(cycle%2==0)backdropTap();else sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            SystemClock.sleep(600);assertHost("BACK_FROM_USAGE_"+cycle);
+            info=state("const p=document.querySelector('[data-testid=model-selector-panel]');return JSON.stringify({ready:!!p&&!p.closest('[inert]')&&!p.closest('[aria-hidden=true]')});");
+            require(info.optBoolean("ready")&&stockSheets().optInt("visible")==1,"BACK_USAGE_TO_MODEL_"+cycle);
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+            require(stockSheets().optInt("visible")==0,"BACK_MODEL_TO_CHAT_"+cycle);assertHost("BACK_CHAT_"+cycle);
+        }
+        JSONObject info=state("const visible=e=>e.getBoundingClientRect().width>0&&!e.closest('[inert]');const b=[...document.querySelectorAll('button')].find(e=>visible(e)&&/^settings$/i.test((e.getAttribute('aria-label')||e.title||e.textContent).trim()));b?.click();return JSON.stringify({available:!!b});");
+        if(info.optBoolean("available")){
+            SystemClock.sleep(600);
+            for(String section:new String[]{"Developer","Models"}){
+                info=state("const b=document.querySelector('[data-testid=\"settings-nav-item-"+section+"\"]');b?.click();return JSON.stringify({available:!!b});");
+                if(!info.optBoolean("available")){report("BACK_SETTINGS_"+section,"PENDING_UNAVAILABLE");continue;}
+                SystemClock.sleep(550);if("Developer".equals(section))sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);else backdropTap();
+                SystemClock.sleep(650);assertHost("BACK_SETTINGS_"+section);
+                info=state("const b=document.querySelector('[data-testid=\"settings-nav-item-"+section+"\"]');return JSON.stringify({root:!!b&&!b.closest('[inert]')&&!b.closest('[aria-hidden=true]')});");
+                require(info.optBoolean("root")&&stockSheets().optInt("visible")>0,"BACK_SETTINGS_ONE_LEVEL_"+section);
+            }
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(600);assertHost("BACK_SETTINGS_TO_CHAT");
+        }else report("BACK_SETTINGS","PENDING_NO_TRIGGER");
+        info=state("return JSON.stringify({same:window.__agyDraftBeforeBack===JSON.stringify([...document.querySelectorAll('.agy-composer [contenteditable=true]')].map(x=>x.textContent))});");
+        require(info.optBoolean("same"),"BACK_DRAFT_PRESERVED");
+        report("ANDROID_PROGRESSIVE_BACK","PASS_REAL_KEYS_AND_BACKDROP_NO_SEND");
+    }
     private JSONObject stockSheets()throws Exception{
         return state("const a=[...document.querySelectorAll('[data-testid=bottom-sheet]')];const v=a.filter(e=>{const r=e.getBoundingClientRect(),c=getComputedStyle(e);return c.display!=='none'&&c.visibility!=='hidden'&&Number(c.opacity)>0&&!e.closest('[aria-hidden=true]')&&r.height>0&&r.bottom>0&&r.top<innerHeight;});return JSON.stringify({total:a.length,visible:v.length});");
     }
@@ -350,7 +411,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -358,7 +419,12 @@ public final class MobileCandidateProbe extends Instrumentation {
             Intent launch=target.getPackageManager().getLaunchIntentForPackage("com.agy.dev");launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity=startActivitySync(launch);
             // Dismiss first-launch settings/permission surfaces without granting broad storage access.
-            for(int i=0;i<3&&!activity.hasWindowFocus();i++){sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(700);}
+            for(int i=0;i<12&&!activity.hasWindowFocus();i++){
+                android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+                String pkg=root!=null?String.valueOf(root.getPackageName()):"";
+                if("com.android.settings".equals(pkg))sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+                SystemClock.sleep(250);
+            }
             long until=SystemClock.elapsedRealtime()+45000;
             do{
                 Object current=field(Class.forName("com.agy.ui.MainActivity",true,target.getClassLoader()),"activeActivity");
@@ -368,6 +434,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(backMode){progressiveBack();ok=true;return;}
             if(micMode){microphoneCapabilities();ok=true;return;}
             if(micUiMode){microphoneButtonRouting();ok=true;return;}
             if(micPcmUiMode){microphonePcmButtonRouting();ok=true;return;}
