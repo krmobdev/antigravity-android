@@ -20,11 +20,40 @@ def transform(source):
         'A.createElement(EK,{open:n.open,onOpenChange:n.setIsOpen,onBack:()=>{if(n.path.length)n.pop();else n.setIsOpen(false);},finalFocus:h,maxHeight:"85dvh"}')
     source=once(source,'function z0a({title:a,onBack:b}){return A.createElement("div",{className:"sticky top-0',
         'function z0a({title:a,onBack:b}){return A.createElement("div",{className:"agy-mobile-sheet-header sticky top-0')
-    # Legacy recorder swallowed its own errors by clearing state after setting it.
+    # The upstream recorder's reset cleared errors, and the surrounding UI
+    # hid error messages whenever recording had already stopped.
     source=once(source,'catch(y){x(),f(gp(y)),q()}',
                 'catch(y){x(),q(),f(agyAudioError(y))}')
+    source=once(source,'var d5a=a=>{var [b,c]',
+                'var d5a=a=>{var [agyPending,setAgyPending]=(0,A.useState)(!1),[b,c]')
+    source=once(source,'try{try{q();let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))',
+                'try{try{q();setAgyPending(true);let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))')
+    source=once(source,'catch(y){x(),q(),f(agyAudioError(y))}}finally{w()}',
+                'catch(y){x(),q(),f(agyAudioError(y))}finally{setAgyPending(false)}}finally{w()}')
+    source=once(source,'isRecording:b,\nerror:e,hasMicrophone:v}',
+                'isRecording:b,starting:agyPending,\nerror:e,hasMicrophone:v}')
+    source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',
+                'isRecording:Ob,starting:agyStarting,error:ib,hasMicrophone:tb}=d5a(Qb)')
+    source=once(source,'audioPhase:Ob?"recording":"idle",error:ib',
+                'audioPhase:Ob?"recording":agyStarting?"requesting":"idle",error:ib')
+    source=once(source,'Ob,ib,tb])',
+                'Ob,agyStarting,ib,tb])')
+    source=once(source,'onClick:D,disabled:H,className:aj(t===',
+                'onClick:D,disabled:H||t==="requesting",className:aj(t===')
+    # MediaRecorder callback is asynchronous; snapshot the duration before
+    # cleanup resets n.current. Also show a clear error for empty recordings.
+    source=once(source,'B.onstop=()=>{var C=new Blob(k.current,{type:B.mimeType});',
+                'B.onstop=()=>{var agySeconds=n.current?(Date.now()-n.current)/1E3:0,C=new Blob(k.current,{type:B.mimeType});if(C.size===0){q();f("Запись пуста. Проверьте микрофон и попробуйте снова.");return;}')
+    source=once(source,'F=\nn.current?(Date.now()-n.current)/1E3:0',
+                'F=agySeconds')
+    source=once(source,'B.ondataavailable=C=>{C.data.size>0&&k.current.push(C.data)};',
+                'B.onerror=()=>{q();f("Ошибка записи. Проверьте микрофон и попробуйте снова.");};B.ondataavailable=C=>{C.data.size>0&&k.current.push(C.data)};')
+    # Include errors and permission-waiting states in the parent header;
+    # previously the error component could never render while idle.
+    source=once(source,'(oe.audioPhase===\n"recording"&&!Yf||Ya.length>0',
+                '((oe.audioPhase==="recording"||oe.audioPhase==="requesting")&&!Yf||!!oe.error||Ya.length>0')
     source=once(source,'g,oe.audioPhase==="recording"&&!Yf',
-                'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="recording"&&!Yf')
+                'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="requesting"&&!Yf&&A.createElement("div",{role:"status",className:"agy-composer-audio-pending"},"Подключение микрофона…"),oe.audioPhase==="recording"&&!Yf')
     source=once(source,'"aria-label":a?"Stop recording":"Record voice memo"',
                 '"aria-label":a?"Остановить запись":"Записать голосовое сообщение"')
     source=once(source,"var zYb=({items:a,dropdownPlacement:b,onOpenChange:c})",

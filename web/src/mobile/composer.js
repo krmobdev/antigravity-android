@@ -6,6 +6,12 @@ function agyAudioError(error){
     return "Микрофон не найден. Проверьте подключение устройства.";
   if(name==="NotReadableError"||name==="TrackStartError")
     return "Микрофон занят или недоступен. Закройте другое приложение с записью.";
+  if(name==="NotSupportedError"||name==="TypeError")
+    return "Запись голоса не поддерживается текущим Android WebView. Проверьте обновление системного WebView.";
+  if(name==="SecurityError")
+    return "WebView заблокировал доступ к микрофону. Проверьте настройки безопасности.";
+  if(name==="AbortError")
+    return "Запись была прервана. Попробуйте ещё раз.";
   return typeof error==="string"&&error.startsWith("Нет доступа к микрофону.")?error:
     "Не удалось начать запись. Проверьте доступ к микрофону и доступность голосового ввода.";
 }

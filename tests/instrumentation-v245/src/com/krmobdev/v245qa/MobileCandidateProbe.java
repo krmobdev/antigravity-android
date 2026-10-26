@@ -3,6 +3,7 @@ package com.krmobdev.v245qa;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
@@ -95,6 +96,12 @@ public final class MobileCandidateProbe extends Instrumentation {
         require(text(notification(B,21001)).equals("Изменяет файлы"),"ANDROID_PARALLEL_STAGE_B");
         int count=0;for(StatusBarNotification n:nm.getActiveNotifications())if(A.equals(n.getTag())&&n.getId()==21001)count++;
         require(count==1,"ANDROID_SAME_NOTIFICATION_ID");
+        if(Build.VERSION.SDK_INT>=26){
+            StatusBarNotification active=notification(A,21001);
+            NotificationChannel channel=active==null?null:nm.getNotificationChannel(active.getNotification().getChannelId());
+            require(channel!=null&&channel.getImportance()<=NotificationManager.IMPORTANCE_LOW
+                &&channel.getSound()==null&&!channel.shouldVibrate(), "ANDROID_PROGRESS_SILENT_CHANNEL");
+        }
         notify(A,1,true,null,1);notify(B,1,true,null,2);SystemClock.sleep(6500);
         require(notification(A,21001)==null&&notification(B,21001)==null,"ANDROID_TERMINAL_CLEARS_PROGRESS");
         require(text(notification(A,21002)).startsWith("Ошибка"),"ANDROID_ERROR_OUTCOME");
@@ -138,6 +145,7 @@ public final class MobileCandidateProbe extends Instrumentation {
             if(info.optInt("visible")==0)break;
             sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(550);
         }
+        report("ANDROID_AFTER_STOCK_BACK_FOCUS",activity.hasWindowFocus());
         state("document.querySelector('[data-testid=model-selector-trigger]')?.click();return '{}';");SystemClock.sleep(500);
         info=state("const p=document.querySelector('[data-testid=model-selector-panel]'),r=[...(p?.querySelectorAll('[role=menuitem],button')||[])].find(x=>/View Usage/.test(x.textContent));r?.click();return JSON.stringify({available:!!r});");
         if(info.optBoolean("available")){
@@ -194,9 +202,13 @@ public final class MobileCandidateProbe extends Instrumentation {
         report("ANDROID_EMPTY_COMPOSER_HEIGHT",info.optDouble("height"));
         report("ANDROID_FOOTER_HEIGHT",info.optDouble("footerHeight"));
         require(info.optBoolean("compact")&&info.optBoolean("sameRow"),"ANDROID_COMPACT_SINGLE_ROW");
+        info=state("const b=document.querySelector('.agy-composer button[data-tooltip-id=input-send-button-record-tooltip]');const r=b?.getBoundingClientRect();return JSON.stringify({micVisible:!!r&&r.width>=40&&r.height>=40,secure:window.isSecureContext,webMic:typeof navigator.mediaDevices?.getUserMedia==='function',recorder:typeof MediaRecorder==='function',webm:typeof MediaRecorder==='function'&&MediaRecorder.isTypeSupported?.('audio/webm;codecs=opus')});");
+        report("ANDROID_MICROPHONE_UI_VISIBLE",info.optBoolean("micVisible")?"PASS":"PENDING_UNAVAILABLE");
+        report("ANDROID_MICROPHONE_CAPABILITIES","secure="+info.optBoolean("secure")+" capture="+info.optBoolean("webMic")+" recorder="+info.optBoolean("recorder")+" webm="+info.optBoolean("webm"));
+        // Never turn on the microphone or access actual audio in automated UI tests.
+
         info=state("const p=document.querySelector('.agy-composer');return JSON.stringify({busy:!!p.querySelector('[contenteditable=true]')?.textContent.trim()||!!p.querySelector('.agy-attachment-card')});");
         boolean busy=info.optBoolean("busy");if(busy)capture=false;
-        modelMenus();
         if(busy){report("ANDROID_MUTATING_UI_FIXTURES","PENDING_USER_DRAFT_PRESERVED");return;}
         info=state("const p=document.querySelector('.agy-composer input[type=file]'),d=new DataTransfer();d.items.add(new File(['<script>window.__agyProbeExecuted=true</script>'], 'v245-probe.md',{type:'text/markdown'}));d.items.add(new File([Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII='),c=>c.charCodeAt(0))],'v245-probe.png',{type:'image/png'}));if(p){p.files=d.files;p.dispatchEvent(new Event('change',{bubbles:true}));}return JSON.stringify({selected:!!p});");
         require(info.optBoolean("selected"),"ANDROID_ATTACHMENT_INPUT");
@@ -228,6 +240,8 @@ public final class MobileCandidateProbe extends Instrumentation {
         keyboard();
         report("ANDROID_MOBILE_UI","PASS_LOCAL_FIXTURES_NO_SEND");
         SystemClock.sleep(800);captureComposer("COMPOSER");
+        // Inspect stock menus last so a Back/navigation fault cannot hide attachment results.
+        modelMenus();
     }
     @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));start();}
     @Override public void onStart(){
@@ -248,7 +262,8 @@ public final class MobileCandidateProbe extends Instrumentation {
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
             boolean uiOk=true;
-            try{ui();}catch(Throwable e){uiOk=false;report("UI_PROBE_ERROR",e.getClass().getSimpleName());}
+            try{ui();}catch(Throwable e){uiOk=false;report("UI_PROBE_ERROR",e.getClass().getSimpleName());
+                report("UI_PROBE_DETAIL",String.valueOf(e.getMessage()).replaceAll("[^a-zA-Z0-9_ .:-]","").substring(0,Math.min(100,String.valueOf(e.getMessage()).replaceAll("[^a-zA-Z0-9_ .:-]","").length()))); }
             notifications();ok=uiOk;
         }catch(Throwable e){report("PROBE_ERROR",e.getClass().getSimpleName());}
         finally{

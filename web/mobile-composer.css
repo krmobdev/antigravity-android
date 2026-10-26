@@ -64,3 +64,27 @@
  [data-testid=bottom-sheet] [data-testid=model-selector-effort-option]{font-size:15px;padding:0}
  [data-testid=bottom-sheet] [data-testid=model-selector-effort-option]::before{display:none}
 }
+
+/* v2.4.5 mobile controls: themed circular send and no unavailable voice action. */
+@media (max-width:720px),(pointer:coarse){
+ .agy-composer button[data-testid="send-button"]{
+   box-sizing:border-box!important;width:48px!important;height:48px!important;
+   min-width:48px!important;flex:0 0 48px!important;aspect-ratio:1/1;
+   padding:0!important;border-radius:9999px!important;
+   color:var(--color-muted-foreground)!important;
+   background:var(--color-muted,var(--color-secondary))!important;
+   box-shadow:none!important;transition:background-color .16s ease,color .16s ease!important;
+ }
+ .agy-composer button[data-testid="send-button"]:disabled{opacity:1!important}
+ .agy-composer button[data-testid="send-button"]:not(:disabled){
+   color:var(--color-primary-foreground,#fff)!important;
+   background:var(--color-primary,var(--color-accent))!important;
+ }
+ .agy-composer button[data-testid="send-button"] svg{color:currentColor!important}
+}
+
+@media (max-width:720px),(pointer:coarse){
+ .agy-composer-audio-pending{padding:8px 10px;font-size:13px;line-height:18px;
+   border-radius:12px;background:var(--color-muted,var(--color-secondary));
+   color:var(--color-foreground)}
+}

@@ -81,7 +81,7 @@ function AgyAttachmentCard({media,onOpen,onRemove}){
     const url=URL.createObjectURL(new Blob([data],{type:media.mimeType}));setThumbnail(url);
     return()=>URL.revokeObjectURL(url);
   },[media,kind]);
-  return A.createElement("div",{className:"agy-attachment-card bg-muted border-border text-foreground","data-testid":"input-attachment"},
+  return A.createElement("div",{className:"agy-attachment-card bg-muted border-border text-foreground"+(kind==="image"?" agy-attachment-image":" agy-attachment-file"),"data-testid":"input-attachment"},
     A.createElement("button",{type:"button",className:"agy-attachment-open",onClick:onOpen,
         "aria-label":"Открыть "+name,"data-testid":"input-attachment-open"},
       thumbnail?A.createElement("img",{src:thumbnail,alt:"",className:"agy-attachment-thumb"}):
@@ -89,7 +89,7 @@ function AgyAttachmentCard({media,onOpen,onRemove}){
       A.createElement("span",{className:"agy-attachment-details"},
         A.createElement("span",{className:"agy-attachment-name"},name),
         A.createElement("span",{className:"agy-attachment-meta"},agyAttachmentSizeLabel(agyAttachmentSize(media))),
-        A.createElement("span",{className:"agy-attachment-meta"},media.mimeType||"Файл"))),
+        A.createElement("span",{className:"agy-attachment-meta agy-attachment-type"},media.mimeType||"Файл"))),
     A.createElement("button",{type:"button",className:"agy-attachment-remove","aria-label":"Удалить "+name,
       "data-testid":"input-attachment-remove",onClick:e=>{e.stopPropagation();onRemove();}},"✕"));
 }
@@ -100,7 +100,7 @@ var uYb=function AgyAttachments({selectedMedia,setSelectedMedia,limit=5}){
   A.useEffect(()=>{if(selected&&!selectedMedia.includes(selected))setSelected(null);},[selectedMedia,selected]);
   if(!selectedMedia.length)return null;
   return A.createElement("section",{className:"agy-attachments","aria-label":"Вложения"},
-    A.createElement("div",{className:"agy-attachment-count",role:"status"},"Вложения: "+selectedMedia.length+" / "+limit),
+    A.createElement("div",{className:"agy-attachment-count",role:"status"},"Вложения · "+selectedMedia.length+" / "+limit),
     A.createElement("div",{className:"agy-attachment-list"},selectedMedia.map((media,index)=>A.createElement(AgyAttachmentCard,{
       key:index,media,onOpen:()=>setSelected(media),onRemove:()=>setSelectedMedia(current=>current.filter((item,i)=>i!==index))}))),
     selected&&A.createElement(AgyAttachmentPreview,{key:selectedMedia.indexOf(selected),media:selected,onClose:()=>setSelected(null),openExternal:canOpenExternal?()=>handler.openFile(selected.uri):null}));

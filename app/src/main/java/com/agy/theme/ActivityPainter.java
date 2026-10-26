@@ -25,6 +25,10 @@ public final class ActivityPainter {
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         window.setStatusBarColor(bg);
         window.setNavigationBarColor(bg);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.setStatusBarContrastEnforced(false);
+            window.setNavigationBarContrastEnforced(false);
+        }
         // Window background comes from a day/night resource (system-resolved);
         // override it so a forced in-app mode never flashes the other theme.
         window.setBackgroundDrawable(new ColorDrawable(bg));

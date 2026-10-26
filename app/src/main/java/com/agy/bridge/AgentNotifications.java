@@ -32,7 +32,7 @@ import com.agy.ui.MainActivity;
  */
 public final class AgentNotifications {
     private static final String TAG = "AGYAgentNotify";
-    private static final String CHANNEL_WORKING = "agy_agent_working_v1";
+    private static final String CHANNEL_WORKING = "agy_agent_working_silent_v2";
     private static final String CHANNEL_FINISHED = "agy_agent_finished_v1";
     private static final String CHANNEL_IN_CHAT = "agy_agent_finished_in_chat_v1";
     private static CompletionDispatcher dispatcher;
@@ -183,6 +183,7 @@ public final class AgentNotifications {
         progress.setDescription("Тихий статус длительных задач Antigravity");
         progress.setSound(null, null);
         progress.enableVibration(false);
+        progress.setShowBadge(false);
         notifications.createNotificationChannel(progress);
 
         NotificationChannel finished = new NotificationChannel(
@@ -239,8 +240,16 @@ public final class AgentNotifications {
                 .setProgress(0, 0, true)
                 .setOngoing(true)
                 .setCategory(Notification.CATEGORY_STATUS);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            b.setPriority(Notification.PRIORITY_LOW).setSound(null);
+        // Progress updates must never alert; completion alerts use separate channels.
+        b.setDefaults(0).setSound(null).setVibrate(null)
+                .setPriority(Notification.PRIORITY_LOW);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Runtime supports setSilent; the Termux compile SDK is older.
+            try {
+                Notification.Builder.class.getMethod("setSilent", boolean.class).invoke(b, true);
+            } catch (ReflectiveOperationException unavailable) {
+                // The low-importance no-sound channel remains the fallback.
+            }
         }
         return b.build();
     }

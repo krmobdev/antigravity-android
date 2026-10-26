@@ -14,7 +14,10 @@ class MobilePatchTest(unittest.TestCase):
         self.assertEqual(result,attachments.transform(result))
         def send_region(source):
             return source[source.index("var DYb="):source.index("function OYb",source.index("var DYb="))]
-        self.assertEqual(send_region(original),send_region(result))
+        self.assertEqual(send_region(original).replace('onClick:D,disabled:H,className:aj(t===', 'onClick:D,disabled:H||t==="requesting",className:aj(t==='),send_region(result))
+        self.assertIn('Подключение микрофона',result)
+        self.assertIn('starting:agyPending',result)
+        self.assertIn('F=agySeconds',result)
         self.assertIn('modelSelector:q,environmentSelector:r,currentModelConfig:x',result)
         self.assertIn('handleMediaPaste:pj',result)
         self.assertIn('Math.min(5,WN("max-media-attachments",5))',result)
