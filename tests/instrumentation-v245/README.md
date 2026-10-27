@@ -84,3 +84,8 @@ fresh boot profile, unchanged Core generation and model-pill midpoint with
 48px neighboring controls. Original mode/orientation are restored in finally.
 Captures crop settings-page/footer only. Existing drafts/attachments skip this
 state-changing test. No prompt, recording or model request is submitted.
+
+Desktop acceptance taps General/Appearance and both switch directions via real
+Android MotionEvent injection after DOM hit testing and target-window focus/
+package checks. A blocked or covered control fails; JavaScript .click does not
+stand in for touch acceptance.

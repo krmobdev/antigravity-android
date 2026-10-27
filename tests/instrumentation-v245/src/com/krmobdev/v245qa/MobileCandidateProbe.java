@@ -158,9 +158,35 @@ public final class MobileCandidateProbe extends Instrumentation {
         final Activity host=activity;
         runOnMainSync(()->{try{host.getClass().getMethod("setDesktopMode",boolean.class).invoke(host,value);}catch(Exception error){throw new RuntimeException(error);}});
     }
+    private void tapDesktopPoint(JSONObject point,String name)throws Exception{
+        require(point.optBoolean("hit"),name+"_DOM_HIT");
+        long until=SystemClock.elapsedRealtime()+6000;boolean focused=false;
+        do{
+            android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+            focused=activity.hasWindowFocus()&&root!=null&&target.getPackageName().equals(String.valueOf(root.getPackageName()));
+            if(focused)break;SystemClock.sleep(150);
+        }while(SystemClock.elapsedRealtime()<until);
+        require(focused,name+"_TARGET_FOCUSED");
+        final int[] origin=new int[2];runOnMainSync(()->web.getLocationOnScreen(origin));
+        float scale=web.getWidth()/(float)point.getDouble("vw");
+        float x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
+        long now=SystemClock.uptimeMillis();
+        android.view.MotionEvent down=android.view.MotionEvent.obtain(now,now,android.view.MotionEvent.ACTION_DOWN,x,y,0);
+        android.view.MotionEvent up=android.view.MotionEvent.obtain(now,now+60,android.view.MotionEvent.ACTION_UP,x,y,0);
+        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
+        SystemClock.sleep(600);
+    }
+    private void tapDesktopSwitch()throws Exception{
+        SystemClock.sleep(450);
+        JSONObject point=waitState("const row=[...document.querySelectorAll('.agy-settings-row')].find(e=>e.querySelector('span')?.textContent==='Desktop Mode'),e=row?.querySelector('button[role=switch]'),r=e?.getBoundingClientRect(),x=r?r.left+r.width/2:0,y=r?r.top+r.height/2:0,h=document.elementFromPoint(x,y);return JSON.stringify({hit:!!e&&(h===e||e.contains(h)),x,y,vw:innerWidth});","hit");
+        if(!point.optBoolean("hit"))report("DESKTOP_TAP_GEOMETRY",point.toString());
+        tapDesktopPoint(point,"DESKTOP_SWITCH_REAL_TAP");
+    }
     private void clickSettingsSection(String name)throws Exception{
-        JSONObject info=state("const e=[...document.querySelectorAll('[data-testid=\"settings-nav-item-"+name+"\"]')].find(e=>e.getBoundingClientRect().width>0&&!e.closest('[inert],[aria-hidden=true]'));e?.click();return JSON.stringify({clicked:!!e});");
-        require(info.optBoolean("clicked"),"DESKTOP_CLICK_"+name);SystemClock.sleep(550);
+        SystemClock.sleep(450);
+        JSONObject point=waitState("const e=[...document.querySelectorAll('[data-testid=\"settings-nav-item-"+name+"\"]')].find(e=>e.getBoundingClientRect().width>0&&!e.closest('[inert],[aria-hidden=true]')),r=e?.getBoundingClientRect(),x=r?r.left+r.width/2:0,y=r?r.top+r.height/2:0,h=document.elementFromPoint(x,y);return JSON.stringify({hit:!!e&&(h===e||e.contains(h)),x,y,vw:innerWidth});","hit");
+        if(!point.optBoolean("hit"))report("DESKTOP_TAP_GEOMETRY",point.toString());
+        tapDesktopPoint(point,"DESKTOP_CLICK_"+name);
     }
     private void adaptiveDesktop()throws Exception{
         JSONObject safe=state("const editor=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({empty:!!editor&&!editor.textContent.trim()&&!document.querySelector('.agy-attachment-card')});");
@@ -172,7 +198,9 @@ public final class MobileCandidateProbe extends Instrumentation {
         try{
             runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
             SystemClock.sleep(700);refreshDesktopHost();
-            setDesktopProfile(true);awaitDesktopProfile(true,true);
+            if((Boolean)activity.getClass().getMethod("isDesktopMode").invoke(activity))setDesktopProfile(false);
+            awaitDesktopProfile(false,true);
+            openAppearance();tapDesktopSwitch();awaitDesktopProfile(true,true);
             openAppearance();sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
             clickSettingsSection("General");
             require(stockSheets().optInt("visible")==1,"DESKTOP_PORTRAIT_GENERAL_MOBILE_PANEL");
@@ -193,8 +221,8 @@ public final class MobileCandidateProbe extends Instrumentation {
             JSONObject root=state("const b=[...document.querySelectorAll('[data-testid=\"settings-nav-item-General\"]')].find(e=>e.getBoundingClientRect().width>0&&!e.closest('[inert],[aria-hidden=true]'));return JSON.stringify({root:!!b});");
             require(root.optBoolean("root")&&stockSheets().optInt("visible")==1,"DESKTOP_PORTRAIT_BACK_ONE_LEVEL");
             clickSettingsSection("Appearance");
-            JSONObject toggle=state("const row=[...document.querySelectorAll('.agy-settings-row')].find(e=>e.querySelector('span')?.textContent==='Desktop Mode'),b=row?.querySelector('button[role=switch]');b?.click();return JSON.stringify({clicked:!!b});");
-            require(toggle.optBoolean("clicked"),"DESKTOP_REAL_TOGGLE_OFF_CLICKED");
+            tapDesktopSwitch();
+            report("DESKTOP_REAL_TOGGLE_OFF_CLICKED","PASS_NATIVE_TOUCH");
             awaitDesktopProfile(false,true);
             require(!(Boolean)activity.getClass().getMethod("isDesktopMode").invoke(activity),"DESKTOP_NATIVE_PREFERENCE_OFF");
             JSONObject centered=state("const m=document.querySelector('[data-testid=model-selector-trigger]')?.getBoundingClientRect(),s=document.querySelector('[data-testid=permissions-selector-trigger]')?.getBoundingClientRect(),v=document.querySelector('[data-tooltip-id=input-send-button-record-tooltip]')?.getBoundingClientRect();return JSON.stringify({centered:!!m&&!!s&&!!v&&Math.abs((m.left+m.width/2)-((s.left+s.width/2+v.left+v.width/2)/2))<=1,touch:!!m&&m.height>=48&&s.width>=48&&v.width>=48});");
