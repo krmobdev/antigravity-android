@@ -207,3 +207,9 @@ remain the separate legacy com.agy profile and are not the KR/Dev candidate.
 The version regression checks Dev, both KR editions, archive fallback and
 manifest/BuildConfig agreement. After building, verify aapt dump badging and
 the installed PackageManager metadata; the APK filename is not version proof.
+
+Unsigned candidate verification also rejects stale dictation bundles: it requires
+v8 delivery/drain/210-second hooks, exact fresh-staging JS and attachment/composer
+CSS, and scans the large generated main.js for recognizable credential patterns.
+This complements package/version/debug/signature/Core/ZIP checks; a valid APK
+version label alone is not proof of current application code.

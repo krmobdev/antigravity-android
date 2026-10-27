@@ -15,6 +15,21 @@ def no_credential_text(data, name):
     token=re.search(rb"gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{40,}",data)
     assert not key_header and token is None,("Credential text in artifact/source",name)
 
+
+VOICE_MARKERS=[
+    b'__AGY_AUDIO_DIAG_BUILD__="2026-10-27-pcm-delivery-v8"',
+    b"await run.delivery.drain()",
+    b"ERR_CORE_NO_TRANSCRIPT",
+    b"AGY_DICTATION_LIMIT_MS=210000",
+    b"agyNativePcmStop(true)",
+]
+
+def verify_voice_payload(main):
+    for marker in VOICE_MARKERS:
+        assert marker in main, ("Stale/missing dictation fix",marker)
+    no_credential_text(main,"assets/web/generated/main.js")
+
+
 def digest(path):
     h=hashlib.sha256()
     with path.open("rb") as f:
@@ -44,6 +59,11 @@ def verify(path,expected):
         assert not [n for n in names if FORBIDDEN.search(n)],"Forbidden credential filename in APK"
         assert not any(n.startswith("assets/web/") and n.endswith((".py",".pyc",".sh",".cjs")) for n in names)
         main=z.read("assets/web/generated/main.js")
+        verify_voice_payload(main)
+        staged=ROOT/"build/staging/assets/web"
+        assert main==(staged/"generated/main.js").read_bytes(),"APK JavaScript differs from fresh staging"
+        for stylesheet in ("mobile-attachments.css","mobile-composer.css"):
+            assert z.read("assets/web/"+stylesheet)==(staged/stylesheet).read_bytes(),"Stale APK CSS"
         for marker in MARKERS:assert main.count(marker)==1,marker
         for name in ["mobile-attachments.css","mobile-composer.css"]:assert "assets/web/"+name in names
         assert b"AGY_V24_VISIBLE_READ_RECEIPT" not in main
@@ -63,7 +83,8 @@ def verify(path,expected):
         return {"file":path.name,"bytes":path.stat().st_size,"sha256":digest(path),"core_sha256":expected,
                 "package":"com.krmobdev.antigravity","versionName":"2.4.5-kr1","versionCode":19,
                 "debuggable":False,"unsigned":True,"zip_integrity":True,"zipalign":True,
-                "mobile_and_scroll_hooks":True,"credential_filename_scan":True,"credential_text_scan":True}
+                "mobile_and_scroll_hooks":True,"voice_delivery_v8":True,"staging_assets_match":True,
+                "credential_filename_scan":True,"credential_text_scan":True,"large_generated_main_credential_scan":True}
 
 def main():
     paths=[ROOT/"dist"/name for name in NAMES]
