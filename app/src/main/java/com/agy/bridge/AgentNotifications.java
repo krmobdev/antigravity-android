@@ -180,7 +180,7 @@ public final class AgentNotifications {
         if (notifications == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationChannel progress = new NotificationChannel(
                 CHANNEL_WORKING, "Agent progress", NotificationManager.IMPORTANCE_LOW);
-        progress.setDescription("Тихий статус длительных задач Antigravity");
+        progress.setDescription("Silent progress for Antigravity tasks");
         progress.setSound(null, null);
         progress.enableVibration(false);
         progress.setShowBadge(false);
@@ -188,7 +188,7 @@ public final class AgentNotifications {
 
         NotificationChannel finished = new NotificationChannel(
                 CHANNEL_FINISHED, "Agent completed", NotificationManager.IMPORTANCE_HIGH);
-        finished.setDescription("Агент закончил работу или требует внимания");
+        finished.setDescription("Agent finished or needs attention");
         finished.enableVibration(true);
         finished.setVibrationPattern(new long[] {0, 250, 150, 250});
         notifications.createNotificationChannel(finished);
@@ -197,21 +197,13 @@ public final class AgentNotifications {
         // Keep a separate channel: Android persists importance per channel.
         NotificationChannel inChat = new NotificationChannel(
                 CHANNEL_IN_CHAT, "Agent completed in the open chat", NotificationManager.IMPORTANCE_DEFAULT);
-        inChat.setDescription("Завершение открытого диалога: в шторке, без всплывающего баннера");
+        inChat.setDescription("Completion in the open chat: notification shade without a heads-up banner");
         inChat.enableVibration(false);
         notifications.createNotificationChannel(inChat);
     }
 
     private PendingIntent openConversation(String id) {
-        Intent launch = new Intent(context, MainActivity.class);
-        launch.setAction(MainActivity.ACTION_OPEN_AGENT_CONVERSATION);
-        launch.setData(Uri.parse("agy://conversation/" + Uri.encode(id)));
-        launch.putExtra(MainActivity.EXTRA_AGENT_CONVERSATION_ID, id);
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
-        return PendingIntent.getActivity(context, id.hashCode(), launch, flags);
+        return com.agy.ui.NotificationActivityRoute.pending(context, id);
     }
 
     private int notificationIcon() {
@@ -229,7 +221,7 @@ public final class AgentNotifications {
     private Notification working(AgentTaskTracker.Change event) {
         Notification.Builder b = builder(CHANNEL_WORKING)
                 .setSmallIcon(notificationIcon())
-                .setContentTitle(title(event.conversationId) + " · выполняется")
+                .setContentTitle(title(event.conversationId) + " · working")
                 .setContentText(event.stage)
                 .setStyle(new Notification.BigTextStyle().bigText(event.stage))
                 .setContentIntent(openConversation(event.conversationId))
@@ -255,7 +247,7 @@ public final class AgentNotifications {
     }
 
     private Notification finished(String conversationId, long detectedAt, boolean nativeSource, boolean headsUp, int outcome) {
-        // Explicit seconds remain visible even when Android shows only "Сейчас".
+        // Explicit seconds remain visible even when Android shows only "Now".
         String message = completionText(detectedAt, outcome);
         Notification.Builder b = builder(headsUp ? CHANNEL_FINISHED : CHANNEL_IN_CHAT)
                 .setSmallIcon(notificationIcon())
@@ -275,13 +267,13 @@ public final class AgentNotifications {
     }
 
     private static String completionSuffix(int outcome) {
-        return outcome == 1 ? " · ошибка" : outcome == 2 ? " · отменена" : " · завершена";
+        return outcome == 1 ? " · error" : outcome == 2 ? " · canceled" : " · completed";
     }
 
     private static String completionText(long at, int outcome) {
         String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(at));
-        String status = outcome == 1 ? "Ошибка" : outcome == 2 ? "Отменено" : "Завершено";
-        return status + " в " + time + ". Открыть диалог.";
+        String status = outcome == 1 ? "Error" : outcome == 2 ? "Canceled" : "Completed";
+        return status + " at " + time + ". Open conversation.";
     }
 
     /** Must be called after Activity visibility or its committed conversation changes. */

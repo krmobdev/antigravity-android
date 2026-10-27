@@ -6,7 +6,7 @@ package com.agy.core;
  * One instance per conversation survives subscription reconnects.
  */
 public final class CoreAgentProgress {
-    public static final String GENERIC = "Агент выполняет задачу";
+    public static final String GENERIC = "Agent is working";
     public static final int COMPLETED = 0, ERROR = 1, CANCELLED = 2;
 
     public static final class Update {
@@ -72,7 +72,7 @@ public final class CoreAgentProgress {
         cancelling |= status == 3;
         if (status == 1 && idle) terminal = true;
         int outcome = killed || cancelling ? CANCELLED : error ? ERROR : COMPLETED;
-        return new Snapshot(status, idle, status == 3 ? "Отменяет задачу" : stage, outcome);
+        return new Snapshot(status, idle, status == 3 ? "Canceling task" : stage, outcome);
     }
 
     public static int status(Object raw) {
@@ -138,23 +138,23 @@ public final class CoreAgentProgress {
 
     public static String label(int type) {
         switch (type) {
-            case 8: case 13: case 47: return "Читает исходники";
-            case 9: return "Просматривает каталог";
-            case 7: case 73: case 25: return "Ищет в исходниках";
-            case 5: case 86: case 126: return "Изменяет файлы";
+            case 8: case 13: case 47: return "Reading source files";
+            case 9: return "Browsing folder";
+            case 7: case 73: case 25: return "Searching source files";
+            case 5: case 86: case 126: return "Editing files";
             // A run_command event does NOT prove it is running tests.
-            case 21: case 112: return "Выполняет команду";
-            case 28: case 65: return "Читает вывод команды";
-            case 107: return "Запускает тесты";
-            case 15: return "Готовит ответ";
-            case 118: return "Анализирует результаты";
+            case 21: case 112: return "Running command";
+            case 28: case 65: return "Reading command output";
+            case 107: return "Running tests";
+            case 15: return "Preparing response";
+            case 118: return "Analyzing results";
             default: return GENERIC;
         }
     }
 
     /** Notification strings are allowlisted, not merely truncated/sanitized. */
     public static String publicStage(String value) {
-        if ("Отменяет задачу".equals(value)) return value;
+        if ("Canceling task".equals(value)) return value;
         for (int type : new int[]{8,9,7,5,21,28,107,15,118})
             if (label(type).equals(value)) return value;
         return GENERIC;

@@ -366,3 +366,25 @@ setThemeByUser/onVisualThemeChanged during the injected startup phase. Native
 releases it after the committed usable frame; the final observed theme flushes
 once, and later Settings theme changes keep their existing behavior. There is
 no timer-based release and no replacement of the Core theme controller.
+
+
+App-owned UI, errors and notification labels are English-only, independent of
+the phone language. User content/file names remain data. A source-policy test
+guards against Cyrillic app labels. The Add dialog uses the existing overlay
+Back dispatcher only; opening/closing it never mutates router history. Menu
+actions retain upstream action-before-close order and trusted user activation.
+
+
+Notification navigation acknowledges the already-visible conversation without
+navigation, and replaces the current conversation route for a different target.
+It retains cancellation of an in-flight different target and ignores stale
+navigation completions. Ordinary Core navigation and read/unread are unchanged.
+
+
+Attachment preview dialogs follow the same overlay-only rule: viewing and
+closing a file cannot push/pop the chat router history or bubble clicks into
+the chat behind the dialog. Behavior tests assert zero history mutation.
+
+Mobile attachments now share one 86px square tile size for photos, documents, audio and video. Documents show an icon, truncated name, size and compact type; full name/MIME remain available to accessibility and the open control. Every remove target is 48px with the same themed visual circle. Preview, selectedMedia, Core formats/limit and send behavior are unchanged. The real Picker regression checks computed mixed-card geometry and remove targets.
+
+For the verified device results and remaining legacy-notification limitation, see docs/V2_4_5_NAVIGATION_ENGLISH_QA.md.

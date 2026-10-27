@@ -1,10 +1,10 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),vm=require("node:vm"),path=require("node:path");
 const source=fs.readFileSync(path.join(__dirname,"../src/mobile/composer.js"),"utf8");
 function setup(mobile){
-  let slots=[],cursor=0,effects=[],notifications=[],backCount=0,pop;
+  let slots=[],cursor=0,effects=[],notifications=[],backCount=0,pushCount=0,pop,overlay;
   const listeners=new Map(),frames=new Map();let nextFrame=0,disconnects=0;
-  const history={state:{route:1},pushState(s){this.state=s;},back(){backCount++;this.state={route:1};}};
-  const ctx={Math,history,location:{href:"https://local/c/test"},agyOriginalContextMenu(){},cWb(){},
+  const history={state:{route:1},pushState(s){pushCount++;this.state=s;},back(){backCount++;this.state={route:1};}};
+  const ctx={Math,history,agyRegisterMobileOverlay:fn=>{overlay=fn;return()=>{if(overlay===fn)overlay=null;}},location:{href:"https://local/c/test"},agyOriginalContextMenu(){},cWb(){},
     document:{querySelector:()=>({getBoundingClientRect:()=>({top:600})})},
     requestAnimationFrame:f=>{frames.set(++nextFrame,f);return nextFrame;},cancelAnimationFrame:id=>frames.delete(id),
     ResizeObserver:class{observe(){}disconnect(){disconnects++;}},
@@ -14,10 +14,10 @@ function setup(mobile){
       useState(v){const i=cursor++;if(!(i in slots))slots[i]=typeof v==="function"?v():v;return[slots[i],v=>slots[i]=v];},
       useRef(v){const i=cursor++;return slots[i]??(slots[i]={current:v});},
       useEffect(f,deps){const i=cursor++;if(!effects[i])effects[i]={deps,cleanup:f()};},
-      createElement(type,props,...children){if(props?.ref)props.ref.current={showModal(){},close(){}};return{type,props:props||{},children};}
+      createElement(type,props,...children){if(props?.ref)props.ref.current={showModal(){},close(){},getBoundingClientRect:()=>({left:10,right:210,top:300,bottom:600})};return{type,props:props||{},children};}
     }};
   vm.createContext(ctx);vm.runInContext(source,ctx);
-  return{ctx,history,get pop(){return pop;},get backCount(){return backCount;},get listeners(){return listeners.size;},get frames(){return frames.size;},get disconnects(){return disconnects;},
+  return{ctx,history,get pop(){return pop;},get pushCount(){return pushCount;},closeTop(){overlay?.();},get overlay(){return overlay;},get backCount(){return backCount;},get listeners(){return listeners.size;},get frames(){return frames.size;},get disconnects(){return disconnects;},
     render(name,props){cursor=0;return ctx[name](props);},
     cleanup(){effects.forEach(e=>e?.cleanup?.());effects=[];}};
 }
@@ -30,11 +30,11 @@ plus.props.onClick();tree=h.render("zYb",{items,onOpenChange:v=>changes.push(v)}
 const sheet=nodes(tree,h.ctx.AgyComposerSheet)[0];assert.ok(sheet);assert.equal(calls,0);assert.equal(changes[0],true);h.cleanup();
 h=setup(true);let closed=0;tree=h.render("AgyComposerSheet",{items,onClose:()=>closed++});
 const buttons=nodes(tree,"button");
-assert.equal(buttons.length,3);assert.equal(buttons[1].children[1].children[0],"Фото и файлы");
-assert.equal(buttons[2].children[1].children[0],"Папка");assert.equal(buttons[2].props.disabled,true);buttons[1].props.onClick();
+assert.equal(buttons.length,3);assert.equal(buttons[1].children[1].children[0],"Photos & files");
+assert.equal(buttons[2].children[1].children[0],"Folder");assert.equal(buttons[2].props.disabled,true);buttons[1].props.onClick({stopPropagation(){}});
 assert.equal(closed,1);assert.equal(calls,1);
-tree.props.onCancel({preventDefault(){}});assert.equal(closed,2);
-h.pop();assert.equal(closed,3);h.cleanup();assert.equal(h.backCount,1);assert.equal(h.listeners,0);assert.equal(h.frames,0);assert.equal(h.disconnects,1);
+tree.props.onCancel({preventDefault(){},stopPropagation(){}});assert.equal(closed,2);
+h.closeTop();assert.equal(closed,3);assert.equal(h.pop,undefined);h.cleanup();assert.equal(h.backCount,0);assert.equal(h.pushCount,0);assert.equal(h.overlay,null);assert.equal(h.listeners,0);assert.equal(h.frames,0);assert.equal(h.disconnects,1);
 h=setup(false);tree=h.render("zYb",{items});assert.equal(tree.type,h.ctx.agyOriginalContextMenu);h.cleanup();
 h=setup(true);const primary={type:"model",props:{},children:[]},desktop={type:"desktop-settings",props:{},children:[]};
 const permissions={type:"permissions",props:{},children:[]};
@@ -65,3 +65,22 @@ h.ctx.agyPositionAddMenu(node,{getBoundingClientRect:()=>({top:300})},{offsetTop
 assert.equal(style.get('--agy-menu-bottom'),'508px');assert.equal(style.get('--agy-menu-max-height'),'234px');
 h.ctx.agyPositionAddMenu(node,null);assert.equal(style.get('--agy-menu-bottom'),'508px');
 console.log('PASS Add card positioning with IME viewport offsets and complete observer/frame cleanup');
+
+// Real regression: dismiss/action/unmount must never pop the Core chat route.
+h=setup(true);const originalState=h.history.state,order=[],picked=[];
+let pickerResult=null;
+const media=[[{label:"Media",icon,onClick:()=>{order.push("action");pickerResult=file=>picked.push(file);}}]];
+tree=h.render("AgyComposerSheet",{items:media,onClose:()=>order.push("close")});
+let stopped=0,prevented=0;
+const event={target:tree.props.ref.current,clientX:0,clientY:200,
+ stopPropagation(){stopped++;},preventDefault(){prevented++;}};
+tree.props.onClick(event);assert.deepEqual(order,["close"]);assert.equal(stopped,1);
+order.length=0;
+nodes(tree,"button")[1].props.onClick(event);
+assert.deepEqual(order,["action","close"],"preserve upstream picker activation before dismissal");
+assert.equal(prevented,0,"native file input retains trusted click activation");
+h.cleanup();pickerResult("fixture.txt");
+assert.deepEqual(picked,["fixture.txt"],"picker return survives sheet removal");
+assert.equal(h.history.state,originalState);assert.equal(h.backCount,0);assert.equal(h.pushCount,0);
+assert.equal(h.ctx.location.href,"https://local/c/test");
+console.log("PASS Add dismissal, trusted action and late picker return retain the current chat route without history mutation");

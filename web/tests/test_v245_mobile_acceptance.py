@@ -33,16 +33,16 @@ vm.createContext(box);
 vm.runInContext(snippet,box);
 const device={name:'NotReadableError',message:'/private/secret/path'};
 const readable=box.agyAudioError(device);
-assert(/занят|недоступен/.test(readable));
+assert(/busy|unavailable/.test(readable));
 assert.strictEqual(box.agyAudioError(readable),readable);
 const denied=box.agyAudioError({name:'NotAllowedError'});
 assert.strictEqual(box.agyAudioError(denied),denied);
 const unsupported=box.agyAudioError({name:'NotSupportedError'});
 assert.strictEqual(box.agyAudioError(unsupported),unsupported);
 for(const original of [
-  'Не удалось начать запись через Android (ERR_NOT_FOREGROUND).',
-  'Не удалось начать запись через Android (ERR_NO_PERMISSION).',
-  'Не удалось завершить запись через Android (ERR_STOP_FAILED).'
+  'Failed to start Android recording (ERR_NOT_FOREGROUND).',
+  'Failed to start Android recording (ERR_NO_PERMISSION).',
+  'Failed to finish Android recording (ERR_STOP_FAILED).'
 ]) assert.strictEqual(box.agyAudioError(original),original);
 assert(!box.agyAudioError('secret=abc').includes('secret'));
 const unknown=box.agyAudioError({name:'InvalidStateError',message:'password=SECRET'});

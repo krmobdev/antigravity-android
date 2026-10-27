@@ -116,3 +116,34 @@ is stored or exported. A PreDraw listener logs only native color, icon flag,
 theme mode and ready-state transitions. Missing UI readiness is PENDING, never
 pixel acceptance. Sampling can miss a shorter frame; owner perception remains
 part of acceptance. It never changes theme, sends a prompt or restarts Core.
+
+
+
+New navigation/attachment regressions (Dev package only):
+
+- Build: bash tests/instrumentation-v245/build.sh
+- Install Dev + QA: python tests/instrumentation-v245/run_navigation_regressions.py install
+- Real File Picker: python tests/instrumentation-v245/run_navigation_regressions.py picker
+- Posted notification intent and Back: python tests/instrumentation-v245/run_navigation_regressions.py route-intent
+- Actual shade tap: mode route-reuse (cannot locate the owned notification on this device; not passed).
+- Legacy MainActivity notification: mode route-legacy (separate unresolved compatibility probe).
+- Parser tests: python -m unittest discover -s tests/instrumentation-v245 -p 'test_*.py'
+
+Picker uses an empty /c/_new fixture and genuine DocumentsUI results, owned
+TXT/PNG files, actual finger input, preview Back, repeat, multi-select, computed
+equal card dimensions, 48px remove targets, visible type and cancellation.
+The monitor pins only this chooser to DocumentsUI and its owned fixture folder.
+There is no fake ActivityResult or model request. Existing drafts/attachments
+skip setup; only owned fixture data is removed.
+
+route-intent sends the actual contentIntent from a posted quiet notification.
+A short shell capability to start a background Activity and sender options
+model the foreground permission of a system tap; they are dropped immediately.
+This is distinct from tapping the shade. Two background/return cycles verify
+the same Activity/WebView, Core generation, document timeOrigin, draft/history,
+dismissed splash and exactly one Back to Home. route-legacy adds a third direct
+MainActivity PendingIntent; its failure is reported separately.
+
+The runner requires process success, exactly one INSTRUMENTATION_CODE 0, the
+scenario PASS marker and no actual FAIL/PENDING status. Generic summary text
+mentioning PASS/PENDING does not incorrectly fail an otherwise passing run.

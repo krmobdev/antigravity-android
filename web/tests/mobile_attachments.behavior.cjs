@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,"../.."), source=fs.readFileSync(path.join(roo
 let checks=0;
 function check(value,reason){assert.ok(value,reason);checks++;}
 function harness(){
-  let slots=[],cursor=0,effects=[],deferred=[],created=new Set(),listeners=new Map(),closeCount=0,historyBack=0;
+  let slots=[],cursor=0,effects=[],deferred=[],created=new Set(),listeners=new Map(),closeCount=0,historyBack=0,historyPush=0;
   const A={
     useRef(value){const i=cursor++;return slots[i]??(slots[i]={current:value});},
     useState(value){const i=cursor++;if(!(i in slots))slots[i]=value;return[slots[i],v=>slots[i]=typeof v==="function"?v(slots[i]):v];},
@@ -13,7 +13,7 @@ function harness(){
     useContext(){return{stepHandler:{openFile(){}}};},
     createElement(type,props,...children){props=props||{};if(props.ref)props.ref.current={showModal(){},close(){closeCount++;}};return{type,props,children};}
   };
-  const history={state:{original:true},pushState(s){this.state=s;},back(){historyBack++;this.state={original:true};}};
+  const history={state:{original:true},pushState(s){historyPush++;this.state=s;},back(){historyBack++;this.state={original:true};}};
   const ctx={A,AB:new WeakMap(),Uint8Array,TextDecoder,Blob,Math,history,location:{href:"https://local/c/test"},
     window:{addEventListener:(n,f)=>listeners.set(n,f),removeEventListener:n=>listeners.delete(n)},
     URL:{createObjectURL(){const u="blob:test-"+created.size;created.add(u);return u;},revokeObjectURL(u){created.delete(u);}},
@@ -22,7 +22,7 @@ function harness(){
   return{ctx,created,listeners,history,
     render(name,props){cursor=0;const tree=ctx[name](props);for(const effect of deferred.splice(0))effect();return tree;},
     cleanup(){for(const e of effects)e?.cleanup?.();effects=[];},
-    get historyBack(){return historyBack;}
+    get historyBack(){return historyBack;},get historyPush(){return historyPush;}
   };
 }
 function nodes(tree,predicate){
@@ -54,7 +54,7 @@ function media(name,mime,text){return{description:name,mimeType:mime,payload:{ca
   tree=h.render("AgyAttachmentPreview",{media:text,onClose(){}});
   const pre=nodes(tree,n=>n.type==="pre")[0];
   check(pre?.children[0]===attack&&!pre.props.dangerouslySetInnerHTML,"untrusted text stays a text node");
-  h.cleanup();check(h.historyBack===1,"overlay history restored on close");
+  h.cleanup();check(h.historyBack===0&&h.historyPush===0,"preview close preserves Core chat history");
 
   h=harness();const large=media("big.txt","text/plain","");large.payload.value=new Uint8Array(1048577);
   h.render("AgyAttachmentPreview",{media:large,onClose(){}});
@@ -80,6 +80,16 @@ function media(name,mime,text){return{description:name,mimeType:mime,payload:{ca
   h.render("AgyAttachmentPreview",{media:image,onClose(){}});
   h.cleanup();resolve(new ArrayBuffer(4));await new Promise(setImmediate);
   check(!h.created.size,"late read after unmount cannot leak an object URL");
+
+  h=harness();
+  for(const [name,mime,label] of [["report.docx","application/vnd.openxmlformats-officedocument.wordprocessingml.document","DOCX"],["photo.png","image/png","PNG"],["payload","application/json","JSON"],["unknown","application/octet-stream","File"]])
+    check(h.ctx.agyAttachmentTypeLabel(media(name,mime,""))===label,"compact type label retains actual file identity");
+  const document=media("very-long-report-name.docx","application/vnd.openxmlformats-officedocument.wordprocessingml.document","owned");
+  tree=h.render("AgyAttachmentCard",{media:document,onOpen(){},onRemove(){}});
+  const open=nodes(tree,n=>n.props?.["data-testid"]==="input-attachment-open")[0];
+  check(open.props["aria-label"]==="Open "+document.description&&open.props.title.includes(document.mimeType),"full name and MIME remain accessible despite compact tile");
+  check(nodes(tree,n=>n.props?.className==="agy-attachment-meta agy-attachment-type")[0]?.children[0]==="DOCX","document type is rendered as text without claiming backend support");
+  h.cleanup();
 
   // Execute the actual patched upload hook, retaining its existing validation.
   const python='from pathlib import Path; import sys; sys.path.insert(0,"web"); import patch_mobile_attachments as p; s=p.transform(Path("web/main.js").read_text()); print(s[s.index("var u5a="):s.index(";var v5a=")]+";")';

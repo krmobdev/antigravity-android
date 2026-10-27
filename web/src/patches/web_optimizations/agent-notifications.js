@@ -6,7 +6,7 @@
   function compactStage() {
     // Public stages come from the native Core enum reducer. Never forward
     // potentially private toolSummary/description from the WebView.
-    return 'Агент выполняет задачу';
+    return 'Agent is working';
   }
 
   window.__AGY_NOTIFY_SUMMARIES__ = function (updates) {

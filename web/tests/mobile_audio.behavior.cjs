@@ -25,7 +25,7 @@ function setup(error,constructorFails=false){
   }
   const {context,hook}=setup(null,true);await hook.startRecording();
   assert.equal(stopped,1);assert.equal(states[0],false);assert.ok(states[1]);assert.equal(attachments,0);
-  assert.ok(context.agyAudioError({name:"NotAllowedError"}).includes("Нет доступа"));
+  assert.ok(context.agyAudioError({name:"NotAllowedError"}).includes("Microphone access denied"));
   assert.ok(!context.agyAudioError({message:"private transcript"}).includes("private"));
   console.log("PASS mobile audio: denial/device failures remain visible, tracks released, no fake attachment or private error content");
 })().catch(e=>{console.error(e);process.exit(1);});

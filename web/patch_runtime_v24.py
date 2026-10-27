@@ -80,19 +80,23 @@ return e(f)}}}'''
     s=s[:start]+summary+s[end:]
     s=one(s,ROUTE_ANCHOR,ROUTE_ANCHOR+ROUTE_MARKER+'''
 (function(){
-let pending=null,attached=null;
+let pending=null,attached=null,inFlight=0,navigationSerial=0;
 const valid=id=>typeof id==="string"&&/^[A-Za-z0-9_+:-]{1,128}$/.test(id);
-function report(router){
+function currentConversation(router){
   let loc=router?.state?.location;
   let raw=loc?.pathname||"",match=/\\/c\\/([^/]+)$/.exec(raw),id="";
   if(match){try{id=decodeURIComponent(match[1])}catch(_){}}
   let focused=loc?.search?.focused;
   if(valid(focused))id=focused;
-  if(!valid(id))id="";
+  return valid(id)?id:"";
+}
+function report(router){
+  const id=currentConversation(router);
   try{window.Android?.onVisibleConversation?.(window.__AG_NATIVE_BRIDGE_TOKEN__,id)}catch(_){}
   if(pending&&id===pending){
     try{window.Android?.onNotificationNavigationResult?.(window.__AG_NATIVE_BRIDGE_TOKEN__,id)}catch(_){}
     pending=null;
+    inFlight=0;
   }
 }
 window.__AGY_ATTACH_ROUTE_V24__=function(router){
@@ -111,8 +115,16 @@ window.__AGY_ATTACH_ROUTE_V24__=function(router){
 window.addEventListener("agy:open-conversation",function(e){
   let id=e?.detail?.conversationId;
   if(!valid(id)||!L5)return;
+  if(pending===id&&inFlight)return;
   pending=id;
-  try{t8b(id)}catch(_){pending=null}
+  if(currentConversation(L5)===id&&!inFlight){report(L5);return}
+  const ticket=++navigationSerial;inFlight=ticket;
+  try{
+    const navigation=L5.navigate({to:"/c/$cascadeId",params:{cascadeId:id},replace:true});
+    Promise.resolve(navigation).then(()=>{
+      if(inFlight===ticket){inFlight=0;report(L5)}
+    },()=>{if(inFlight===ticket){inFlight=0;if(pending===id)pending=null}});
+  }catch(_){if(inFlight===ticket){inFlight=0;pending=null}}
 });
 })();''')
     s=one(s,ROUTE_INIT,ROUTE_INIT+';window.__AGY_ATTACH_ROUTE_V24__?.(L5)')

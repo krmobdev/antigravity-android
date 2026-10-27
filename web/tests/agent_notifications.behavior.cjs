@@ -14,7 +14,7 @@ notify({conversationId: null, status: 2, fullyIdle: false});
 assert.equal(calls.length, 3);
 assert.equal(calls[0][1], 'c123');
 assert.equal(calls[0][2], 2);
-assert.equal(calls[0][4], 'Агент выполняет задачу');
+assert.equal(calls[0][4], 'Agent is working');
 assert.equal(calls[1][3], false);
 assert.equal(calls[2][2], 1);
 assert.equal(calls[2][3], true);

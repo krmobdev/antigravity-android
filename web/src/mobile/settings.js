@@ -7,8 +7,8 @@ var G_=function AgySettingsPage(props){
 };
 function AgySettingsSelectHeader({onClose}){
   return A.createElement("header",{className:"agy-settings-select-header"},
-    A.createElement("strong",null,"Выберите значение"),
-    A.createElement("button",{type:"button","aria-label":"Закрыть список",onClick:onClose},"✕"));
+    A.createElement("strong",null,"Select an option"),
+    A.createElement("button",{type:"button","aria-label":"Close list",onClick:onClose},"✕"));
 }
 
 function agySettingsListKeyDown(event){

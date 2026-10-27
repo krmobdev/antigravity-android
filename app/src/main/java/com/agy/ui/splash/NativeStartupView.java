@@ -65,9 +65,9 @@ public final class NativeStartupView extends ScrollView {
         LinearLayout.LayoutParams controls = new LinearLayout.LayoutParams(dp(240), LayoutParams.WRAP_CONTENT);
         controls.topMargin = dp(24);
         content.addView(actions, controls);
-        retry = button(context, "Повторить", "startup-retry");
-        copy = button(context, "Копировать журнал", "startup-copy");
-        save = button(context, "Сохранить журнал", "startup-save");
+        retry = button(context, "Retry", "startup-retry");
+        copy = button(context, "Copy log", "startup-copy");
+        save = button(context, "Save log", "startup-save");
         actions.addView(retry, buttonParams());
         actions.addView(copy, buttonParams());
         actions.addView(save, buttonParams());
@@ -128,19 +128,19 @@ public final class NativeStartupView extends ScrollView {
     }
 
     public void showStage(int stage) {
-        String[] labels = {"Подготовка среды", "Запуск ядра", "Подключение интерфейса"};
+        String[] labels = {"Preparing environment", "Starting Core", "Connecting interface"};
         int safe = Math.max(0, Math.min(2, stage));
         status.setText(labels[safe]);
-        step.setText("Этап " + (safe + 1) + " из 3");
+        step.setText("Stage " + (safe + 1) + " of 3");
         actions.setVisibility(GONE); progress.setVisibility(VISIBLE); step.setVisibility(VISIBLE);
     }
     public void showRestarting() {
-        status.setText("Повторный запуск Antigravity");
+        status.setText("Restarting Antigravity");
         step.setVisibility(GONE); actions.setVisibility(GONE); progress.setVisibility(VISIBLE);
     }
     public void showError(boolean uiTimeout, boolean retryable) {
-        status.setText(uiTimeout ? "Не удалось открыть интерфейс. Повторите попытку."
-                : "Не удалось завершить запуск. Повторите попытку.");
+        status.setText(uiTimeout ? "Could not open the interface. Try again."
+                : "Could not finish startup. Try again.");
         progress.setVisibility(GONE); step.setVisibility(GONE);
         actions.setVisibility(VISIBLE);
         retry.setVisibility(retryable ? VISIBLE : GONE); retry.setEnabled(retryable);

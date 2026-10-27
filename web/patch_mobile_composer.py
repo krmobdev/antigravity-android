@@ -52,7 +52,7 @@ def transform(source):
                     l.current=window.setTimeout(()=>r(),3E5);setAgyPending(false);return;
                   }
                   if(agyNative?.error){
-                    f("Не удалось начать запись через Android ("+agyNative.error+").");
+                    f("Failed to start Android recording ("+agyNative.error+").");
                     setAgyPending(false);return;
                   }
                   let y=x(await w(navigator.mediaDevices.getUserMedia({audio:!0})))""")
@@ -104,7 +104,7 @@ def transform(source):
         };
         if(agyNativePcm){
           agyNativePcmStart(agyPcmChunk,code=>{
-            ma("Ошибка распознавания Android ("+code+").");ja()
+            ma("Android transcription error ("+code+").");ja()
           });
         }else{
           H.current=Ya;var va=C?.audioContext;
@@ -127,7 +127,7 @@ def transform(source):
     source=once(source,'error:x,hasMicrophone:B,isAudioStreamingAvailable:!!n&&D',
                 'error:x,hasMicrophone:B||agyNativePcmAvailable(),isAudioStreamingAvailable:!!n&&D')
     source=once(source,'ma(gp(Za)),u(!1),ja()}finally{R.current=!1}',
-                'ma(/^ERR_NATIVE_[A-Z_]+$/.test(Za?.message||"")?"Ошибка микрофона Android ("+Za.message+").":gp(Za)),u(!1),ja()}finally{R.current=!1}')
+                'ma(/^ERR_NATIVE_[A-Z_]+$/.test(Za?.message||"")?"Android microphone error ("+Za.message+").":gp(Za)),u(!1),ja()}finally{R.current=!1}')
     source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',
                 'isRecording:Ob,starting:agyStarting,error:ib,hasMicrophone:tb}=d5a(Qb)')
     source=once(source,'audioPhase:Ob?"recording":"idle",error:ib',
@@ -139,7 +139,7 @@ def transform(source):
     # MediaRecorder callback is asynchronous; snapshot the duration before
     # cleanup resets n.current. Also show a clear error for empty recordings.
     source=once(source,'B.onstop=()=>{var C=new Blob(k.current,{type:B.mimeType});',
-                'B.onstop=()=>{var agySeconds=n.current?(Date.now()-n.current)/1E3:0,C=new Blob(k.current,{type:B.mimeType});if(C.size===0){q();f("Запись пуста. Проверьте микрофон и попробуйте снова.");return;}')
+                'B.onstop=()=>{var agySeconds=n.current?(Date.now()-n.current)/1E3:0,C=new Blob(k.current,{type:B.mimeType});if(C.size===0){q();f("Recording is empty. Check your microphone and try again.");return;}')
     source=once(source,'F=\nn.current?(Date.now()-n.current)/1E3:0',
                 'F=agySeconds')
     # Explicit audio MIME is supported on the tested Android 15 WebView.
@@ -155,9 +155,9 @@ def transform(source):
     source=once(source,'(oe.audioPhase===\n"recording"&&!Yf||Ya.length>0',
                 '((oe.audioPhase==="recording"||oe.audioPhase==="requesting")&&!Yf||!!oe.error||Ya.length>0')
     source=once(source,'g,oe.audioPhase==="recording"&&!Yf',
-                'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="requesting"&&!Yf&&A.createElement("div",{role:"status",className:"agy-composer-audio-pending"},"Подключение микрофона…"),oe.audioPhase==="recording"&&!Yf')
+                'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="requesting"&&!Yf&&A.createElement("div",{role:"status",className:"agy-composer-audio-pending"},"Starting microphone…"),oe.audioPhase==="recording"&&!Yf')
     source=once(source,'"aria-label":a?"Stop recording":"Record voice memo"',
-                '"aria-label":a?"Остановить запись":"Записать голосовое сообщение"')
+                '"aria-label":a?"Stop recording":"Record voice message"')
     source=once(source,'A.createElement("span",{"data-tooltip-id":u?q:void 0,className:"min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"},t,v&&A.createElement("span",{className:"opacity-70"}," ",v))',
         'A.createElement(AgyModelName,{label:t,effort:v,tooltipId:u?q:void 0})')
     # Expose the existing Core selector on mobile, using the same conversation
@@ -199,7 +199,7 @@ def transform(source):
     source=once(source,'return A.createElement("button",{type:"button",onClick:()=>{e.setOpen(!0)},className:aj("flex w-full cursor-pointer items-center rounded-lg border border-border bg-background px-4 py-2.5 text-left text-foreground shadow-sm",c)},b)',
         'return A.createElement("button",{type:"button",disabled:e.disabled,"aria-haspopup":e.settings?"listbox":void 0,"aria-expanded":e.open,"aria-controls":e.settings?e.listId:void 0,"aria-labelledby":e.ariaLabelledBy,"aria-describedby":e.ariaDescribedBy,onClick:()=>{if(!e.disabled)e.setOpen(!0)},className:aj("flex w-full cursor-pointer items-center rounded-lg border border-border bg-background px-4 py-2.5 text-left text-foreground shadow-sm",e.settings&&"agy-settings-select-trigger",c)},b)')
     source=once(source,'A.createElement(EK,{open:k.open,onOpenChange:k.setOpen,maxHeight:"85dvh"},\nA.createElement("div",{className:"flex flex-col gap-px overflow-y-auto overscroll-contain p-1",style:{maxHeight:"80dvh"}},a))',
-        'A.createElement(EK,{open:k.open,onOpenChange:k.setOpen,maxHeight:"85dvh",className:k.settings?"agy-settings-select-sheet":void 0},k.settings&&A.createElement(AgySettingsSelectHeader,{onClose:()=>k.setOpen(false)}),A.createElement("div",{id:k.settings?k.listId:void 0,role:k.settings?"listbox":void 0,onKeyDown:k.settings?agySettingsListKeyDown:void 0,"aria-labelledby":k.ariaLabelledBy,"aria-label":k.ariaLabelledBy?void 0:"Выберите значение",className:"flex flex-col gap-px overflow-y-auto overscroll-contain p-1",style:{maxHeight:"70dvh"}},a))')
+        'A.createElement(EK,{open:k.open,onOpenChange:k.setOpen,maxHeight:"85dvh",className:k.settings?"agy-settings-select-sheet":void 0},k.settings&&A.createElement(AgySettingsSelectHeader,{onClose:()=>k.setOpen(false)}),A.createElement("div",{id:k.settings?k.listId:void 0,role:k.settings?"listbox":void 0,onKeyDown:k.settings?agySettingsListKeyDown:void 0,"aria-labelledby":k.ariaLabelledBy,"aria-label":k.ariaLabelledBy?void 0:"Select an option",className:"flex flex-col gap-px overflow-y-auto overscroll-contain p-1",style:{maxHeight:"70dvh"}},a))')
     source=once(source,'m=n.value===a,A.createElement("button",{type:"button",disabled:f,onClick:q=>{l?.(q);e?.();n.onValueChange(a);n.setOpen(!1)}',
         'm=n.value===a,A.createElement("button",{type:"button",role:n.settings?"option":void 0,"aria-selected":n.settings?m:void 0,"data-agy-select-option":n.settings?a:void 0,disabled:f||n.disabled,onClick:q=>{if(f||n.disabled)return;l?.(q);e?.();n.onValueChange(a);n.setOpen(!1)}')
     source=once(source,"var zYb=({items:a,dropdownPlacement:b,onOpenChange:c})",

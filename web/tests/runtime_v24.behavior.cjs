@@ -72,26 +72,49 @@ function summaryTest(){
  assert.equal(window.size('agy:host-resume'),0,'summary listener released on teardown');
  console.log('PASS NDa resume aborts old summary feed, ignores stale data, restores fresh sidebar snapshot');
 }
-function routeTest(){
- const window=host(),events=[],listeners=[];
- const router={state:{location:{pathname:'/c/alpha',search:{}}},navigate:({params})=>{
-  router.state.location.pathname='/c/'+params.cascadeId;for(const f of listeners)f();
+
+async function routeTest(){
+ const window=host(),events=[],listeners=[],calls=[],history=['/','/c/alpha'];
+ const router={state:{location:{pathname:'/c/alpha',search:{}}},navigate:options=>{
+  calls.push(options);
+  router.state.location={pathname:'/c/'+options.params.cascadeId,search:{}};
+  if(options.replace)history[history.length-1]=router.state.location.pathname;
+  else history.push(router.state.location.pathname);
+  for(const f of [...listeners])f();
+  return Promise.resolve();
  },subscribe:(kind,fn)=>{assert.equal(kind,'onResolved');listeners.push(fn);return()=>listeners.splice(listeners.indexOf(fn),1)}};
  window.Android={onVisibleConversation:(token,id)=>{assert.equal(token,'test-token');events.push('visible:'+id)},
   onNotificationNavigationResult:(token,id)=>{assert.equal(token,'test-token');events.push('ack:'+id)}};
  const ctx={window,console};vm.createContext(ctx);
  vm.runInContext(piece('let L5=null;function t8b(','function u8b('),ctx);
  ctx.fakeRouter=router;vm.runInContext('L5=fakeRouter;window.__AGY_ATTACH_ROUTE_V24__(L5)',ctx);
- window.dispatchEvent({type:'agy:open-conversation',detail:{conversationId:'beta'}});
- assert(events.includes('ack:beta'),'only resolved matching route acknowledges native deep link');
- assert(events.includes('visible:beta'));
- window.dispatchEvent({type:'agy:open-conversation',detail:{conversationId:'../unsafe'}});
- assert(!events.includes('ack:../unsafe'),'invalid ID ignored');
+ const open=id=>window.dispatchEvent({type:'agy:open-conversation',detail:{conversationId:id}});
+ open('alpha');
+ assert.equal(calls.length,0,'same chat must keep its component/draft/history');
+ assert(events.includes('ack:alpha'));
+ open('beta');await Promise.resolve();
+ assert(events.includes('ack:beta'));assert(events.includes('visible:beta'));
+ assert.equal(calls.length,1);assert.equal(calls[0].replace,true);
+ assert.deepEqual(history,['/','/c/beta'],'notification replaces the previous chat, not an extra Back layer');
+ open('beta');assert.equal(calls.length,1,'duplicate notification does not navigate');
+ open('../unsafe');assert.equal(calls.length,1);assert(!events.includes('ack:../unsafe'));
  router.state.location={pathname:'/c/beta',search:{focused:'focused-1'}};
  for(const f of [...listeners])f();
- assert(events.includes('visible:focused-1'),'split pane reports focused conversation');
+ assert(events.includes('visible:focused-1'));
+ open('focused-1');assert.equal(calls.length,1,'already focused split conversation is retained');
+ const pending=[];
+ router.state.location={pathname:'/c/alpha',search:{}};
+ router.navigate=options=>{calls.push(options);return new Promise(resolve=>pending.push({options,resolve}));};
+ const mark=events.length;
+ open('beta');open('beta');assert.equal(pending.length,1,'in-flight duplicate must not restart navigation');open('alpha');
+ assert.equal(pending.length,2,'a same-current notification must cancel an in-flight different target');
+ assert.equal(pending[1].options.params.cascadeId,'alpha');assert.equal(pending[1].options.replace,true);
+ for(const f of [...listeners])f();pending[1].resolve();await Promise.resolve();
+ pending[0].resolve();await Promise.resolve();
+ assert(events.slice(mark).includes('ack:alpha'));
+ assert(!events.slice(mark).includes('ack:beta'),'stale navigation completion cannot acknowledge another target');
  window.dispatchEvent({type:'pagehide'});
  assert.equal(window.size('agy:host-resume'),0);
- console.log('PASS v2.4 router deep links and visible-chat reporting with token gate');
+ console.log('PASS notification routes: same chat/draft retained, replace avoids duplicate Back layer, split focus, in-flight cancellation, stale results and token gate');
 }
-(async()=>{await streamTest();summaryTest();routeTest()})().catch(err=>{console.error(err);process.exitCode=1});
+(async()=>{await streamTest();summaryTest();await routeTest()})().catch(err=>{console.error(err);process.exitCode=1});

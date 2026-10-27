@@ -117,6 +117,7 @@ public class MainActivity extends Activity
 
     private boolean appLoaded = false;
     private boolean activityResumed = false;
+    private boolean forwardedToExisting;
     private int loadedGeneration = -1;
     private long uiDeadline;
     private long splashDeadline;
@@ -177,6 +178,7 @@ public class MainActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (reuseExistingHost(getIntent())) return;
         AgyDiagnostics.log(this, "activity", "onCreate");
         acceptNotificationIntent(getIntent());
         activeActivity = this;
@@ -213,6 +215,21 @@ public class MainActivity extends Activity
         requestStoragePermissions();
 
         startCoreService();
+    }
+
+    /** Old notification targets/icon switches must not create a second renderer. */
+    private boolean reuseExistingHost(Intent intent) {
+        MainActivity host = activeActivity;
+        if (host == null || host == this || host.isFinishing() || host.isDestroyed()
+                || host.isChangingConfigurations() || host.webViewHost == null) return false;
+        forwardedToExisting = true;
+        if (!NotificationActivityRoute.activate(this, host, new Intent(intent))) {
+            forwardedToExisting = false;
+            return false;
+        }
+        AgyDiagnostics.log(this, "activity", "reuse_existing_host");
+        finish();
+        return true;
     }
 
     private void startCoreService() {
@@ -368,6 +385,7 @@ public class MainActivity extends Activity
 
     @Override
     protected void onDestroy() {
+        if (forwardedToExisting) { super.onDestroy(); return; }
         activityResumed = false;
         if (webAudioPermission != null) webAudioPermission.destroy();
         if (filePathCallback != null) {
@@ -406,6 +424,7 @@ public class MainActivity extends Activity
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
+        if (forwardedToExisting) return;
         AppLifecycle.trimMemory(level, handler, webViewHost);
     }
 
@@ -413,6 +432,7 @@ public class MainActivity extends Activity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (forwardedToExisting) return;
         acceptNotificationIntent(intent);
         navigatePendingConversation();
     }
@@ -420,11 +440,13 @@ public class MainActivity extends Activity
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if (forwardedToExisting) return;
         refreshTheme();
     }
 
     @Override
     protected void onPause() {
+        if (forwardedToExisting) { super.onPause(); return; }
         notificationUiResumed = false;
         if (androidBridge != null) androidBridge.cancelNativeVoiceOnBackground();
         AgentNotifications.contextChanged();
@@ -440,6 +462,7 @@ public class MainActivity extends Activity
     @Override
     protected void onStop() {
         super.onStop();
+        if (forwardedToExisting) return;
         AgyDiagnostics.log(this, "activity", "onStop");
         com.agy.theme.LauncherIconSwitcher.onAppBackgrounded(this);
     }
@@ -447,6 +470,7 @@ public class MainActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
+        if (forwardedToExisting) return;
         notificationUiResumed = true;
         AgyDiagnostics.log(this, "activity", "onResume");
         activityResumed = true;

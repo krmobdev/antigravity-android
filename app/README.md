@@ -259,3 +259,19 @@ DAY/NIGHT configurations; handoff QA samples the live status color/icon flag.
 The injected document locks native theme sync while Core hydrates. Only the
 guarded WebView compositor-ready callback releases this lock; intermediate Core
 default themes cannot repaint native bars or overwrite the persisted mode.
+
+
+All app-owned startup, notification, attachment, download and microphone labels
+are English. Localized user conversations/file names are not UI translations.
+
+
+NotificationActivityRoute selects the enabled live launcher component, falling
+back to the package launcher for cold starts. MainActivity forwards legacy or
+icon-switch duplicate entries to the existing host before building a renderer;
+its temporary forwarding instance skips host lifecycle cleanup. Own AppTask
+foregrounding handles a different task. Healthy warm notification entry retains
+the Activity, WebView, Core generation and dismissed splash.
+
+Legacy entry forwarding uses Android startActivity with the live enabled singleTask component, followed by finishing the temporary entry. Directly calling onNewIntent is insufficient to transfer foreground focus. Own AppTask movement is a fallback for a component disabled by an icon switch. Forwarded entries never create a renderer/service or tear down the live host.
+
+For the verified device results and remaining legacy-notification limitation, see docs/V2_4_5_NAVIGATION_ENGLISH_QA.md.

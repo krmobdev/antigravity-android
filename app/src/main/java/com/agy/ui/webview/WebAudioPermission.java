@@ -34,7 +34,7 @@ public final class WebAudioPermission {
         boolean granted = grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED;
         finish(granted);
         if (!granted) Toast.makeText(activity,
-                "Для записи голоса разрешите доступ к микрофону в настройках приложения.",
+                "Allow microphone access in app settings to record audio.",
                 Toast.LENGTH_LONG).show();
     }
     private void finish(boolean allowed) {

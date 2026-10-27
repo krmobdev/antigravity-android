@@ -30,6 +30,9 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean handoffMode;
     private boolean barsMode;
     private boolean pixelsMode;
+    private boolean pickerMode, routeMode, routeIntentMode, routeLegacyMode;
+    private boolean fileSelectionTouch;
+    private String fixtureText,fixtureImage,fixtureFolder;
     private boolean recoverMobileMode;
     private boolean capture;
     private boolean backMode;
@@ -105,10 +108,10 @@ public final class MobileCandidateProbe extends Instrumentation {
         observe=cl.getMethod("observeNative",String.class,int.class,boolean.class,String.class,int.class);
         Intent home=new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         target.startActivity(home);SystemClock.sleep(500);
-        notify(A,2,false,"Читает исходники",0);notify(B,2,false,"Изменяет файлы",0);
-        SystemClock.sleep(1100);notify(A,2,false,"Запускает тесты",0);SystemClock.sleep(1300);
-        require(text(notification(A,21001)).equals("Запускает тесты"),"ANDROID_BACKGROUND_STAGE_A");
-        require(text(notification(B,21001)).equals("Изменяет файлы"),"ANDROID_PARALLEL_STAGE_B");
+        notify(A,2,false,"Reading source files",0);notify(B,2,false,"Editing files",0);
+        SystemClock.sleep(1100);notify(A,2,false,"Running tests",0);SystemClock.sleep(1300);
+        require(text(notification(A,21001)).equals("Running tests"),"ANDROID_BACKGROUND_STAGE_A");
+        require(text(notification(B,21001)).equals("Editing files"),"ANDROID_PARALLEL_STAGE_B");
         int count=0;for(StatusBarNotification n:nm.getActiveNotifications())if(A.equals(n.getTag())&&n.getId()==21001)count++;
         require(count==1,"ANDROID_SAME_NOTIFICATION_ID");
         if(Build.VERSION.SDK_INT>=26){
@@ -119,8 +122,8 @@ public final class MobileCandidateProbe extends Instrumentation {
         }
         notify(A,1,true,null,1);notify(B,1,true,null,2);SystemClock.sleep(6500);
         require(notification(A,21001)==null&&notification(B,21001)==null,"ANDROID_TERMINAL_CLEARS_PROGRESS");
-        require(text(notification(A,21002)).startsWith("Ошибка"),"ANDROID_ERROR_OUTCOME");
-        require(text(notification(B,21002)).startsWith("Отменено"),"ANDROID_CANCEL_OUTCOME_FIFO");
+        require(text(notification(A,21002)).startsWith("Error"),"ANDROID_ERROR_OUTCOME");
+        require(text(notification(B,21002)).startsWith("Canceled"),"ANDROID_CANCEL_OUTCOME_FIFO");
         report("ANDROID_NOTIFICATION_FIXTURES","PASS_SYNTHETIC_NATIVE_EVENTS");
     }
     private void captureComposer(String stage){
@@ -338,6 +341,370 @@ public final class MobileCandidateProbe extends Instrumentation {
         }else report("LIGHT_STARTUP_STATUS_PIXEL_BANDS","PENDING_DARK_NO_FRAMES_OR_NOT_READY");
     }
 
+
+    private void clearOwnedRouteDraft()throws Exception{
+        if(!state("const e=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({owned:e?.textContent.trim()==='AGY notification regression draft'});").optBoolean("owned"))return;
+        tapExpression("document.querySelector('.agy-composer [contenteditable=true]')","ROUTE_CLEAR_OWN_DRAFT");
+        long now=SystemClock.uptimeMillis();
+        sendKeySync(new KeyEvent(now,now,KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_A,0,KeyEvent.META_CTRL_ON));
+        sendKeySync(new KeyEvent(now,now+30,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_A,0,KeyEvent.META_CTRL_ON));
+        sendKeyDownUpSync(KeyEvent.KEYCODE_DEL);SystemClock.sleep(300);
+    }
+    private boolean prepareRegressionChat()throws Exception{
+        clearOwnedRouteDraft();
+        JSONObject safe=state("const e=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({safe:!!e&&!e.textContent.trim()&&!document.querySelector('.agy-attachment-card'),router:typeof L5!=='undefined'&&!!L5});");
+        if(!safe.optBoolean("safe")){report("REGRESSION_FIXTURE","PENDING_EXISTING_DRAFT_PRESERVED");return false;}
+        require(safe.optBoolean("router"),"REGRESSION_CORE_ROUTER_PRESENT");
+        state("window.__agyRegressionOriginal={path:location.pathname+location.search,index:history.state?.__TSR_index};L5.navigate({to:'/',replace:true});return '{}';");
+        require(waitState("return JSON.stringify({ready:location.pathname==='/'});","ready").optBoolean("ready"),"REGRESSION_HOME_READY");
+        openRegressionChat();
+        return true;
+    }
+    private void openRegressionChat()throws Exception{
+        state("L5.navigate({to:'/c/$cascadeId',params:{cascadeId:'_new'}});return '{}';");
+        require(waitState("return JSON.stringify({ready:location.pathname.endsWith('/c/_new')&&!!document.querySelector('.agy-composer-add')});","ready").optBoolean("ready"),"REGRESSION_CHAT_READY");
+        SystemClock.sleep(400);
+    }
+    private void restoreRegressionChat()throws Exception{
+        state("document.removeEventListener('change',window.__agyPickerWatch,true);document.querySelectorAll('.agy-attachment-card').forEach(e=>{const n=e.querySelector('.agy-attachment-name')?.textContent;if(n===window.__agyPickerText||n===window.__agyPickerImage)e.querySelector('.agy-attachment-remove')?.click();});const o=window.__agyRegressionOriginal;if(o&&typeof o.index==='number'&&typeof history.state?.__TSR_index==='number'&&history.state.__TSR_index>o.index)history.go(o.index-history.state.__TSR_index);return '{}';");
+        SystemClock.sleep(500);
+        state("const o=window.__agyRegressionOriginal;if(o)L5.navigate({to:o.path,replace:true});return '{}';");
+        require(waitState("return JSON.stringify({same:!window.__agyRegressionOriginal||location.pathname+location.search===window.__agyRegressionOriginal.path});","same").optBoolean("same"),"REGRESSION_ORIGINAL_ROUTE_RESTORED");
+    }
+    private void tapExpression(String expression,String label)throws Exception{
+        JSONObject point=waitState("const e="+expression+",r=e?.getBoundingClientRect(),x=r?r.left+r.width/2:0,y=r?r.top+r.height/2:0,h=document.elementFromPoint(x,y);return JSON.stringify({hit:!!e&&(h===e||e.contains(h)),x,y,vw:innerWidth});","hit");
+        tapDesktopPoint(point,label);
+    }
+    private boolean focusedDev(){
+        android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+        return activity.hasWindowFocus()&&root!=null&&target.getPackageName().equals(String.valueOf(root.getPackageName()));
+    }
+    private android.view.MotionEvent finger(long down,long time,int action,float x,float y){
+        android.view.MotionEvent.PointerProperties properties=new android.view.MotionEvent.PointerProperties();properties.id=0;properties.toolType=android.view.MotionEvent.TOOL_TYPE_FINGER;
+        android.view.MotionEvent.PointerCoords point=new android.view.MotionEvent.PointerCoords();point.x=x;point.y=y;point.pressure=1;point.size=1;
+        return android.view.MotionEvent.obtain(down,time,action,1,new android.view.MotionEvent.PointerProperties[]{properties},new android.view.MotionEvent.PointerCoords[]{point},0,0,1,1,-1,0,android.view.InputDevice.SOURCE_TOUCHSCREEN,0);
+    }
+    private boolean clickSystemText(String text,boolean longClick){
+        java.util.ArrayList<android.view.accessibility.AccessibilityNodeInfo> roots=new java.util.ArrayList<>();
+        android.view.accessibility.AccessibilityNodeInfo active=getUiAutomation().getRootInActiveWindow();
+        if(active!=null)roots.add(active);
+        for(android.view.accessibility.AccessibilityWindowInfo window:getUiAutomation().getWindows()){
+            android.view.accessibility.AccessibilityNodeInfo other=window.getRoot();if(other!=null)roots.add(other);
+        }
+        for(android.view.accessibility.AccessibilityNodeInfo root:roots){
+        if(target.getPackageName().equals(String.valueOf(root.getPackageName())))continue;
+        for(android.view.accessibility.AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText(text)){
+            if(!text.contentEquals(node.getText()==null?"":node.getText())
+                    &&!text.contentEquals(node.getContentDescription()==null?"":node.getContentDescription()))continue;
+            if((longClick||fileSelectionTouch)&&node.isVisibleToUser()){
+                try{getUiAutomation().waitForIdle(350,4000);}catch(java.util.concurrent.TimeoutException ignored){}
+                node.refresh();
+                android.view.accessibility.AccessibilityNodeInfo icon=null,row=node;
+                String pkg=String.valueOf(root.getPackageName());
+                for(int k=0;longClick&&k<5&&row!=null&&icon==null;k++,row=row.getParent())
+                    for(android.view.accessibility.AccessibilityNodeInfo child:row.findAccessibilityNodeInfosByViewId(pkg+":id/icon"))
+                        if(child.isVisibleToUser()){icon=child;break;}
+                android.graphics.Rect bounds=new android.graphics.Rect();(icon==null?node:icon).getBoundsInScreen(bounds);
+                if(!bounds.isEmpty()){
+                    long now=SystemClock.uptimeMillis();
+                    android.view.MotionEvent down=finger(now,now,android.view.MotionEvent.ACTION_DOWN,bounds.exactCenterX(),bounds.exactCenterY());
+                    int hold=longClick&&icon==null?Math.max(1200,android.view.ViewConfiguration.getLongPressTimeout()+300):80;
+                    report("PICKER_SYSTEM_LONG_PRESS_MS",hold);
+                    android.view.MotionEvent up=finger(now,now+hold,android.view.MotionEvent.ACTION_UP,bounds.exactCenterX(),bounds.exactCenterY());
+                    down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+                    try{
+                        boolean pressed=getUiAutomation().injectInputEvent(down,true);SystemClock.sleep(hold);
+                        return getUiAutomation().injectInputEvent(up,true)&&pressed;
+                    }finally{down.recycle();up.recycle();}
+                }
+            }
+            android.view.accessibility.AccessibilityNodeInfo current=node;
+            for(int i=0;i<7&&current!=null;i++,current=current.getParent()){
+                if(longClick?current.isLongClickable():current.isClickable())
+                    if(current.performAction(longClick?android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK:android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))return true;
+            }
+        }
+        }
+        return false;
+    }
+    private void scrollOwnShade(){
+        android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+        if(root==null||!"com.android.systemui".equals(String.valueOf(root.getPackageName())))return;
+        String label=target.getApplicationInfo().loadLabel(target.getPackageManager()).toString();
+        for(android.view.accessibility.AccessibilityNodeInfo own:root.findAccessibilityNodeInfosByText(label)){
+            if(!label.contentEquals(own.getText()==null?"":own.getText()))continue;
+            android.view.accessibility.AccessibilityNodeInfo group=own;
+            for(int i=0;i<5&&group!=null;i++,group=group.getParent())
+                for(android.view.accessibility.AccessibilityNodeInfo expand:group.findAccessibilityNodeInfosByViewId("android:id/expand_button"))
+                    if(expand.isVisibleToUser()&&expand.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))return;
+        }
+        for(android.view.accessibility.AccessibilityNodeInfo list:root.findAccessibilityNodeInfosByViewId("com.android.systemui:id/notification_stack_scroller")){
+            if(!list.isVisibleToUser())continue;
+            if(list.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD))return;
+            android.graphics.Rect b=new android.graphics.Rect();list.getBoundsInScreen(b);if(b.height()<100)continue;
+            long now=SystemClock.uptimeMillis();
+            android.view.MotionEvent down=finger(now,now,0,b.exactCenterX(),b.top+b.height()*.8f);
+            android.view.MotionEvent move=finger(now,now+250,2,b.exactCenterX(),b.top+b.height()*.25f);
+            android.view.MotionEvent up=finger(now,now+280,1,b.exactCenterX(),b.top+b.height()*.25f);
+            try{
+                down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);move.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+                getUiAutomation().injectInputEvent(down,true);SystemClock.sleep(250);getUiAutomation().injectInputEvent(move,true);getUiAutomation().injectInputEvent(up,true);
+            }finally{down.recycle();move.recycle();up.recycle();}
+            return;
+        }
+        for(android.view.accessibility.AccessibilityNodeInfo pager:root.findAccessibilityNodeInfosByViewId("com.android.systemui:id/panel_view_pager"))
+            pager.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD);
+    }
+    private void safeShadeIds(android.view.accessibility.AccessibilityNodeInfo node,java.util.Set<String> ids){
+        if(node==null||ids.size()>100)return;
+        String id=node.getViewIdResourceName();if(id!=null)ids.add(id);
+        for(int i=0;i<node.getChildCount();i++)safeShadeIds(node.getChild(i),ids);
+    }
+    private boolean clickSystemId(String id){
+        android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+        if(root==null||target.getPackageName().equals(String.valueOf(root.getPackageName())))return false;
+        for(android.view.accessibility.AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByViewId(id))
+            if(node.isVisibleToUser()&&node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))return true;
+        return false;
+    }
+    private void openMediaPicker()throws Exception{
+        tapExpression("document.querySelector('.agy-composer-add')","PICKER_ADD");
+        require(waitState("return JSON.stringify({ready:!!document.querySelector('dialog.agy-composer-sheet[open]')});","ready").optBoolean("ready"),"PICKER_MENU_OPEN");
+        JSONObject english=state("const d=document.querySelector('dialog.agy-composer-sheet[open]');return JSON.stringify({english:d?.querySelector('strong')?.textContent==='Add to message'&&[...d.querySelectorAll('.agy-composer-action')].some(e=>e.textContent.trim()==='Photos & files')});");
+        require(english.optBoolean("english"),"PICKER_MENU_ENGLISH");
+        tapExpression("[...document.querySelectorAll('dialog.agy-composer-sheet[open] .agy-composer-action')].find(e=>e.textContent.trim()==='Photos & files')","PICKER_MEDIA");
+    }
+    private boolean hasCard(String name)throws Exception{
+        return state("return JSON.stringify({found:[...document.querySelectorAll('.agy-attachment-name')].some(e=>e.textContent==="+JSONObject.quote(name)+")});").optBoolean("found");
+    }
+    private void removeCard(String name)throws Exception{
+        tapExpression("[...document.querySelectorAll('.agy-attachment-card')].find(e=>e.querySelector('.agy-attachment-name')?.textContent==="+JSONObject.quote(name)+")?.querySelector('.agy-attachment-remove')","PICKER_REMOVE");
+        require(waitState("return JSON.stringify({ready:![...document.querySelectorAll('.agy-attachment-name')].some(e=>e.textContent==="+JSONObject.quote(name)+")});","ready").optBoolean("ready"),"PICKER_REMOVE_OWN_FILE");
+    }
+    private void selectSystemFiles(String[] names,String pickerPackage,String pickerLabel)throws Exception{
+        long until=SystemClock.elapsedRealtime()+15000;boolean selected=false;
+        do{
+            android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+            String pkg=root==null?"":String.valueOf(root.getPackageName());
+            if(!pkg.equals(pickerPackage)&&pickerLabel!=null)clickSystemText(pickerLabel,false);
+            if(clickSystemText(names[0],names.length>1)){selected=true;break;}
+            SystemClock.sleep(200);
+        }while(SystemClock.elapsedRealtime()<until);
+        require(selected,"PICKER_REAL_DOCUMENT_FOUND");
+        for(int i=1;i<names.length;i++){
+            SystemClock.sleep(200);
+            android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+            if(root!=null)for(android.view.accessibility.AccessibilityNodeInfo owned:root.findAccessibilityNodeInfosByText(names[0])){
+                android.view.accessibility.AccessibilityNodeInfo row=owned;
+                for(int k=0;k<4&&row!=null;k++,row=row.getParent()){
+                    report("PICKER_OWN_ROW_"+k,String.valueOf(row.getViewIdResourceName())+":selected="+row.isSelected()+":checked="+row.isChecked()+":click="+row.isClickable()+":long="+row.isLongClickable());
+                    for(int j=0;j<row.getChildCount();j++){android.view.accessibility.AccessibilityNodeInfo child=row.getChild(j);if(child!=null)report("PICKER_OWN_ROW_CHILD_"+k+"_"+j,String.valueOf(child.getViewIdResourceName())+":selected="+child.isSelected()+":checked="+child.isChecked()+":click="+child.isClickable());}
+                }
+                break;
+            }
+            fileSelectionTouch=true;try{require(clickSystemText(names[i],false),"PICKER_REAL_MULTI_SELECT_"+i);}finally{fileSelectionTouch=false;}
+        }
+        until=SystemClock.elapsedRealtime()+10000;
+        do{
+            if(focusedDev())break;
+            clickSystemId(pickerPackage+":id/action_menu_select");
+            clickSystemId(pickerPackage+":id/action_menu_open");
+            android.view.accessibility.AccessibilityNodeInfo pickerRoot=getUiAutomation().getRootInActiveWindow();
+            if(pickerRoot!=null&&pickerPackage.equals(String.valueOf(pickerRoot.getPackageName())))clickSystemId("android:id/button1");
+            SystemClock.sleep(200);
+        }while(SystemClock.elapsedRealtime()<until);
+        if(!focusedDev()){
+            java.util.Set<String> ids=new java.util.LinkedHashSet<>();safeShadeIds(getUiAutomation().getRootInActiveWindow(),ids);report("PICKER_CONFIRM_RESOURCE_IDS",ids.toString());
+        }
+        require(focusedDev(),"PICKER_REAL_RESULT_RETURNED");
+        report("PICKER_NATIVE_FILELIST_FLAGS",state("return JSON.stringify(window.__agyPickerEvent||{count:-1});").toString());
+        for(String name:names)
+            require(waitState("return JSON.stringify({ready:[...document.querySelectorAll('.agy-attachment-name')].some(e=>e.textContent==="+JSONObject.quote(name)+")});","ready").optBoolean("ready"),"PICKER_REAL_ATTACHMENT_ADDED");
+    }
+    private void pickerRegression()throws Exception{
+        require(fixtureText!=null&&fixtureImage!=null&&fixtureFolder!=null,"PICKER_FIXTURE_ARGUMENTS");
+        if(!prepareRegressionChat())return;
+        state("window.__agyPickerText="+JSONObject.quote(fixtureText)+";window.__agyPickerImage="+JSONObject.quote(fixtureImage)+";window.__agyPickerRoute=location.pathname;window.__agyPickerOrigin=performance.timeOrigin;return '{}';");
+        final Activity originalActivity=activity;final WebView originalWeb=web;
+        final java.util.concurrent.atomic.AtomicInteger requests=new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicReference<String> documentsPackage=new java.util.concurrent.atomic.AtomicReference<>();
+        final java.util.concurrent.atomic.AtomicReference<String> documentsLabel=new java.util.concurrent.atomic.AtomicReference<>();
+        android.accessibilityservice.AccessibilityServiceInfo service=getUiAutomation().getServiceInfo();int oldFlags=service.flags;
+        service.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;getUiAutomation().setServiceInfo(service);
+        ActivityMonitor monitor=new ActivityMonitor(){
+            @Override public ActivityResult onStartActivity(Intent intent){
+                Intent nested=Intent.ACTION_CHOOSER.equals(intent.getAction())?(Intent)intent.getParcelableExtra(Intent.EXTRA_INTENT):intent;
+                if(nested!=null&&(Intent.ACTION_GET_CONTENT.equals(nested.getAction())||Intent.ACTION_OPEN_DOCUMENT.equals(nested.getAction()))){
+                    requests.incrementAndGet();
+                    report("PICKER_NATIVE_MULTIPLE_ALLOWED",nested.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE,false));
+                    for(android.content.pm.ResolveInfo match:target.getPackageManager().queryIntentActivities(nested,0)){
+                        if(match.activityInfo.packageName.contains("documentsui")){
+                            nested.setComponent(new android.content.ComponentName(match.activityInfo.packageName,match.activityInfo.name));
+                            nested.putExtra("android.provider.extra.INITIAL_URI",android.net.Uri.parse(fixtureFolder));
+                            documentsPackage.set(match.activityInfo.packageName);documentsLabel.set(match.loadLabel(target.getPackageManager()).toString());
+                            if(nested!=intent)intent.putExtra(Intent.EXTRA_INTENT,nested);break;
+                        }
+                    }
+                }
+                return null; // The real system Picker runs; no synthetic ActivityResult.
+            }
+        };
+        addMonitor(monitor);
+        try{
+            state("window.__agyPickerWatch=e=>{if(e.target?.type==='file'){const fs=[...e.target.files];window.__agyPickerEvent={count:fs.length,text:fs.some(f=>f.name===window.__agyPickerText),image:fs.some(f=>f.name===window.__agyPickerImage)};}};document.addEventListener('change',window.__agyPickerWatch,true);return '{}';");
+            tapExpression("document.querySelector('.agy-composer-add')","PICKER_OUTSIDE_ADD");
+            waitState("return JSON.stringify({ready:!!document.querySelector('dialog.agy-composer-sheet[open]')});","ready");
+            JSONObject outside=state("const d=document.querySelector('dialog.agy-composer-sheet[open]'),r=d.getBoundingClientRect();return JSON.stringify({x:innerWidth/2,y:Math.max(5,r.top-20),vw:innerWidth});");
+            final int[] origin=new int[2];runOnMainSync(()->web.getLocationOnScreen(origin));
+            float scale=web.getWidth()/(float)outside.getDouble("vw");
+            long now=SystemClock.uptimeMillis();
+            android.view.MotionEvent down=android.view.MotionEvent.obtain(now,now,0,origin[0]+(float)outside.getDouble("x")*scale,origin[1]+(float)outside.getDouble("y")*scale,0);
+            android.view.MotionEvent up=android.view.MotionEvent.obtain(now,now+60,1,down.getX(),down.getY(),0);
+            try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
+            require(waitState("return JSON.stringify({ready:!document.querySelector('dialog.agy-composer-sheet[open]')&&location.pathname===window.__agyPickerRoute});","ready").optBoolean("ready"),"PICKER_REAL_BACKDROP_RETAINS_CHAT");
+            openMediaPicker();require(documentsPackage.get()!=null,"PICKER_REAL_DOCUMENTSUI_SELECTED");
+            selectSystemFiles(new String[]{fixtureText},documentsPackage.get(),documentsLabel.get());
+            tapExpression("[...document.querySelectorAll('.agy-attachment-card')].find(e=>e.querySelector('.agy-attachment-name')?.textContent==="+JSONObject.quote(fixtureText)+")?.querySelector('.agy-attachment-open')","PICKER_OPEN_PREVIEW");
+            require(waitState("return JSON.stringify({ready:!!document.querySelector('[data-testid=attachment-safe-text]')});","ready").optBoolean("ready"),"PICKER_TEXT_PREVIEW");
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(400);
+            require(state("return JSON.stringify({same:location.pathname===window.__agyPickerRoute&&!document.querySelector('.agy-attachment-dialog')});").optBoolean("same"),"PICKER_PREVIEW_BACK_RETAINS_CHAT");
+            removeCard(fixtureText);
+            openMediaPicker();selectSystemFiles(new String[]{fixtureText},documentsPackage.get(),documentsLabel.get());removeCard(fixtureText);
+            openMediaPicker();selectSystemFiles(new String[]{fixtureText,fixtureImage},documentsPackage.get(),documentsLabel.get());
+            require(state("return JSON.stringify({count:document.querySelectorAll('.agy-attachment-card').length});").optInt("count")==2,"PICKER_MULTI_RESULT_TWO_FILES");
+            require(state("const cards=[...document.querySelectorAll('.agy-attachment-card')],rects=cards.map(e=>e.getBoundingClientRect());return JSON.stringify({uniform:rects.length===2&&rects.every(r=>Math.abs(r.width-r.height)<1&&Math.abs(r.width-rects[0].width)<1),touch:cards.every(e=>{const r=e.querySelector('.agy-attachment-remove').getBoundingClientRect();return r.width>=48&&r.height>=48}),metadata:cards.filter(e=>!e.classList.contains('agy-attachment-image')).every(e=>{const type=e.querySelector('.agy-attachment-type');return type&&getComputedStyle(type).display!=='none'&&type.textContent.trim()})});").optBoolean("uniform"),"PICKER_UNIFORM_PHOTO_DOCUMENT_TILES");
+            require(state("return JSON.stringify({touch:[...document.querySelectorAll('.agy-attachment-remove')].every(e=>{const r=e.getBoundingClientRect();return r.width>=48&&r.height>=48})});").optBoolean("touch"),"PICKER_REMOVE_TARGETS_48PX");
+            require(state("const e=document.querySelector('.agy-attachment-file .agy-attachment-type');return JSON.stringify({type:!!e&&getComputedStyle(e).display!=='none'&&!!e.textContent.trim()});").optBoolean("type"),"PICKER_DOCUMENT_TYPE_VISIBLE");
+            removeCard(fixtureText);removeCard(fixtureImage);
+            openMediaPicker();
+            long pickerShown=SystemClock.elapsedRealtime()+8000;
+            while(focusedDev()&&SystemClock.elapsedRealtime()<pickerShown)SystemClock.sleep(100);
+            require(!focusedDev(),"PICKER_CANCEL_SYSTEM_WINDOW_VISIBLE");
+            long until=SystemClock.elapsedRealtime()+10000;
+            do{
+                if(focusedDev())break;
+                sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(400);
+            }while(SystemClock.elapsedRealtime()<until);
+            require(focusedDev(),"PICKER_CANCEL_RETURNED");
+            require(state("return JSON.stringify({same:location.pathname===window.__agyPickerRoute&&performance.timeOrigin===window.__agyPickerOrigin&&!document.querySelector('.agy-attachment-card')});").optBoolean("same"),"PICKER_CANCEL_AND_DOCUMENT_PRESERVED");
+            refreshDesktopHost();require(activity==originalActivity&&web==originalWeb,"PICKER_ACTIVITY_AND_WEBVIEW_REUSED");
+            require(requests.get()>=4,"PICKER_NATIVE_CHOOSER_REQUESTS");
+            report("ANDROID_REAL_FILE_PICKER","PASS_BACKDROP_SELECT_PREVIEW_REPEAT_MULTI_CANCEL_NO_SEND");
+        }finally{
+            removeMonitor(monitor);
+            service.flags=oldFlags;getUiAutomation().setServiceInfo(service);
+            if(!focusedDev()){
+                for(int i=0;i<5&&!focusedDev();i++){sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(300);}
+            }
+            if(focusedDev())restoreRegressionChat();
+        }
+    }
+    private void notificationRouteRegression()throws Exception{
+        if(!prepareRegressionChat())return;
+        final Activity host=activity;final WebView originalWeb=web;
+        android.app.Application app=activity.getApplication();
+        android.app.Application.ActivityLifecycleCallbacks lifecycle=new android.app.Application.ActivityLifecycleCallbacks(){
+            private void event(Activity a,String kind){if(target.getPackageName().equals(a.getPackageName()))report("ROUTE_LIFECYCLE_"+kind,a.getClass().getName());}
+            public void onActivityCreated(Activity a,Bundle b){event(a,"CREATE");}
+            public void onActivityResumed(Activity a){event(a,"RESUME");}
+            public void onActivityDestroyed(Activity a){event(a,"DESTROY");}
+            public void onActivityStarted(Activity a){}
+            public void onActivityPaused(Activity a){}
+            public void onActivityStopped(Activity a){}
+            public void onActivitySaveInstanceState(Activity a,Bundle b){}
+        };
+        runOnMainSync(()->app.registerActivityLifecycleCallbacks(lifecycle));
+        android.accessibilityservice.AccessibilityServiceInfo service=getUiAutomation().getServiceInfo();int oldFlags=service.flags;
+        service.flags|=android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS|android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+        getUiAutomation().setServiceInfo(service);
+        Class<?> core=Class.forName("com.agy.core.CoreRuntimeState",true,target.getClassLoader());
+        int generation=(Integer)field(core,"readyGeneration");
+        Class<?> factory=Class.forName("com.agy.ui.NotificationActivityRoute",true,target.getClassLoader());
+        Method pending=factory.getMethod("pending",Context.class,String.class);
+        state("const e=document.querySelector('.agy-composer [contenteditable=true]');if(e?.textContent.trim()==='AGY notification regression draft'){e.focus();const r=document.createRange();r.selectNodeContents(e);getSelection().removeAllRanges();getSelection().addRange(r);document.execCommand('delete');}return '{}';");
+        tapExpression("document.querySelector('.agy-composer [contenteditable=true]')","ROUTE_DRAFT_EDITOR");
+        sendStringSync("AGY notification regression draft");SystemClock.sleep(500);
+        state("window.__agyRouteDraft=document.querySelector('.agy-composer [contenteditable=true]')?.textContent;window.__agyRouteOrigin=performance.timeOrigin;window.__agyRouteLength=history.length;return '{}';");
+        JSONObject ownDraft=state("return JSON.stringify({draft:typeof window.__agyRouteDraft==='string'&&window.__agyRouteDraft.includes('AGY notification regression draft')&&window.__agyRouteDraft.length<100,length:window.__agyRouteDraft?.length||0});");
+        report("ROUTE_FIXTURE_DRAFT_LENGTH",ownDraft.optInt("length"));
+        require(ownDraft.optBoolean("draft"),"ROUTE_OWN_DRAFT_INSERTED");
+        android.app.NotificationManager nm=(android.app.NotificationManager)target.getSystemService(Context.NOTIFICATION_SERVICE);
+        if(Build.VERSION.SDK_INT>=33)try{getUiAutomation().grantRuntimePermission("com.agy.dev","android.permission.POST_NOTIFICATIONS");}catch(Exception ignored){}
+        require(nm.areNotificationsEnabled(),"ROUTE_NOTIFICATIONS_ENABLED");
+        String channel="agy_qa_route_regression_default";
+        if(Build.VERSION.SDK_INT>=26){android.app.NotificationChannel c=new android.app.NotificationChannel(channel,"QA navigation",android.app.NotificationManager.IMPORTANCE_DEFAULT);c.setSound(null,null);c.enableVibration(false);nm.createNotificationChannel(c);}
+        try{
+            for(int cycle=0;cycle<(routeLegacyMode?3:2);cycle++){
+                android.app.PendingIntent pi;
+                if(cycle<2)pi=(android.app.PendingIntent)pending.invoke(null,target,"_new");
+                else{
+                    Intent legacy=new Intent().setClassName(target,"com.agy.ui.MainActivity");
+                    legacy.setAction("com.agy.action.OPEN_AGENT_CONVERSATION").setData(android.net.Uri.parse("agy://conversation/_new"));
+                    legacy.putExtra("agy_conversation_id","_new");
+                    legacy.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    pi=android.app.PendingIntent.getActivity(target,99713,legacy,android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_IMMUTABLE);
+                }
+                report("ROUTE_PENDING_CREATOR_"+cycle,pi.getCreatorPackage()+":"+pi.getCreatorUid());
+                target.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                SystemClock.sleep(450);
+                android.app.Notification.Builder b=Build.VERSION.SDK_INT>=26?new android.app.Notification.Builder(target,channel):new android.app.Notification.Builder(target);
+                nm.notify("agy_qa_route",99712,b.setSmallIcon(android.R.drawable.stat_notify_sync).setContentTitle("AGY route regression").setContentText("Open test conversation").setContentIntent(pi).setAutoCancel(true).build());
+                long until=SystemClock.elapsedRealtime()+8000;boolean clicked=false;
+                if(routeIntentMode){
+                    android.service.notification.StatusBarNotification posted=null;
+                    for(android.service.notification.StatusBarNotification item:nm.getActiveNotifications())if("agy_qa_route".equals(item.getTag()))posted=item;
+                    require(posted!=null&&posted.getNotification().contentIntent!=null,"ROUTE_POSTED_PENDING_INTENT_"+cycle);
+                    // SystemUI taps are allowed to foreground a background app.
+                    // Scope the equivalent shell capability to this test send only.
+                    getUiAutomation().adoptShellPermissionIdentity("android.permission.START_ACTIVITIES_FROM_BACKGROUND");
+                    try{
+                        android.app.ActivityOptions options=android.app.ActivityOptions.makeBasic();
+                        try{options.getClass().getMethod("setPendingIntentBackgroundActivityStartMode",int.class).invoke(options,1);}catch(NoSuchMethodException olderAndroid){}
+                        posted.getNotification().contentIntent.send(target,0,null,null,null,null,options.toBundle());clicked=true;
+                    }finally{getUiAutomation().dropShellPermissionIdentity();}
+                }else require(getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS),"ROUTE_OPEN_NOTIFICATION_SHADE_"+cycle);
+                int searches=0;
+                while(!clicked&&SystemClock.elapsedRealtime()<until){if(clickSystemText("AGY route regression",false)){clicked=true;break;}if(++searches%4==0)scrollOwnShade();SystemClock.sleep(200);}
+                if(!clicked){
+                    android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
+                    report("ROUTE_SHADE_ROOT_PACKAGE",root==null?"null":root.getPackageName());
+                    report("ROUTE_SHADE_OWN_TITLE_MATCHES",root==null?0:root.findAccessibilityNodeInfosByText("AGY route regression").size());
+                    int active=0;for(android.service.notification.StatusBarNotification n:nm.getActiveNotifications())if("agy_qa_route".equals(n.getTag()))active++;
+                    report("ROUTE_OWN_ACTIVE_NOTIFICATIONS",active);
+                    java.util.Set<String> ids=new java.util.LinkedHashSet<>();safeShadeIds(root,ids);report("ROUTE_SHADE_RESOURCE_IDS",ids.toString());
+                }
+                require(clicked,(routeIntentMode?"ROUTE_POSTED_INTENT_SENT_":"ROUTE_REAL_NOTIFICATION_TAPPED_")+cycle);
+                until=SystemClock.elapsedRealtime()+12000;
+                do{refreshDesktopHost();if(focusedDev()&&Boolean.TRUE.equals(field(activity,"webUiReady")))break;SystemClock.sleep(150);}while(SystemClock.elapsedRealtime()<until);
+                if(!focusedDev()){
+                    android.app.ActivityManager manager=(android.app.ActivityManager)target.getSystemService(Context.ACTIVITY_SERVICE);
+                    for(android.app.ActivityManager.AppTask task:manager.getAppTasks()){android.app.ActivityManager.RecentTaskInfo info=task.getTaskInfo();report("ROUTE_OWN_TASK",info.id+":"+info.baseActivity+":"+info.topActivity);}
+                }
+                require(focusedDev(),"ROUTE_DEV_RETURNED_TO_FOREGROUND_"+cycle);
+                require(activity==host&&web==originalWeb,"ROUTE_SAME_ACTIVITY_WEBVIEW_"+cycle);
+                Object splash=field(activity,"splash");View splashView=(View)splash.getClass().getMethod("view").invoke(splash);
+                require(splashView.getVisibility()==View.GONE&&Boolean.TRUE.equals(field(activity,"webUiReady")),"ROUTE_NO_STARTUP_RESTART_"+cycle);
+                require(state("return JSON.stringify({same:location.pathname.endsWith('/c/_new')&&performance.timeOrigin===window.__agyRouteOrigin&&history.length===window.__agyRouteLength&&document.querySelector('.agy-composer [contenteditable=true]')?.textContent===window.__agyRouteDraft});").optBoolean("same"),"ROUTE_DOCUMENT_HISTORY_DRAFT_PRESERVED_"+cycle);
+                require(generation==(Integer)field(core,"readyGeneration"),"ROUTE_CORE_GENERATION_PRESERVED_"+cycle);
+            }
+            clearOwnedRouteDraft();
+            runOnMainSync(()->((android.view.inputmethod.InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(web.getWindowToken(),0));
+            SystemClock.sleep(350);sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+            require(waitState("return JSON.stringify({home:location.pathname==='/'});","home").optBoolean("home"),"ROUTE_ONE_BACK_TO_HOME_NO_DUPLICATE_CHAT");
+            report("ANDROID_NOTIFICATION_REUSE",routeLegacyMode?"PASS_POSTED_PENDING_INTENTS_WARM_LEGACY_SAME_HOST_DOCUMENT_DRAFT_AND_BACK":routeIntentMode?"PASS_POSTED_PENDING_INTENTS_SAME_HOST_DOCUMENT_DRAFT_AND_BACK":"PASS_REAL_SHADE_TAPS_SAME_HOST_DOCUMENT_DRAFT_AND_BACK");
+        }finally{
+            runOnMainSync(()->app.unregisterActivityLifecycleCallbacks(lifecycle));
+            nm.cancel("agy_qa_route",99712);
+            service.flags=oldFlags;getUiAutomation().setServiceInfo(service);
+            if(!focusedDev()){
+                getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
+                target.startActivity(new Intent().setComponent(activity.getComponentName()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                SystemClock.sleep(650);refreshDesktopHost();
+            }
+            if(focusedDev()){clearOwnedRouteDraft();restoreRegressionChat();}
+        }
+    }
+
     private void systemBarThemes()throws Exception{
         Class<?> styles=Class.forName("com.agy.R$style",true,target.getClassLoader());
         int[] attrs={android.R.attr.statusBarColor,android.R.attr.navigationBarColor,
@@ -445,7 +812,7 @@ public final class MobileCandidateProbe extends Instrumentation {
             systemExit.setAccessible(true);
             runOnMainSync(()->{try{systemExit.invoke(null,null,box.view);}catch(Exception error){throw new RuntimeException(error);}});
             require(box.view.getAlpha()==1f,"STARTUP_SYSTEM_EXIT_NATIVE_OPAQUE");
-            String[] labels={"Подготовка среды","Запуск ядра","Подключение интерфейса"};
+            String[] labels={"Preparing environment","Starting Core","Connecting interface"};
             for(int stage=0;stage<3;stage++){
                 progressClass.getMethod("advance",long.class,int.class).invoke(model,attempt,stage);
                 Object snapshot=progressClass.getMethod("snapshot").invoke(model);
@@ -455,7 +822,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 runOnMainSync(()->{
                     android.widget.TextView status=box.view.findViewWithTag("startup-status");
                     android.widget.TextView step=box.view.findViewWithTag("startup-step");
-                    require(labels[current].contentEquals(status.getText())&&("Этап "+(current+1)+" из 3").contentEquals(step.getText()),"STARTUP_STAGE_"+current);
+                    require(labels[current].contentEquals(status.getText())&&("Stage "+(current+1)+" of 3").contentEquals(step.getText()),"STARTUP_STAGE_"+current);
                 });
             }
             for(int palette=0;palette<2;palette++){
@@ -468,7 +835,7 @@ public final class MobileCandidateProbe extends Instrumentation {
             runOnMainSync(()->{
                 View bar=box.view.findViewWithTag("startup-progress"),retry=box.view.findViewWithTag("startup-retry");
                 android.widget.TextView status=box.view.findViewWithTag("startup-status");
-                require(bar.getVisibility()==View.GONE&&retry.getVisibility()==View.VISIBLE&&status.getText().toString().contains("интерфейс"),"STARTUP_RETRYABLE_ERROR");
+                require(bar.getVisibility()==View.GONE&&retry.getVisibility()==View.VISIBLE&&status.getText().toString().contains("interface"),"STARTUP_RETRYABLE_ERROR");
             });
             captureNativeStartup(box.view,"STARTUP_ERROR");
             runOnMainSync(()->box.view.findViewWithTag("startup-retry").performClick());
@@ -847,11 +1214,11 @@ public final class MobileCandidateProbe extends Instrumentation {
         state("document.querySelector('[data-testid=input-attachment-open]').click();return '{}';");
         info=waitState("const p=document.querySelector('[data-testid=attachment-safe-text]');return JSON.stringify({ready:!!p&&p.textContent.includes('<script>'),safe:!window.__agyProbeExecuted,cards:document.querySelectorAll('.agy-attachment-card').length});","ready");
         require(info.optBoolean("ready")&&info.optBoolean("safe")&&info.optInt("cards")==2,"ANDROID_SAFE_TEXT_PREVIEW");
-        state("document.querySelector('[aria-label=\"Закрыть просмотр\"]').click();return '{}';");SystemClock.sleep(250);
+        state("document.querySelector('[aria-label=\"Close preview\"]').click();return '{}';");SystemClock.sleep(250);
         state("document.querySelectorAll('[data-testid=input-attachment-open]')[1].click();return '{}';");
         info=waitState("const i=document.querySelector('.agy-attachment-full-media');return JSON.stringify({ready:!!i&&i.tagName==='IMG'&&i.src.startsWith('blob:')});","ready");
         require(info.optBoolean("ready"),"ANDROID_IMAGE_FULLSCREEN");
-        state("document.querySelector('[aria-label=\"Закрыть просмотр\"]').click();return '{}';");SystemClock.sleep(250);
+        state("document.querySelector('[aria-label=\"Close preview\"]').click();return '{}';");SystemClock.sleep(250);
         state("document.querySelector('[data-testid=input-attachment-remove]').click();return '{}';");
         info=waitState("return JSON.stringify({ready:document.querySelectorAll('.agy-attachment-card').length===1});","ready");
         require(info.optBoolean("ready"),"ANDROID_REMOVE_ONE_ATTACHMENT");
@@ -976,7 +1343,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);pickerMode="picker".equals(b.getString("mode"));routeLegacyMode="route-legacy".equals(b.getString("mode"));routeIntentMode=routeLegacyMode||"route-intent".equals(b.getString("mode"));routeMode=routeIntentMode||"route-reuse".equals(b.getString("mode"));fixtureText=b.getString("fixtureText");fixtureImage=b.getString("fixtureImage");fixtureFolder=b.getString("fixtureFolder");pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -1005,6 +1372,8 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(pickerMode){pickerRegression();ok=true;return;}
+            if(routeMode){notificationRouteRegression();ok=true;return;}
             if(barsMode){systemBarThemes();ok=true;return;}
             if(handoffMode){startupHandoff();ok=true;return;}
             if(desktopMode){adaptiveDesktop();ok=true;return;}
