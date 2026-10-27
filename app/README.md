@@ -275,3 +275,10 @@ the Activity, WebView, Core generation and dismissed splash.
 Legacy entry forwarding uses Android startActivity with the live enabled singleTask component, followed by finishing the temporary entry. Directly calling onNewIntent is insufficient to transfer foreground focus. Own AppTask movement is a fallback for a component disabled by an icon switch. Forwarded entries never create a renderer/service or tear down the live host.
 
 For the verified device results and remaining legacy-notification limitation, see docs/V2_4_5_NAVIGATION_ENGLISH_QA.md.
+
+### PCM release completion barrier
+
+PcmCaptureSession serializes the complete stop/release operation per generation.
+A concurrent worker closing a failed capture cannot make stop return before
+hardware release finishes. The regression deliberately blocks release on the
+worker and verifies stop waits, then checks a fresh recording can start.

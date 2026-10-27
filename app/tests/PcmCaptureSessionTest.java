@@ -31,7 +31,35 @@ public final class PcmCaptureSessionTest {
         await(f.released);
         require(f.closes.get()==1&&f.stops.get()==1,"release exactly once");
     }
+    static void releaseCompletionBarrier() throws Exception {
+        PcmCaptureSession capture = new PcmCaptureSession(() -> 0);
+        CountDownLatch releasing = new CountDownLatch(1), allowRelease = new CountDownLatch(1);
+        CountDownLatch stopped = new CountDownLatch(1);
+        Fake source = new Fake() {
+            public void release() {
+                releasing.countDown();
+                await(allowRelease);
+                super.release();
+            }
+        };
+        source.fail = true;
+        source.proceed.countDown();
+        capture.start(source);
+        await(releasing); // Worker has claimed close, but AudioRecord.release has not finished.
+        Thread stopper = new Thread(() -> { capture.stop(); stopped.countDown(); });
+        stopper.start();
+        boolean returnedBeforeRelease;
+        try { returnedBeforeRelease = stopped.await(200, TimeUnit.MILLISECONDS); }
+        finally { allowRelease.countDown(); stopper.join(3000); }
+        await(stopped);
+        require(!returnedBeforeRelease, "stop must wait for concurrent hardware release completion");
+        once(source);
+        Fake next = new Fake();
+        require("OK".equals(capture.start(next)), "restart after completed release");
+        capture.stop(); next.proceed.countDown(); once(next);
+    }
     public static void main(String[] args) throws Exception {
+        releaseCompletionBarrier();
         PcmCaptureSession capture=new PcmCaptureSession(()->0);
         Fake failed=new Fake();failed.fail=true;failed.proceed.countDown();
         require("OK".equals(capture.start(failed)),"start error fixture");

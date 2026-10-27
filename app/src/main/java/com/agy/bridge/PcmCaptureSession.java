@@ -2,7 +2,6 @@ package com.agy.bridge;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Owns one capture generation. No Android device or stored audio in this class. */
 final class PcmCaptureSession {
@@ -22,12 +21,16 @@ final class PcmCaptureSession {
         final Source source;
         final long startedAt;
         final ArrayDeque<byte[]> frames = new ArrayDeque<>();
-        final AtomicBoolean released = new AtomicBoolean();
+        boolean released;
         volatile boolean running = true;
         String failure;
         Session(Source source, long startedAt) { this.source = source; this.startedAt = startedAt; }
-        void close() {
-            if (!released.compareAndSet(false, true)) return;
+        // Serialize the whole close, not merely the claim to close.
+        // Returning from stop must mean hardware release has completed,
+        // including when the worker began closing concurrently.
+        synchronized void close() {
+            if (released) return;
+            released = true;
             try { source.stop(); } catch (RuntimeException ignored) {}
             try { source.release(); } catch (RuntimeException ignored) {}
         }
