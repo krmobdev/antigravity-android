@@ -80,3 +80,11 @@ The owner still reports a black flash in the system status bar in Light mode.
 The native-view/DOM checks above do not cover system-bar pixels. Overall startup
 visual acceptance remains OPEN; status-bar palette transitions need a separate
 follow-up fix. Do not report the entire flicker issue as resolved.
+
+## Follow-up with reproduced status pixels
+
+The remaining system-bar flash was reproduced through the actual Connecting
+transition and traced to transient Core theme hydration being persisted by
+theme_sync. See [V2_4_5_THEME_HYDRATION.md](V2_4_5_THEME_HYDRATION.md) for the
+corrected implementation, failing-before/passing-after evidence and current APK.
+This report's earlier opaque-reveal APK is superseded for flicker acceptance.

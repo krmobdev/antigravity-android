@@ -12,6 +12,10 @@ function notify() {
     document.documentElement.classList.toggle('light', !isDark);
     document.documentElement.style.colorScheme = theme;
   } catch (e) { /* ignore */ }
+  // DOM observations during Core hydration are not a user theme choice.
+  // Keep native bars/preferences at their persisted palette until the host
+  // confirms the committed usable frame. No timer may release this guard.
+  if (window.__AG_NATIVE_UI_STARTING__ === true) return theme;
   try {
     if (window.Android) {
       state.hasAndroid = true;

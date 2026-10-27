@@ -28,6 +28,8 @@ public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
     private boolean desktopMode;
     private boolean handoffMode;
+    private boolean barsMode;
+    private boolean pixelsMode;
     private boolean recoverMobileMode;
     private boolean capture;
     private boolean backMode;
@@ -240,6 +242,128 @@ public final class MobileCandidateProbe extends Instrumentation {
         }
     }
 
+
+
+    /** Status-band pixels only; full screenshots are never saved/exported. */
+    private void startupPixelFrames()throws Exception{
+        final java.util.List<String> nativeFrames=java.util.Collections.synchronizedList(new java.util.ArrayList<String>());
+        final String[] previous={""};
+        final long start=SystemClock.elapsedRealtime();
+        final boolean[] initialDark={false};
+        final int[] statusBottom={0};
+        runOnMainSync(()->{try{
+            Object theme=field(activity,"themeManager");
+            initialDark[0]=(Boolean)theme.getClass().getMethod("isDark").invoke(theme);
+            android.graphics.Rect visible=new android.graphics.Rect();
+            activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(visible);
+            statusBottom[0]=visible.top;
+            if(statusBottom[0]<=0){
+                int id=activity.getResources().getIdentifier("status_bar_height","dimen","android");
+                if(id!=0)statusBottom[0]=activity.getResources().getDimensionPixelSize(id);
+            }
+        }catch(Exception e){throw new RuntimeException(e);}});
+        final android.view.ViewTreeObserver.OnPreDrawListener listener=()->{
+            try{
+                Object theme=field(activity,"themeManager");
+                int mode=(Integer)theme.getClass().getMethod("mode").invoke(theme);
+                String key=String.format(java.util.Locale.ROOT,"%08x",activity.getWindow().getStatusBarColor())
+                    +":"+((activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)!=0)
+                    +":"+mode+":"+field(activity,"webUiReady");
+                if(!key.equals(previous[0])){nativeFrames.add((SystemClock.elapsedRealtime()-start)+":"+key);previous[0]=key;}
+            }catch(Exception ignored){}
+            return true;
+        };
+        runOnMainSync(()->activity.getWindow().getDecorView().getViewTreeObserver().addOnPreDrawListener(listener));
+        int frames=0,blackBands=0,blackHeaders=0,whiteBands=0,unfocused=0;
+        boolean ready=false,connecting=false;long readyAt=0;
+        try{
+            do{
+                android.view.accessibility.AccessibilityNodeInfo active=getUiAutomation().getRootInActiveWindow();
+                try{connecting=connecting||(Integer)field(field(activity,"splash"),"stage")==2;}catch(Exception ignored){}
+                if(connecting&&activity.hasWindowFocus()&&active!=null&&target.getPackageName().equals(String.valueOf(active.getPackageName()))){
+                    android.graphics.Bitmap bitmap=getUiAutomation().takeScreenshot();
+                    if(bitmap!=null){
+                        try{
+                            int width=bitmap.getWidth(),bottom=Math.min(statusBottom[0],bitmap.getHeight());
+                            if(bottom>12){
+                                double[] dark=new double[3],light=new double[3];
+                                float[] left={.06f,.45f,.82f},right={.18f,.55f,.94f};
+                                for(int band=0;band<3;band++){
+                                    int count=0,black=0,white=0;
+                                    for(int y=Math.max(2,bottom-10);y<bottom-2;y+=2)
+                                      for(int x=Math.round(width*left[band]);x<Math.round(width*right[band]);x+=3){
+                                        int c=bitmap.getPixel(x,y);
+                                        int l=(android.graphics.Color.red(c)*3+android.graphics.Color.green(c)*6+android.graphics.Color.blue(c))/10;
+                                        if(l<60)black++;if(l>220)white++;count++;
+                                      }
+                                    dark[band]=black/(double)Math.max(1,count);light[band]=white/(double)Math.max(1,count);
+                                }
+                                boolean black=dark[0]>.7&&dark[1]>.7&&dark[2]>.7;
+                                boolean white=light[0]>.7&&light[1]>.7&&light[2]>.7;
+                                if(black)blackBands++;if(white)whiteBands++;frames++;
+                                int headerY=Math.min(bitmap.getHeight()-10,bottom+Math.round(20*activity.getResources().getDisplayMetrics().density));
+                                double[] headerDark=new double[3];
+                                for(int band=0;band<3;band++){
+                                    int count=0,blackCount=0;
+                                    for(int y=headerY;y<headerY+8;y+=2)
+                                      for(int x=Math.round(width*left[band]);x<Math.round(width*right[band]);x+=3){
+                                        int c=bitmap.getPixel(x,y),l=(android.graphics.Color.red(c)*3+android.graphics.Color.green(c)*6+android.graphics.Color.blue(c))/10;
+                                        if(l<60)blackCount++;count++;
+                                      }
+                                    headerDark[band]=blackCount/(double)Math.max(1,count);
+                                }
+                                boolean blackHeader=headerDark[0]>.7&&headerDark[1]>.7&&headerDark[2]>.7;
+                                if(blackHeader)blackHeaders++;
+                                report("HEADER_PIXELS",String.format(java.util.Locale.ROOT,"ms=%d,y=%d,black=%.2f/%.2f/%.2f",
+                                  SystemClock.elapsedRealtime()-start,headerY,headerDark[0],headerDark[1],headerDark[2]));
+                                report("STATUS_PIXELS",String.format(java.util.Locale.ROOT,
+                                  "ms=%d,y=%d,black=%.2f/%.2f/%.2f,white=%.2f/%.2f/%.2f",
+                                  SystemClock.elapsedRealtime()-start,bottom,dark[0],dark[1],dark[2],light[0],light[1],light[2]));
+                            }
+                        }finally{bitmap.recycle();}
+                    }
+                }else unfocused++;
+                try{ready=Boolean.TRUE.equals(field(activity,"webUiReady"));}catch(Exception ignored){}
+                if(ready&&readyAt==0)readyAt=SystemClock.elapsedRealtime();
+                SystemClock.sleep(connecting?40:100);
+            }while(SystemClock.elapsedRealtime()-start<65000&&(readyAt==0||SystemClock.elapsedRealtime()-readyAt<1500));
+        }finally{
+            runOnMainSync(()->activity.getWindow().getDecorView().getViewTreeObserver().removeOnPreDrawListener(listener));
+        }
+        for(String frame:nativeFrames)report("NATIVE_BAR_FRAME",frame);
+        report("STATUS_PIXEL_COUNTS","frames="+frames+",black="+blackBands+",blackHeaders="+blackHeaders+",white="+whiteBands+",unfocused="+unfocused+",initialDark="+initialDark[0]+",ready="+ready+",activity="+activity.getClass().getSimpleName());
+        if(!initialDark[0]&&frames>0&&ready){
+            require(blackBands==0,"LIGHT_STARTUP_STATUS_PIXEL_BANDS");
+            require(blackHeaders==0,"LIGHT_STARTUP_HEADER_PIXEL_BANDS");
+        }else report("LIGHT_STARTUP_STATUS_PIXEL_BANDS","PENDING_DARK_NO_FRAMES_OR_NOT_READY");
+    }
+
+    private void systemBarThemes()throws Exception{
+        Class<?> styles=Class.forName("com.agy.R$style",true,target.getClassLoader());
+        int[] attrs={android.R.attr.statusBarColor,android.R.attr.navigationBarColor,
+            android.R.attr.windowLightStatusBar,android.R.attr.windowLightNavigationBar,android.R.attr.windowBackground};
+        for(boolean night:new boolean[]{false,true})for(boolean light:new boolean[]{false,true}){
+            android.content.res.Configuration cfg=new android.content.res.Configuration(target.getResources().getConfiguration());
+            cfg.uiMode=(cfg.uiMode&~android.content.res.Configuration.UI_MODE_NIGHT_MASK)|
+                (night?android.content.res.Configuration.UI_MODE_NIGHT_YES:android.content.res.Configuration.UI_MODE_NIGHT_NO);
+            Context configured=target.createConfigurationContext(cfg);
+            int id=styles.getField(light?"SplashThemeLight":"SplashThemeDark").getInt(null);
+            android.view.ContextThemeWrapper themed=new android.view.ContextThemeWrapper(configured,id);
+            android.content.res.TypedArray a=themed.obtainStyledAttributes(attrs);
+            int bg=light?0xffffffff:0xff101010;
+            boolean matches;
+            try{
+                report("SYSTEM_SPLASH_RESOURCE_"+(light?"LIGHT":"DARK")+"_"+(night?"NIGHT":"DAY"),
+                    String.format(java.util.Locale.ROOT,"status=%08x,nav=%08x,lightStatus=%b,lightNav=%b,bg=%08x",
+                        a.getColor(0,0),a.getColor(1,0),a.getBoolean(2,false),a.getBoolean(3,false),a.getColor(4,0)));
+                matches=a.getColor(0,0)==bg&&a.getColor(1,0)==bg&&a.getBoolean(2,false)==light
+                    &&a.getBoolean(3,false)==light&&a.getColor(4,0)==bg;
+            }finally{a.recycle();}
+            require(matches,"SYSTEM_SPLASH_"+(light?"LIGHT":"DARK")+"_"+(night?"NIGHT":"DAY"));
+        }
+        report("SYSTEM_SPLASH_PALETTES","PASS_REAL_ANDROID_DAY_NIGHT_RESOLUTION");
+    }
+
     /** Observe only geometry/booleans: never log account, prompt or chat text. */
     private void startupHandoff()throws Exception{
         JSONObject safe=state("const e=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({empty:!!e&&!e.textContent.trim()&&!document.querySelector('.agy-attachment-card')});");
@@ -248,29 +372,44 @@ public final class MobileCandidateProbe extends Instrumentation {
         int generation=(Integer)field(core,"readyGeneration");
         Method load=Class.forName("com.agy.ui.MainActivity",true,target.getClassLoader()).getDeclaredMethod("loadCoreUi",int.class);load.setAccessible(true);
         runOnMainSync(()->{try{load.invoke(activity,generation);}catch(Exception error){throw new RuntimeException(error);}});
-        long start=SystemClock.elapsedRealtime(),readyAt=0;boolean stable=true;int samples=0;
+        final int[] barBefore={0},flagsBefore={0};
+        runOnMainSync(()->{barBefore[0]=activity.getWindow().getStatusBarColor();flagsBefore[0]=activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;});
+        long start=SystemClock.elapsedRealtime(),readyAt=0;boolean stable=true,barsStable=true;int samples=0;
         String previous="";
         do{
-            JSONObject snap=state("const e=document.querySelector('.agy-composer [contenteditable=true]'),h=document.querySelector('[data-testid=mobile-open-settings]'),r=h?.getBoundingClientRect();return JSON.stringify({composer:!!e,buttons:document.querySelectorAll('#root button').length,fonts:document.fonts?.status||'unsupported',document:document.readyState,header:r?[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)]:null,gate:!!window.__agStartupReady,now:Math.round(performance.now())});");
+            JSONObject snap;
+            try{snap=state("const e=document.querySelector('.agy-composer [contenteditable=true]'),h=document.querySelector('[data-testid=mobile-open-settings]'),r=h?.getBoundingClientRect();return JSON.stringify({composer:!!e,buttons:document.querySelectorAll('#root button').length,fonts:document.fonts?.status||'unsupported',document:document.readyState,header:r?[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)]:null,gate:!!window.__agStartupReady,now:Math.round(performance.now())});");
+            }catch(IllegalStateException navigationSwap){
+                if(Boolean.TRUE.equals(field(activity,"webUiReady")))throw navigationSwap;
+                report("HANDOFF_NAVIGATION_WINDOW","RETRY_PENDING_DOCUMENT");continue;
+            }
             boolean ready=Boolean.TRUE.equals(field(activity,"webUiReady"));
             View splash=(View)field(activity,"splash").getClass().getMethod("view").invoke(field(activity,"splash"));
             snap.put("ready",ready);snap.put("splash",splash.getVisibility()==View.VISIBLE);snap.put("opaque",splash.getAlpha()==1f);
             snap.put("elapsed",SystemClock.elapsedRealtime()-start);
+            final int[] currentBar={0},currentFlags={0};
+            runOnMainSync(()->{currentBar[0]=activity.getWindow().getStatusBarColor();currentFlags[0]=activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;});
+            snap.put("statusBar",String.format(java.util.Locale.ROOT,"%08x",currentBar[0]));
+            snap.put("darkStatusIcons",currentFlags[0]!=0);
+            if(currentBar[0]!=barBefore[0]||currentFlags[0]!=flagsBefore[0])barsStable=false;
             if(!ready&&splash.getVisibility()==View.VISIBLE&&splash.getAlpha()!=1f)stable=false;
             if(ready){if(readyAt==0)readyAt=SystemClock.elapsedRealtime();if(!snap.optBoolean("composer")||!"complete".equals(snap.optString("document"))||"loading".equals(snap.optString("fonts")))stable=false;}
-            String key=snap.optBoolean("composer")+":"+snap.optInt("buttons")+":"+snap.optString("fonts")+":"+snap.optString("document")+":"+snap.opt("header")+":"+ready;
+            String key=snap.optBoolean("composer")+":"+snap.optInt("buttons")+":"+snap.optString("fonts")+":"+snap.optString("document")+":"+snap.opt("header")+":"+ready+":"+snap.opt("statusBar")+":"+snap.optBoolean("darkStatusIcons");
             if(!key.equals(previous)){report("HANDOFF_SAMPLE",snap.toString());previous=key;}
             samples++;SystemClock.sleep(40);
         }while(SystemClock.elapsedRealtime()-start<30000&&(readyAt==0||SystemClock.elapsedRealtime()-readyAt<1800));
         require(readyAt>0,"HANDOFF_UI_READY");
         require(generation==(Integer)field(core,"readyGeneration"),"HANDOFF_CORE_UNCHANGED");
         report("HANDOFF_OBSERVED_STABLE",stable?"PASS":"FAIL_EARLY_OR_TRANSPARENT");
+        require(barsStable,"HANDOFF_SYSTEM_BAR_STABLE");
         report("HANDOFF_SAMPLE_COUNT",samples);
     }
 
     private void nativeStartup()throws Exception {
         JSONObject readyProof=state("return JSON.stringify({current:typeof window.__agStartupReady?.signal==='function'&&window.__agStartupReady.signal.toString().includes('hasRenderedUi')});");
         require(readyProof.optBoolean("current"),"STARTUP_REAL_READY_PROOF_LOADED");
+        JSONObject themeProof=state("return JSON.stringify({committed:typeof window.__agThemeSync?.releaseStartup==='function'&&window.__AG_NATIVE_UI_STARTING__===false});");
+        require(themeProof.optBoolean("committed"),"STARTUP_NATIVE_THEME_RELEASED_AFTER_COMMIT");
         Object live=field(activity,"splash");
         require(Boolean.TRUE.equals(field(activity,"webUiReady")),"STARTUP_REAL_UI_READY");
         View liveView=(View)live.getClass().getMethod("view").invoke(live);
@@ -462,6 +601,9 @@ public final class MobileCandidateProbe extends Instrumentation {
                 state("window.__agyPolishThemeRow()?.querySelector('[aria-label=\""+mode+"\"]')?.click();return '{}';");SystemClock.sleep(900);
                 info=state("const e=window.__agyPolishSection("+JSONObject.quote(mode+" Theme")+");return JSON.stringify({ready:!!e});");
                 require(info.optBoolean("ready"),"POLISH_"+mode+"_THEME_APPLIED");
+                final int[] nativeBar={0},nativeIcons={0};
+                runOnMainSync(()->{nativeBar[0]=activity.getWindow().getStatusBarColor();nativeIcons[0]=activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;});
+                require(nativeBar[0]==("Dark".equals(mode)?0xff101010:0xffffffff)&&(nativeIcons[0]!=0)=="Light".equals(mode),"POLISH_"+mode+"_NATIVE_SYSTEM_BARS");
                 info=state("const row=window.__agyPolishThemeRow(),group=row.closest('.agy-settings-group'),active=row.querySelector('button[data-pressed],button[aria-pressed=true]'),switches=[...document.querySelectorAll('.agy-settings-group [role=switch]')];const bg=e=>getComputedStyle(e).backgroundColor;return JSON.stringify({contrast:!!active&&bg(active)!=='rgba(0, 0, 0, 0)'&&bg(active)!==bg(group)&&switches.every(e=>bg(e)!==bg(e.closest('.agy-settings-group')))});");
                 require(info.optBoolean("contrast"),"POLISH_"+mode+"_SELECTED_AND_SWITCH_CONTRAST");
                 SystemClock.sleep(300);captureRegion(".agy-settings-page","SETTINGS_"+mode.toUpperCase());
@@ -834,7 +976,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -846,6 +988,7 @@ public final class MobileCandidateProbe extends Instrumentation {
             }
             Intent launch=target.getPackageManager().getLaunchIntentForPackage("com.agy.dev");launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity=startActivitySync(launch);
+            if(pixelsMode){startupPixelFrames();ok=true;return;}
             // Dismiss first-launch settings/permission surfaces without granting broad storage access.
             for(int i=0;i<12&&!activity.hasWindowFocus();i++){
                 android.view.accessibility.AccessibilityNodeInfo root=getUiAutomation().getRootInActiveWindow();
@@ -862,6 +1005,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(barsMode){systemBarThemes();ok=true;return;}
             if(handoffMode){startupHandoff();ok=true;return;}
             if(desktopMode){adaptiveDesktop();ok=true;return;}
             if(startupMode){nativeStartup();ok=true;return;}

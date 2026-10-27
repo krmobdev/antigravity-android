@@ -25,6 +25,11 @@
         <item name="android:windowBackground">@color/splash_bg_dark</item>
     </style>
     <style name="SplashThemeLight" parent="@style/AppTheme">
+        <!-- Explicit starting-window palette: AppTheme defaults to dark bars. -->
+        <item name="android:statusBarColor">@color/splash_bg_light</item>
+        <item name="android:navigationBarColor">@color/splash_bg_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowBackground">@color/splash_bg_light</item>
     </style>
 </resources>

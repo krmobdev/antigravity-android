@@ -98,3 +98,21 @@ screenshots). It reports observed stability separately from probe completion;
 inspect HANDOFF_OBSERVED_STABLE as well as INSTRUMENTATION_CODE. Core generation
 must stay unchanged. Native startup fixtures additionally require an opaque
 startup view through the actual system-splash exit handler.
+
+
+System bar mode: -e mode bars resolves the actual packaged SplashThemeLight
+and SplashThemeDark under DAY and NIGHT Android configurations, checking status/
+navigation colors, background and icon appearance. No user setting is changed.
+Handoff mode also samples the native status-bar color/icon flag through UI reload
+and fails if either changes. These attributes/geometry checks do not assert the
+colors of every SurfaceFlinger frame during an OS transition.
+
+
+Pixel mode: -e mode pixels starts sampling at the real Connecting stage,
+continues through UI-ready plus 1.5 seconds (65-second safety cap), and compares
+three status-bar/background bands plus three app-header bands. Full screenshots
+are held only in memory and immediately recycled; no screenshot/video/chat text
+is stored or exported. A PreDraw listener logs only native color, icon flag,
+theme mode and ready-state transitions. Missing UI readiness is PENDING, never
+pixel acceptance. Sampling can miss a shorter frame; owner perception remains
+part of acceptance. It never changes theme, sends a prompt or restarts Core.

@@ -359,3 +359,10 @@ insufficient). Auth/onboarding button-only pages retain their fallback. The same
 content node and header geometry/palette must survive the two paint frames;
 changed proof retries through the existing bounded observer instead of revealing
 an intermediate header. Native additionally waits for compositor acknowledgement.
+
+
+Theme sync still follows the real Core body classes, but suppresses native
+setThemeByUser/onVisualThemeChanged during the injected startup phase. Native
+releases it after the committed usable frame; the final observed theme flushes
+once, and later Settings theme changes keep their existing behavior. There is
+no timer-based release and no replacement of the Core theme controller.

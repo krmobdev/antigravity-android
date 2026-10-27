@@ -5,6 +5,12 @@ window.__agThemeSync = {
   __installed: true,
   getTheme: resolveTheme,
   sync: notify,
+  releaseStartup: function () {
+    if (window.__AG_NATIVE_UI_STARTING__ !== true) return notify();
+    window.__AG_NATIVE_UI_STARTING__ = false;
+    state.last = null; // Flush the final observed theme exactly once.
+    return notify();
+  },
   probe: function () {
     return {
       installed: state.installed,

@@ -288,6 +288,10 @@ public class MainActivity extends Activity
                             || isDestroyed() || isFinishing()) return;
                     visualReadyPending = false;
                     webUiReady = true;
+                    // Core can briefly paint its default theme while hydrating.
+                    // Release native theme sync only after the final UI frame.
+                    webViewHost.getWebView().evaluateJavascript(
+                            "window.__agThemeSync && window.__agThemeSync.releaseStartup && window.__agThemeSync.releaseStartup();", null);
                     dismissSplash();
                     navigatePendingConversation();
                 }

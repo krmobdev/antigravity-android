@@ -247,3 +247,15 @@ Startup reveal now waits for WebView.postVisualStateCallback after the DOM
 proof. Per-load sequence guards discard stale compositor callbacks and duplicate
 ready signals. The native startup surface remains opaque during system-splash
 exit; only the system layer fades. No Core/service lifecycle is changed.
+
+
+Light launcher splash explicitly sets white status/navigation bars and dark
+system icons in both base and API31+ resources. A light window background alone
+does not override the inherited dark bars of AppTheme. Dark splash resources
+remain unchanged. Android resource-resolution QA checks Light/Dark under both
+DAY/NIGHT configurations; handoff QA samples the live status color/icon flag.
+
+
+The injected document locks native theme sync while Core hydrates. Only the
+guarded WebView compositor-ready callback releases this lock; intermediate Core
+default themes cannot repaint native bars or overwrite the persisted mode.
