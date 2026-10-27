@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 python3 - "$ROOT" <<'PY'
 from pathlib import Path
-import hashlib, importlib.util, shutil, sys, tempfile, types
+import hashlib, importlib.util, shutil, subprocess, sys, tempfile, types
 root = Path(sys.argv[1])
 with tempfile.TemporaryDirectory(prefix="agy-staging-regression-") as d:
     tmp = Path(d)
@@ -35,6 +35,9 @@ with tempfile.TemporaryDirectory(prefix="agy-staging-regression-") as d:
         assets = output / "assets"
         web = assets / "web"
         js = (web / "generated/main.js").read_text()
+        # Test the exact JS packed into each edition; not stale checkout generated files.
+        subprocess.run(["node", str(root / "web/tests/notification_back_flow.behavior.cjs"),
+                        str(web / "generated/main.js")], check=True)
         assert js.count("AGY_SCROLL_TIMELINE_ONLY_AB") == 1, "ScrollTimeline patch missing"
         assert "function G$a(){var a=globalThis.ScrollTimeline" not in js
         for marker in ("AGY_V24_TRANSPORT_RECONNECT", "AGY_V24_SUMMARY_RECONNECT",

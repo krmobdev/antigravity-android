@@ -51,6 +51,8 @@ PY
 node "$ROOT/web/tests/scroll_timeline_only_ab.test.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_react_v24.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/runtime_v24.behavior.cjs" "$TMP/web/generated/main.js"
+# Actual staged navigation code, never potentially stale checked-in web/generated/main.js.
+node "$ROOT/web/tests/notification_back_flow.behavior.cjs" "$TMP/web/generated/main.js"
 node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
     "$ROOT/web/src/patches/web_optimizations/sidebar-reconcile.js" \
     "$ROOT/web/src/patches/web_optimizations/agent-notifications.js"
