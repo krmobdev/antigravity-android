@@ -67,3 +67,32 @@ and 1e83b60 (client ownership, Core drain, 210-second cap and tests).
 The old unsigned APKs remain preserved, marked on hold in release documents
 and Download/DO-NOT-SIGN-v2.4.5-kr1.txt. No production package was installed or
 removed, no main/tag/release changed, and no release signing key was accessed.
+
+
+## v8 follow-up: microphone starts but field remains empty
+
+Owner acceptance of v7 FAILED: after Stop, processing sometimes ended with an
+empty field and no error. Release hold remains active.
+
+The six new behavior cases were rerun against the unchanged 4879828/v7 source,
+including its own JS helper and stable controllable RPC mocks: all six failed.
+The former three-second finalization timeout discarded a valid four-second
+response. Stop before ready canceled buffered speech. endAudioSession did not
+wait for sendAudioChunk acknowledgement, send failures only reached console,
+empty completion looked successful, and queued PCM between polls was discarded.
+
+v8 removes the silent cutoff, retains Stop-before-ready audio, drains native tail,
+waits for chunk acknowledgement and browser worklet completion, and distinguishes
+Cancel from Stop. Empty/missing/error results show explicit English errors.
+Recording remains limited to 210 seconds. Processing alone may take up to
+30 seconds with bounded 20-second ready/chunk/end waits. No raw audio, transcript
+or arbitrary RPC message is logged.
+
+Validation and new Dev artifact/device results are recorded below after completion.
+Prior v7 hardware success proves capture only and does not approve v8 transcription.
+
+v8 regression checkpoint: 39 Python tests, Java suite and generated Web selftest
+passed. The actual streaming hook plus delivery/decoder helpers pass 23 behavior
+cases. The six empty-result cases fail against unchanged v7 and pass against v8;
+browser worklet tail ordering was independently reproduced before its fix.
+Rebuilt device/real-transcription acceptance is still pending at this checkpoint.

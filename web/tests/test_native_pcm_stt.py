@@ -16,7 +16,7 @@ class NativePcmSttTest(unittest.TestCase):
         self.assertIn('isStreamingTranscriptionEnabled:Yf',after)
         self.assertIn('n.streamAudioTranscription(p(Uia,{mimeType:"audio/pcm;rate=16000"',after)
         self.assertIn('agyNativePcmStart(agyPcmChunk',after)
-        self.assertRegex(after[after.index('var dO='):after.index(';function D5a')],r'agyNativePcmStop\(\);\s*var fa=L.current')
+        self.assertIn('agyNativePcmStop(true)',after)
         self.assertIn('agyNativePcmStop();H.current',after)
         self.assertNotIn('oe=(0,A.useMemo)(()=>Yf&&!agyNativeMicAvailable()',after)
 

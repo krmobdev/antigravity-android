@@ -1268,7 +1268,7 @@ public final class MobileCandidateProbe extends Instrumentation {
     private void microphonePcmHardwareRestart()throws Exception {
         JSONObject before=state("return JSON.stringify({idle:!document.querySelector('.agy-dictation-countdown,button[aria-label=\\\"Stop recording\\\"]'),build:window.__AGY_AUDIO_DIAG_BUILD__});");
         require(before.optBoolean("idle"),"PCM_HARDWARE_EXISTING_CAPTURE_IDLE");
-        require("2026-10-27-pcm-generation-v7".equals(before.optString("build")),"PCM_HARDWARE_CURRENT_WEB_ASSET");
+        require("2026-10-27-pcm-delivery-v8".equals(before.optString("build")),"PCM_HARDWARE_CURRENT_WEB_ASSET");
         Class<?> cl=Class.forName("com.agy.bridge.NativePcmCapture",true,target.getClassLoader());
         Object capture=cl.getConstructor().newInstance();
         Method start=cl.getMethod("start",Activity.class),poll=cl.getMethod("poll"),stop=cl.getMethod("stop");

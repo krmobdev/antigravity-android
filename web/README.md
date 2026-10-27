@@ -394,9 +394,14 @@ For the verified device results and remaining legacy-notification limitation, se
 The pinned upstream streaming hook retains Core RPC schemas and editor behavior.
 Canceled and replaced generations cannot clear a newer capture, report an old
 error or insert old text. Stop releases PCM synchronously, requests endAudioSession
-once and retains final transcript delivery. A restart waits for both the real
-Core acknowledgement (bounded at 5 seconds) and prior stream completion or the
-existing 3-second finalization deadline. Pending startup is visible and disabled.
+once and retains final transcript delivery. Stop retains audio even before Core's ready event, drains queued native frames,
+and waits for every submitted audio request to acknowledge before ending the
+session. Browser fallback also waits for the worklet's final chunk/done marker.
+A restart waits for the original session's final text or explicit failure.
+The old silent 3-second cutoff is removed. Ready, audio requests and end
+acknowledgement have 20-second error deadlines; overall post-Stop processing
+is bounded at 30 seconds. No timeout pretends transcription succeeded.
+Pending startup/finalization is visible and disables another recording.
 A per-generation epoch cancels queued restarts on cleanup.
 
 All dictation modes stop after 210 seconds. A monotonic countdown above the
@@ -408,3 +413,17 @@ The routine selftest now executes the actual transformed dO hook with controlled
 Core responses, not only the PCM adapter. Tests cover ten cycles, cancellation
 before ready, delayed stop acknowledgement, final transcript retention, stale
 callbacks, bounded error codes, elapsed-time countdown and timer cleanup.
+
+
+### Empty transcription follow-up (v8)
+
+The owner found that successful microphone capture still sometimes produced no
+text. Six real-hook regressions failed against unchanged v7: delayed final text,
+Stop before ready, end overtaking audio delivery, ignored send failure, empty
+completion and a queued native tail. v8 keeps PCM16/16kHz and original RPC/editor
+selection, fixes these delivery transitions, and shows English errors for missing
+results. Capturing still stops at 3:30; extra processing time never extends
+microphone capture. Cancel discards audio explicitly, while Stop finalizes it.
+Browser worklet completion, late/missing replies, transport/memory bounds and
+malformed PCM frames have additional behavior tests. No audio or transcript is
+included in test output or diagnostic storage.

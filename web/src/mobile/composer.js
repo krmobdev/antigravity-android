@@ -1,4 +1,4 @@
-window.__AGY_AUDIO_DIAG_BUILD__="2026-10-27-pcm-generation-v7";
+window.__AGY_AUDIO_DIAG_BUILD__="2026-10-27-pcm-delivery-v8";
 function agyAudioError(error){
   // Native recorder already stores an English message. Reformatting it
   // used to erase the real reason and show the same generic error every time.
@@ -23,7 +23,10 @@ function agyAudioError(error){
     (/^Android (microphone|transcription) error \(ERR_[A-Z_]{2,48}\)\.$/.test(error) ||
      /^Transcription failed \(Core status [0-9]{1,2}\)\. Try recording again\.$/.test(error) ||
      error==="Previous dictation is still finishing. Try again."))return error;
+  const dictationErrors={"ERR_CORE_CAPTURE_STOP_TIMEOUT":"Audio capture did not finish. Please try again.","ERR_CORE_READY_TIMEOUT": "Transcription did not become ready. Please try again.", "ERR_CORE_READY_CLOSED": "Transcription closed before it was ready. Please try again.", "ERR_CORE_CHUNK_TIMEOUT": "Could not deliver the recording for transcription. Please try again.", "ERR_CORE_CHUNK_SEND": "Could not deliver the recording for transcription. Please try again.", "ERR_CORE_CHUNK_BACKLOG": "Transcription connection is too slow. Please try again.", "ERR_CORE_AUDIO_BUFFER": "Transcription audio buffer is full. Please try again.", "ERR_CORE_RESULT_TIMEOUT": "Transcription timed out. Please try again.", "ERR_CORE_NO_TRANSCRIPT": "No transcription was returned. Please try again."};
+  if(typeof error==="string"&&Object.values(dictationErrors).includes(error))return error;
   const code=error?.message;
+  if(typeof code==="string"&&Object.prototype.hasOwnProperty.call(dictationErrors,code))return dictationErrors[code];
   if(typeof code==="string"&&/^ERR_[A-Z_]{2,48}$/.test(code)){
     if(code==="ERR_CORE_END_TIMEOUT")return "Previous dictation is still finishing. Try again.";
     return "Android microphone error ("+code+").";
@@ -126,13 +129,26 @@ function agyNativePcmAvailable(){
     && typeof api?.readNativePcm==="function"
     && typeof api?.stopNativePcm==="function";
 }
-function agyNativePcmStop(){
+function agyNativePcmStop(flush=false){
   const current=agyNativePcmSession;
   if(!current)return;
   current.alive=false;
   if(current.timer!==null)clearTimeout(current.timer);
   agyNativePcmSession=null;
-  try{current.api.stopNativePcm(current.token)}catch(e){}
+  let failure=null;
+  try{
+    if(flush){
+      // Native queue is capped at 20 frames; three reads drain its existing
+      // backlog (eight frames per poll), with one bounded extra empty check.
+      for(let i=0;i<4;i++){
+        const data=agyDecodeNativePcm(current.api.readNativePcm(current.token));
+        if(!data.length)break;
+        current.onChunk(data);
+      }
+    }
+  }catch(error){failure=error?.message||"ERR_NATIVE_PCM_READ"}
+  finally{try{current.api.stopNativePcm(current.token)}catch(error){failure="ERR_NATIVE_PCM_BRIDGE"}}
+  if(failure)current.onError(/^ERR_[A-Z_]{2,48}$/.test(failure)?failure:"ERR_NATIVE_PCM_READ");
 }
 function agyNativePcmStart(onChunk,onError){
   if(!agyNativePcmAvailable())throw Error("ERR_NATIVE_PCM_UNAVAILABLE");
@@ -144,39 +160,105 @@ function agyNativePcmStart(onChunk,onError){
   catch(e){throw Error("ERR_NATIVE_PCM_BRIDGE")}
   if(status!=="OK")
     throw Error(/^ERR_[A-Z_]{2,48}$/.test(status)?status:"ERR_NATIVE_PCM_START");
-  const session={api,token,alive:true,timer:null};
+  const session={api,token,onChunk,onError,alive:true,timer:null};
   agyNativePcmSession=session;
   const read=()=>{
     if(!session.alive)return;
     try{
-      const value=api.readNativePcm(token);
-      if(typeof value!=="string")throw Error("ERR_NATIVE_PCM_REPLY");
-      if(/^ERR_[A-Z_]{2,48}$/.test(value))throw Error(value);
-      if(value){
-        if(value.length>32*1024)throw Error("ERR_NATIVE_PCM_FRAME");
-        const binary=atob(value),data=new Uint8Array(binary.length);
-        for(let i=0;i<binary.length;i++)data[i]=binary.charCodeAt(i);
-        if(data.length)onChunk(data);
-      }
+      const data=agyDecodeNativePcm(api.readNativePcm(token));
+      if(data.length)onChunk(data);
     }catch(e){
       const code=e?.message;
       agyNativePcmStop();
       onError(/^ERR_[A-Z_]{2,48}$/.test(code)?code:"ERR_NATIVE_PCM_READ");
       return;
     }
-    session.timer=setTimeout(read,45);
+    if(session.alive)session.timer=setTimeout(read,45);
   };
   session.timer=setTimeout(read,45);
 }
 
-// Wait for the real Core stop acknowledgement before reopening capture.
-function agyEndDictationSession(end){
+// Wait for real Core completion; network latency is not successful dictation.
+function agyEndDictationSession(end,signal){
+  let request;
+  try{request=end()}catch(error){return Promise.reject(error)}
+  return agyDictationWait(request,20000,"ERR_CORE_END_TIMEOUT",signal);
+}
+// Bounded waits reject on cancellation and clear their timer/listener on every exit.
+function agyDictationWait(promise,ms,code,signal){
   return new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>reject(Error("ERR_CORE_END_TIMEOUT")),5000);
-    try{Promise.resolve(end()).then(resolve,reject).finally(()=>clearTimeout(timer));}
-    catch(error){clearTimeout(timer);reject(error);}
+    let settled=false;
+    const finish=(fn,value)=>{
+      if(settled)return;settled=true;clearTimeout(timer);
+      signal?.removeEventListener("abort",abort);fn(value);
+    };
+    const abort=()=>finish(reject,new DOMException("Aborted","AbortError"));
+    const timer=setTimeout(()=>finish(reject,Error(code)),ms);
+    // Observe the underlying operation even if it completes after timeout/abort.
+    Promise.resolve(promise).then(value=>finish(resolve,value),error=>finish(reject,error));
+    if(signal?.aborted)abort();else signal?.addEventListener("abort",abort,{once:true});
   });
 }
+// Keep the original Core request shapes and sequence numbers. Only delivery
+// completion is tracked; no audio is stored on disk or in diagnostic output.
+function agyCreateDictationDelivery(signal,send,onFailure){
+  let id=null,buffer=[],bufferedBytes=0,failure=null,resolveReady;
+  const pending=new Set();
+  const ready=new Promise(resolve=>{resolveReady=resolve});
+  const fail=error=>{
+    if(failure||signal.aborted)return;
+    failure=error;
+    onFailure(error);
+  };
+  const dispatch=(data,seq)=>{
+    if(signal.aborted||failure)return;
+    if(pending.size>=128){fail(Error("ERR_CORE_CHUNK_BACKLOG"));return;}
+    let request;
+    try{request=send(id,data,seq)}catch(error){fail(Error("ERR_CORE_CHUNK_SEND"));return;}
+    const promise=agyDictationWait(request,20000,"ERR_CORE_CHUNK_TIMEOUT",signal);
+    pending.add(promise);
+    promise.then(()=>pending.delete(promise),error=>{
+      pending.delete(promise);
+      if(!signal.aborted)fail(Number.isInteger(error?.code)?error:Error("ERR_CORE_CHUNK_SEND"));
+    });
+  };
+  const cancel=()=>{buffer=[];bufferedBytes=0;pending.clear();signal.removeEventListener("abort",cancel)};
+  signal.addEventListener("abort",cancel,{once:true});
+  return {
+    add(data,seq){
+      if(signal.aborted||failure)return;
+      if(id){dispatch(data,seq);return;}
+      // 210 seconds of mono 16kHz PCM16: never accumulate beyond one dictation.
+      if(bufferedBytes+data.length>6720000){fail(Error("ERR_CORE_AUDIO_BUFFER"));return;}
+      buffer.push({data,seq});bufferedBytes+=data.length;
+    },
+    ready(sessionId){
+      if(signal.aborted||failure||id)return;
+      id=sessionId;
+      const queued=buffer;buffer=[];bufferedBytes=0;
+      for(const chunk of queued)dispatch(chunk.data,chunk.seq);
+      resolveReady(id);
+    },
+    async drain(){
+      const sessionId=await agyDictationWait(ready,20000,"ERR_CORE_READY_TIMEOUT",signal);
+      if(failure)throw failure;
+      while(pending.size)await Promise.all([...pending]);
+      if(failure)throw failure;
+      return sessionId;
+    },
+    cancel
+  };
+}
+function agyDecodeNativePcm(value){
+  if(typeof value!=="string")throw Error("ERR_NATIVE_PCM_REPLY");
+  if(/^ERR_[A-Z_]{2,48}$/.test(value))throw Error(value);
+  if(value.length>32*1024)throw Error("ERR_NATIVE_PCM_FRAME");
+  const binary=atob(value),data=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)data[i]=binary.charCodeAt(i);
+  if(data.length%2)throw Error("ERR_NATIVE_PCM_FRAME");
+  return data;
+}
+
 const AGY_DICTATION_LIMIT_MS=210000;
 function agyDictationRemaining(deadline,now){
   return Math.max(0,Math.ceil((deadline-now)/1000));
