@@ -157,3 +157,18 @@ and neither modifies the Composer draft nor sends audio to Core. Audio frames
 are discarded locally; output contains only PASS flags and counts. This proves
 hardware lifecycle, not speech recognition or a complete model request.
 Check INSTRUMENTATION_CODE and individual flags, not the shell exit code alone.
+
+### Real Core and editor speech fixture
+
+Mode mic-core-fixture requires an empty idle Composer and current v8 assets.
+It generates the public phrase "This is a test." with an installed offline
+English Android TTS voice, converts that PCM to mono16kHz and substitutes only
+the capture source. It runs the real Core transcription RPC, Stop, and editor
+insertion three times. It never opens the microphone, sends a chat/agent request,
+or logs account data/transcript/audio. Attachment-mode recording is blocked.
+
+Temporary TTS output is app-cache only and deleted. The bridge is restored in
+finally. Only exact known fixture text may be cleared; unexpected text is kept.
+Missing offline TTS is an environment limitation, not successful transcription.
+Require all three REAL_TRANSCRIPT_IN_EDITOR flags, settled finalization,
+restored draft and INSTRUMENTATION_CODE: 0. Hardware lifecycle is a separate mode.

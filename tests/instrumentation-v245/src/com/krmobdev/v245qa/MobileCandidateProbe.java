@@ -23,7 +23,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Dev-only, no model requests; outputs flags/counts, never account/chat content. */
+/** Dev-only, no agent task requests; the Core fixture mode transcribes public synthetic speech. Outputs flags/counts only. */
 public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
     private boolean desktopMode;
@@ -45,6 +45,7 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean micUiMode;
     private boolean micPcmUiMode;
     private boolean micPcmHardwareMode;
+    private boolean micCoreFixtureMode,micCoreFixtureCleanupMode;
     private boolean micVisualMode;
     private Context target;
     private Activity activity;
@@ -343,6 +344,21 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
 
 
+    private void clearCoreFixtureDraft()throws Exception{
+        final String guard="const e=document.querySelector('.agy-composer [contenteditable=true]');const raw=e?.textContent||'';"+
+            "const text=raw.toLowerCase().replace(/[.!?]/g,'').replace(/\\s+/g,' ').trim();"+
+            "return JSON.stringify({owned:!!text&&/^[A-Za-z\\s.!?]*$/.test(raw)&&!text.replace(/this is a test/g,'').trim(),empty:!raw.trim()});";
+        JSONObject before=state(guard);
+        if(before.optBoolean("empty")){report("CORE_FIXTURE_DRAFT_ALREADY_EMPTY","PASS");return;}
+        require(before.optBoolean("owned"),"CORE_FIXTURE_ONLY_PUBLIC_TEXT_GUARD");
+        tapExpression("document.querySelector('.agy-composer [contenteditable=true]')","CORE_FIXTURE_FOCUS_OWN_DRAFT");
+        require(state(guard).optBoolean("owned"),"CORE_FIXTURE_RECHECK_OWN_DRAFT");
+        long now=SystemClock.uptimeMillis();
+        sendKeySync(new KeyEvent(now,now,KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_A,0,KeyEvent.META_CTRL_ON));
+        sendKeySync(new KeyEvent(now,now+30,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_A,0,KeyEvent.META_CTRL_ON));
+        sendKeyDownUpSync(KeyEvent.KEYCODE_DEL);SystemClock.sleep(300);
+        require(state(guard).optBoolean("empty"),"CORE_FIXTURE_NATIVE_DELETE_APPLIED");
+    }
     private void clearOwnedRouteDraft()throws Exception{
         if(!state("const e=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({owned:e?.textContent.trim()==='AGY notification regression draft'});").optBoolean("owned"))return;
         tapExpression("document.querySelector('.agy-composer [contenteditable=true]')","ROUTE_CLEAR_OWN_DRAFT");
@@ -1377,7 +1393,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);pickerMode="picker".equals(b.getString("mode"));routeLegacyMode="route-legacy".equals(b.getString("mode"));routeIntentMode=routeLegacyMode||"route-intent".equals(b.getString("mode"));routeMode=routeIntentMode||"route-reuse".equals(b.getString("mode"));fixtureText=b.getString("fixtureText");fixtureImage=b.getString("fixtureImage");fixtureFolder=b.getString("fixtureFolder");pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micPcmHardwareMode="mic-pcm-hardware".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);pickerMode="picker".equals(b.getString("mode"));routeLegacyMode="route-legacy".equals(b.getString("mode"));routeIntentMode=routeLegacyMode||"route-intent".equals(b.getString("mode"));routeMode=routeIntentMode||"route-reuse".equals(b.getString("mode"));fixtureText=b.getString("fixtureText");fixtureImage=b.getString("fixtureImage");fixtureFolder=b.getString("fixtureFolder");pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micPcmHardwareMode="mic-pcm-hardware".equals(b.getString("mode"));micCoreFixtureMode="mic-core-fixture".equals(b.getString("mode"));micCoreFixtureCleanupMode="mic-core-fixture-cleanup".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -1421,6 +1437,8 @@ public final class MobileCandidateProbe extends Instrumentation {
             if(micUiMode){microphoneButtonRouting();ok=true;return;}
             if(micPcmUiMode){microphonePcmButtonRouting();ok=true;return;}
             if(micPcmHardwareMode){microphonePcmHardwareRestart();ok=true;return;}
+            if(micCoreFixtureCleanupMode){clearCoreFixtureDraft();ok=true;return;}
+            if(micCoreFixtureMode){new DictationCoreFixture(target,this::state,this::require,this::report,this::runOnMainSync,this::clearCoreFixtureDraft).run();ok=true;return;}
             if(micVisualMode){microphoneVisualStyles();ok=true;return;}
             boolean uiOk=true;
             try{ui();}catch(Throwable e){uiOk=false;report("UI_PROBE_ERROR",e.getClass().getSimpleName());

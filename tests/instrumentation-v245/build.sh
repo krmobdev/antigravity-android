@@ -2,9 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 export ANDROID_DATA="${ANDROID_DATA:-/data}"
+python3 test_core_fixture_guard.py
 mkdir -p out/obj out/dex
 aapt package -f -M AndroidManifest.xml -S res -I ../../tools/android.jar -F out/resources.ap_
-javac -source 8 -target 8 -encoding UTF-8 -cp ../../tools/android.jar -d out/obj src/com/krmobdev/v245qa/MobileCandidateProbe.java
+javac -source 8 -target 8 -encoding UTF-8 -cp ../../tools/android.jar -d out/obj src/com/krmobdev/v245qa/MobileCandidateProbe.java src/com/krmobdev/v245qa/DictationCoreFixture.java
 bash ../../modules/builder/04_dex.sh out/dex out/obj ../../tools/r8.jar ../../tools/android.jar 24
 cp out/resources.ap_ out/unsigned.apk
 python - <<'PY'
