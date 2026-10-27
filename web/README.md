@@ -388,3 +388,23 @@ the chat behind the dialog. Behavior tests assert zero history mutation.
 Mobile attachments now share one 86px square tile size for photos, documents, audio and video. Documents show an icon, truncated name, size and compact type; full name/MIME remain available to accessibility and the open control. Every remove target is 48px with the same themed visual circle. Preview, selectedMedia, Core formats/limit and send behavior are unchanged. The real Picker regression checks computed mixed-card geometry and remove targets.
 
 For the verified device results and remaining legacy-notification limitation, see docs/V2_4_5_NAVIGATION_ENGLISH_QA.md.
+
+### Dictation ownership, completion and 3:30 limit
+
+The pinned upstream streaming hook retains Core RPC schemas and editor behavior.
+Canceled and replaced generations cannot clear a newer capture, report an old
+error or insert old text. Stop releases PCM synchronously, requests endAudioSession
+once and retains final transcript delivery. A restart waits for both the real
+Core acknowledgement (bounded at 5 seconds) and prior stream completion or the
+existing 3-second finalization deadline. Pending startup is visible and disabled.
+A per-generation epoch cancels queued restarts on cleanup.
+
+All dictation modes stop after 210 seconds. A monotonic countdown above the
+editor shows English time remaining without announcing every second to TalkBack.
+Native capture enforces the same limit if JavaScript timers are delayed. The
+native limit is finalized as an ordinary Stop, preserving transcription.
+
+The routine selftest now executes the actual transformed dO hook with controlled
+Core responses, not only the PCM adapter. Tests cover ten cycles, cancellation
+before ready, delayed stop acknowledgement, final transcript retention, stale
+callbacks, bounded error codes, elapsed-time countdown and timer cleanup.

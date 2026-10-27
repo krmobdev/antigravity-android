@@ -16,7 +16,7 @@ class NativePcmSttTest(unittest.TestCase):
         self.assertIn('isStreamingTranscriptionEnabled:Yf',after)
         self.assertIn('n.streamAudioTranscription(p(Uia,{mimeType:"audio/pcm;rate=16000"',after)
         self.assertIn('agyNativePcmStart(agyPcmChunk',after)
-        self.assertIn('agyNativePcmStop();var fa=L.current',after)
+        self.assertRegex(after[after.index('var dO='):after.index(';function D5a')],r'agyNativePcmStop\(\);\s*var fa=L.current')
         self.assertIn('agyNativePcmStop();H.current',after)
         self.assertNotIn('oe=(0,A.useMemo)(()=>Yf&&!agyNativeMicAvailable()',after)
 
@@ -51,6 +51,19 @@ assert.equal(stopped,1);
 """
         p=subprocess.run(['node','-e',js],cwd=ROOT,capture_output=True,text=True,timeout=30)
         self.assertEqual(p.returncode,0,p.stderr)
+
+    def test_actual_streaming_hook_lifecycle(self):
+        sys.path.insert(0,str(ROOT/'web'))
+        from patch_mobile_composer import transform
+        result=subprocess.run(['node','web/tests/voice_lifecycle.behavior.cjs'],
+            input=transform((ROOT/'web/main.js').read_text()),cwd=ROOT,
+            capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
+    def test_dictation_clock(self):
+        result=subprocess.run(['node','web/tests/voice_clock.behavior.cjs'],cwd=ROOT,
+            capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
 
     def test_native_capture_has_permission_bounds_and_no_storage(self):
         s=(ROOT/'app/src/main/java/com/agy/bridge/NativePcmCapture.java').read_text()

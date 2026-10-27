@@ -13,7 +13,7 @@ final class PcmCaptureSession {
     interface Clock { long millis(); }
     static final int FRAME_BYTES = 1280;
     private static final int MAX_FRAMES = 20;
-    private static final long LIMIT_MS = 4 * 60 * 1000L;
+    private static final long LIMIT_MS = 210 * 1000L;
     private final Clock clock;
     private Session current;
 
@@ -65,7 +65,7 @@ final class PcmCaptureSession {
         byte[] buffer = new byte[FRAME_BYTES];
         try {
             while (session.running) {
-                if (clock.millis() - session.startedAt > LIMIT_MS) {
+                if (clock.millis() - session.startedAt >= LIMIT_MS) {
                     fail(session, "ERR_PCM_LIMIT");
                     break;
                 }

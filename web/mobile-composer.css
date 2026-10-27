@@ -209,3 +209,12 @@
  .agy-settings-select-sheet [role=option]:disabled{opacity:.4}
  .agy-settings-select-sheet [role=option]:focus-visible{outline:2px solid var(--color-primary);outline-offset:-2px}
 }
+
+.agy-dictation-countdown {
+  align-self: flex-end;
+  padding: 4px 12px;
+  color: var(--foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: .8;
+}

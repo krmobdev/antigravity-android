@@ -44,6 +44,7 @@ public final class MobileCandidateProbe extends Instrumentation {
     private boolean micMode;
     private boolean micUiMode;
     private boolean micPcmUiMode;
+    private boolean micPcmHardwareMode;
     private boolean micVisualMode;
     private Context target;
     private Activity activity;
@@ -1263,6 +1264,39 @@ public final class MobileCandidateProbe extends Instrumentation {
             state("const t=window.__agyMicTest;if(t){window.AndroidBridge=t.api;navigator.mediaDevices.getUserMedia=t.original;delete window.__agyMicTest;}return '{}';");
         }
     }
+    /** Real AudioRecord cycles; discard PCM locally, never send to Core or log it. */
+    private void microphonePcmHardwareRestart()throws Exception {
+        JSONObject before=state("return JSON.stringify({idle:!document.querySelector('.agy-dictation-countdown,button[aria-label=\\\"Stop recording\\\"]'),build:window.__AGY_AUDIO_DIAG_BUILD__});");
+        require(before.optBoolean("idle"),"PCM_HARDWARE_EXISTING_CAPTURE_IDLE");
+        require("2026-10-27-pcm-generation-v7".equals(before.optString("build")),"PCM_HARDWARE_CURRENT_WEB_ASSET");
+        Class<?> cl=Class.forName("com.agy.bridge.NativePcmCapture",true,target.getClassLoader());
+        Object capture=cl.getConstructor().newInstance();
+        Method start=cl.getMethod("start",Activity.class),poll=cl.getMethod("poll"),stop=cl.getMethod("stop");
+        int successful=0;
+        try {
+            for(int cycle=0;cycle<12;cycle++){
+                final Activity host=activity;
+                long focusDeadline=SystemClock.elapsedRealtime()+3000;
+                while(!host.hasWindowFocus()&&SystemClock.elapsedRealtime()<focusDeadline)SystemClock.sleep(50);
+                require("OK".equals(start.invoke(capture,host)),"PCM_HARDWARE_START_"+cycle);
+                boolean gotFrame=false;
+                long deadline=SystemClock.elapsedRealtime()+1500;
+                do {
+                    String frame=(String)poll.invoke(capture);
+                    require(!frame.startsWith("ERR_"),"PCM_HARDWARE_NO_READ_ERROR_"+cycle);
+                    if(!frame.isEmpty()){gotFrame=true;break;}
+                    SystemClock.sleep(40);
+                }while(SystemClock.elapsedRealtime()<deadline);
+                require(gotFrame,"PCM_HARDWARE_RECEIVES_FRAME_"+cycle);
+                stop.invoke(capture);
+                stop.invoke(capture);
+                require("ERR_PCM_NOT_RECORDING".equals(poll.invoke(capture)),"PCM_HARDWARE_STOPPED_"+cycle);
+                successful++;
+                // No artificial cooldown: the next cycle starts immediately.
+            }
+        } finally { stop.invoke(capture); }
+        require(successful==12,"PCM_HARDWARE_12_IMMEDIATE_RESTARTS");
+    }
     /** Test the original speech-to-text button without recording audio. */
     private void microphonePcmButtonRouting()throws Exception {
         JSONObject before=state("const b=document.querySelector('button[data-tooltip-id=\\\"input-send-button-record-tooltip\\\"]');return JSON.stringify({exists:!!b,disabled:!!b?.disabled});");
@@ -1343,7 +1377,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);pickerMode="picker".equals(b.getString("mode"));routeLegacyMode="route-legacy".equals(b.getString("mode"));routeIntentMode=routeLegacyMode||"route-intent".equals(b.getString("mode"));routeMode=routeIntentMode||"route-reuse".equals(b.getString("mode"));fixtureText=b.getString("fixtureText");fixtureImage=b.getString("fixtureImage");fixtureFolder=b.getString("fixtureFolder");pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);pickerMode="picker".equals(b.getString("mode"));routeLegacyMode="route-legacy".equals(b.getString("mode"));routeIntentMode=routeLegacyMode||"route-intent".equals(b.getString("mode"));routeMode=routeIntentMode||"route-reuse".equals(b.getString("mode"));fixtureText=b.getString("fixtureText");fixtureImage=b.getString("fixtureImage");fixtureFolder=b.getString("fixtureFolder");pixelsMode="pixels".equals(b.getString("mode"));barsMode="bars".equals(b.getString("mode"));handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micPcmHardwareMode="mic-pcm-hardware".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -1386,6 +1420,7 @@ public final class MobileCandidateProbe extends Instrumentation {
             if(micMode){microphoneCapabilities();ok=true;return;}
             if(micUiMode){microphoneButtonRouting();ok=true;return;}
             if(micPcmUiMode){microphonePcmButtonRouting();ok=true;return;}
+            if(micPcmHardwareMode){microphonePcmHardwareRestart();ok=true;return;}
             if(micVisualMode){microphoneVisualStyles();ok=true;return;}
             boolean uiOk=true;
             try{ui();}catch(Throwable e){uiOk=false;report("UI_PROBE_ERROR",e.getClass().getSimpleName());

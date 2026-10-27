@@ -95,7 +95,7 @@ public final class PcmCaptureSessionTest {
         AtomicLong clock=new AtomicLong(0);
         capture=new PcmCaptureSession(clock::get);
         Fake limited=new Fake();capture.start(limited);await(limited.entered);
-        clock.set(240001);limited.proceed.countDown();once(limited);
+        clock.set(210000);limited.proceed.countDown();once(limited);
         require("ERR_PCM_LIMIT".equals(capture.failure()),"hard time limit");
         capture.stop();once(limited);
         require("ERR_PCM_NOT_RECORDING".equals(capture.failure()),"stopped poll state");

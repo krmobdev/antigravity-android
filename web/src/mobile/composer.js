@@ -1,6 +1,6 @@
-window.__AGY_AUDIO_DIAG_BUILD__="2026-10-26-native-primary-v6";
+window.__AGY_AUDIO_DIAG_BUILD__="2026-10-27-pcm-generation-v7";
 function agyAudioError(error){
-  // Native recorder already stores a localized message. Reformatting it
+  // Native recorder already stores an English message. Reformatting it
   // used to erase the real reason and show the same generic error every time.
   const known=[
     "Microphone access denied. Allow audio recording in app settings.",
@@ -19,6 +19,17 @@ function agyAudioError(error){
   if(typeof error==="string" &&
     /^Failed to (start|finish) Android recording \(ERR_[A-Z_]{2,48}\)\.$/.test(error))
     return error;
+  if(typeof error==="string" &&
+    (/^Android (microphone|transcription) error \(ERR_[A-Z_]{2,48}\)\.$/.test(error) ||
+     /^Transcription failed \(Core status [0-9]{1,2}\)\. Try recording again\.$/.test(error) ||
+     error==="Previous dictation is still finishing. Try again."))return error;
+  const code=error?.message;
+  if(typeof code==="string"&&/^ERR_[A-Z_]{2,48}$/.test(code)){
+    if(code==="ERR_CORE_END_TIMEOUT")return "Previous dictation is still finishing. Try again.";
+    return "Android microphone error ("+code+").";
+  }
+  if(Number.isInteger(error?.code)&&error.code>=0&&error.code<=16)
+    return "Transcription failed (Core status "+error.code+"). Try recording again.";
   const name=error?.name||"";
   if(name==="NotAllowedError"||name==="PermissionDeniedError")
     return "Microphone access denied. Allow audio recording in app settings.";
@@ -157,6 +168,45 @@ function agyNativePcmStart(onChunk,onError){
   };
   session.timer=setTimeout(read,45);
 }
+
+// Wait for the real Core stop acknowledgement before reopening capture.
+function agyEndDictationSession(end){
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(Error("ERR_CORE_END_TIMEOUT")),5000);
+    try{Promise.resolve(end()).then(resolve,reject).finally(()=>clearTimeout(timer));}
+    catch(error){clearTimeout(timer);reject(error);}
+  });
+}
+const AGY_DICTATION_LIMIT_MS=210000;
+function agyDictationRemaining(deadline,now){
+  return Math.max(0,Math.ceil((deadline-now)/1000));
+}
+function useAgyDictationClock(recording,onLimit){
+  const [remaining,setRemaining]=A.useState(210);
+  const latest=A.useRef(onLimit);latest.current=onLimit;
+  A.useEffect(()=>{
+    if(!recording)return;
+    const deadline=performance.now()+AGY_DICTATION_LIMIT_MS;
+    let alive=true,timer=null;
+    const update=()=>{
+      if(!alive)return;
+      const left=deadline-performance.now();
+      setRemaining(agyDictationRemaining(deadline,performance.now()));
+      if(left<=0){alive=false;latest.current();return;}
+      timer=setTimeout(update,Math.min(1000,left));
+    };
+    update();
+    return()=>{alive=false;if(timer!==null)clearTimeout(timer)};
+  },[recording]);
+  return recording?remaining:null;
+}
+function AgyDictationCountdown({seconds}){
+  const value=Number.isFinite(seconds)?Math.max(0,seconds):210;
+  const label=Math.floor(value/60)+":"+String(value%60).padStart(2,"0");
+  return A.createElement("div",{className:"agy-dictation-countdown",role:"timer",
+    "aria-label":"Dictation time remaining","aria-live":"off"},label+" remaining");
+}
+
 // The current drawer owns its child path; unrelated hidden drawers cannot pop it.
 function useAgyMobilePathBack(depth,pop){
   const owner=A.useContext(agySheetBackContext);

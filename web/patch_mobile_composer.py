@@ -2,6 +2,7 @@
 """Pinned composer layout/menu hooks; existing send/model/voice logic is retained."""
 from pathlib import Path
 import sys
+from patch_voice_lifecycle import transform_voice_lifecycle
 ROOT=Path(__file__).resolve().parent
 MARKER="/* AGY_COMPOSER_KR1 */"
 
@@ -128,10 +129,14 @@ def transform(source):
                 'error:x,hasMicrophone:B||agyNativePcmAvailable(),isAudioStreamingAvailable:!!n&&D')
     source=once(source,'ma(gp(Za)),u(!1),ja()}finally{R.current=!1}',
                 'ma(/^ERR_NATIVE_[A-Z_]+$/.test(Za?.message||"")?"Android microphone error ("+Za.message+").":gp(Za)),u(!1),ja()}finally{R.current=!1}')
+    source=transform_voice_lifecycle(source,once)
     source=once(source,'isRecording:Ob,error:ib,hasMicrophone:tb}=d5a(Qb)',
                 'isRecording:Ob,starting:agyStarting,error:ib,hasMicrophone:tb}=d5a(Qb)')
     source=once(source,'audioPhase:Ob?"recording":"idle",error:ib',
                 'audioPhase:Ob?"recording":agyStarting?"requesting":"idle",error:ib')
+    if source.count('audioPhase:ne,error:Jg')!=2:raise ValueError("Dictation clock selection anchor mismatch")
+    source=source.replace('audioPhase:ne,error:Jg','audioPhase:ne,remainingSeconds:agyRemaining,error:Jg')
+    source=once(source,'[Yf,ac,Mc,qd,Ee,ne,Jg,Nk,Kg','[Yf,ac,Mc,qd,Ee,ne,agyRemaining,Jg,Nk,Kg')
     source=once(source,'Ob,ib,tb])',
                 'Ob,agyStarting,ib,tb])')
     source=once(source,'onClick:D,disabled:H,className:aj(t===',
@@ -153,9 +158,9 @@ def transform(source):
     # Include errors and permission-waiting states in the parent header;
     # previously the error component could never render while idle.
     source=once(source,'(oe.audioPhase===\n"recording"&&!Yf||Ya.length>0',
-                '((oe.audioPhase==="recording"||oe.audioPhase==="requesting")&&!Yf||!!oe.error||Ya.length>0')
+                '((oe.audioPhase==="recording"||oe.audioPhase==="requesting")||!!oe.error||Ya.length>0')
     source=once(source,'g,oe.audioPhase==="recording"&&!Yf',
-                'g,oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="requesting"&&!Yf&&A.createElement("div",{role:"status",className:"agy-composer-audio-pending"},"Starting microphone…"),oe.audioPhase==="recording"&&!Yf')
+                'g,Yf&&oe.audioPhase==="recording"&&A.createElement(AgyDictationCountdown,{seconds:oe.remainingSeconds}),oe.error&&A.createElement("div",{role:"alert",className:"agy-composer-audio-error"},agyAudioError(oe.error)),oe.audioPhase==="requesting"&&A.createElement("div",{role:"status",className:"agy-composer-audio-pending"},Yf?"Preparing dictation…":"Starting microphone…"),oe.audioPhase==="recording"&&!Yf')
     source=once(source,'"aria-label":a?"Stop recording":"Record voice memo"',
                 '"aria-label":a?"Stop recording":"Record voice message"')
     source=once(source,'A.createElement("span",{"data-tooltip-id":u?q:void 0,className:"min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"},t,v&&A.createElement("span",{className:"opacity-70"}," ",v))',

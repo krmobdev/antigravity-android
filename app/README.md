@@ -282,3 +282,7 @@ PcmCaptureSession serializes the complete stop/release operation per generation.
 A concurrent worker closing a failed capture cannot make stop return before
 hardware release finishes. The regression deliberately blocks release on the
 worker and verifies stop waits, then checks a fresh recording can start.
+
+Native PCM has a 210-second hard capture limit (3:30), aligned with the web
+dictation countdown. The client treats this boundary as Stop and finalizes the
+original Core transcription, keeping a safety margin before its four-minute limit.

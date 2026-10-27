@@ -147,3 +147,13 @@ MainActivity PendingIntent; its failure is reported separately.
 The runner requires process success, exactly one INSTRUMENTATION_CODE 0, the
 scenario PASS marker and no actual FAIL/PENDING status. Generic summary text
 mentioning PASS/PENDING does not incorrectly fail an otherwise passing run.
+
+### Real PCM restart probe
+
+Mode mic-pcm-hardware runs twelve immediate start/read/stop/restart cycles
+against production NativePcmCapture and real AudioRecord, including idempotent
+double Stop. It refuses an existing active dictation, requires current v7 assets,
+and neither modifies the Composer draft nor sends audio to Core. Audio frames
+are discarded locally; output contains only PASS flags and counts. This proves
+hardware lifecycle, not speech recognition or a complete model request.
+Check INSTRUMENTATION_CODE and individual flags, not the shell exit code alone.
