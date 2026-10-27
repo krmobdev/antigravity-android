@@ -103,5 +103,25 @@
     "owner_human_speech_v8_acceptance": "pending",
     "full_210_second_speech_acceptance": "pending",
     "new_unsigned_candidates_built": false
-  }
+  },
+  "version_identity_followup": {
+    "source_commit": "ca317222416133b3c990f2b82e00ea86bcfbcc19",
+    "apk": "dist/antigravity-v2.4.5-kr1-dev-versioned.apk",
+    "apk_sha256": "03632fe2806d37c5d44d8317d9b23dc95a3dc2a3d2563f39d69d07fd2591421d",
+    "installed_dev": {
+      "version_name": "2.4.5-kr1-dev+ca3172224161",
+      "version_code": 19,
+      "last_update": "2026-10-27 18:56:49"
+    },
+    "installed_stable_unchanged": {
+      "version_name": "2.4.1-kr1",
+      "version_code": 18,
+      "last_update": "2026-10-22 01:14:17"
+    },
+    "matched_web_runtime_code_assets": 342,
+    "runtime_manifest_difference": "generated_at timestamp only; all payload hashes equal",
+    "builder_tests": 16,
+    "report": "docs/V2_4_5_VERSION_IDENTITY_QA.md"
+  },
+  "latest_dev_artifact": "version_identity_followup"
 }

@@ -227,3 +227,13 @@ twelve physical PCM restart cycles, both instrumentation code 0. The public
 test draft and bridge were restored. Complete evidence/limits are in the
 [microphone audit](V2_4_5_MICROPHONE_RETRY_AUDIT.md). Human-speech acceptance of
 v8 remains pending. Old unsigned APKs are blocked, not release-ready artifacts.
+
+## Correct Dev identity — verified installed
+
+Latest Dev: 2.4.5-kr1-dev+ca3172224161, versionCode 19, com.agy.dev.
+Android PackageManager confirmed the installed value. Stable remains
+2.4.1-kr1/code 18, with its original last-update timestamp. The former 2.4.0/code16
+Dev label was a builder metadata defect, not an old checkout. Shared KR version
+configuration and source-stamped Dev metadata now have regression tests.
+The Web/runtime payload matches the previously tested v8; see
+[version identity audit](V2_4_5_VERSION_IDENTITY_QA.md). Release hold remains active.
