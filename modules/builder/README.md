@@ -191,3 +191,5 @@ Web staging builds a disposable source snapshot and copies only runtime assets
 from it. It does not regenerate or overwrite existing web/generated files in the
 shared checkout. Build/test scripts, source fragments and Python cache files
 are excluded from APK assets.
+
+Owner-signing helper regression: python -m unittest discover -s modules/builder/tests -p test_owner_signing.py. Five tests execute a disposable copy with fake APK/key bytes and mocked aapt/apksigner: both editions, explicit key path with spaces, dist fallback, stale checksum, existing output preservation, wrong package/certificate. No production keystore or signing tool is opened.
