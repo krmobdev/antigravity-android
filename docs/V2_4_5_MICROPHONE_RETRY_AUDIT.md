@@ -129,3 +129,10 @@ Pending: owner acceptance of repeated human speech in v8 and real 3:30 speech
 boundary testing. Short synthetic speech plus separate hardware lifecycle do not
 claim to cover every human utterance or the full 210-second end-to-end duration.
 No new unsigned candidates were built. Old unsigned APKs remain on hold.
+
+### Owner feedback after v8 and identity correction
+
+On 2026-10-27 the owner confirmed that the microphone and recordings work.
+Manual capture/recording acceptance is recorded as passed. Repeated per-phrase
+text conversion and the full 210-second speech boundary are separate checks;
+the confirmation did not explicitly describe those scenarios.

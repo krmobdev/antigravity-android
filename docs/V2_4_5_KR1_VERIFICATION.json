@@ -102,7 +102,8 @@
     "post_stop_result_deadline_seconds": 30,
     "owner_human_speech_v8_acceptance": "pending",
     "full_210_second_speech_acceptance": "pending",
-    "new_unsigned_candidates_built": false
+    "new_unsigned_candidates_built": false,
+    "owner_microphone_capture_acceptance": "passed: owner confirmed microphone and recording on 2026-10-27"
   },
   "version_identity_followup": {
     "source_commit": "ca317222416133b3c990f2b82e00ea86bcfbcc19",
@@ -121,7 +122,8 @@
     "matched_web_runtime_code_assets": 342,
     "runtime_manifest_difference": "generated_at timestamp only; all payload hashes equal",
     "builder_tests": 16,
-    "report": "docs/V2_4_5_VERSION_IDENTITY_QA.md"
+    "report": "docs/V2_4_5_VERSION_IDENTITY_QA.md",
+    "owner_microphone_recording_check": "passed"
   },
   "latest_dev_artifact": "version_identity_followup"
 }
