@@ -193,3 +193,17 @@ shared checkout. Build/test scripts, source fragments and Python cache files
 are excluded from APK assets.
 
 Owner-signing helper regression: python -m unittest discover -s modules/builder/tests -p test_owner_signing.py. Five tests execute a disposable copy with fake APK/key bytes and mocked aapt/apksigner: both editions, explicit key path with spaces, dist fallback, stale checksum, existing output preservation, wrong package/certificate. No production keystore or signing tool is opened.
+
+### Fork version identity
+
+KR_VERSION_NAME and KR_VERSION_CODE in config/app.env are the shared version
+source for both KR release editions and the isolated Dev edition.
+Current candidate: 2.4.5-kr1 / code 19. Dev reports
+2.4.5-kr1-dev+<12-character Git HEAD> in Android's versionName; a dirty checkout
+adds -dirty, and source archives without Git disclose +unknown. BuildConfig and
+the generated manifest use the same identity. The original APP_VERSION fields
+remain the separate legacy com.agy profile and are not the KR/Dev candidate.
+
+The version regression checks Dev, both KR editions, archive fallback and
+manifest/BuildConfig agreement. After building, verify aapt dump badging and
+the installed PackageManager metadata; the APK filename is not version proof.

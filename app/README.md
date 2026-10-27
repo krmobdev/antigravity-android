@@ -286,3 +286,7 @@ worker and verifies stop waits, then checks a fresh recording can start.
 Native PCM has a 210-second hard capture limit (3:30), aligned with the web
 dictation countdown. The client treats this boundary as Stop and finalizes the
 original Core transcription, keeping a safety margin before its four-minute limit.
+
+Dev APK identity follows the KR candidate version from config/app.env and adds
+the source revision: 2.4.5-kr1-dev+<Git SHA>, code 19. Android's package metadata
+and generated BuildConfig agree. Dev remains the isolated com.agy.dev package.

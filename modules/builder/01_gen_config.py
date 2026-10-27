@@ -7,6 +7,7 @@ import os
 import html
 import shutil
 import re
+import subprocess
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
@@ -28,6 +29,23 @@ def parse_env(path):
 def java_string(value):
     escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
     return '"' + escaped + '"'
+
+
+
+def source_revision():
+    """Public source identity only; no remote calls or credential inspection."""
+    try:
+        revision = subprocess.check_output(
+            ["git", "-C", PROJECT_ROOT, "rev-parse", "HEAD"],
+            text=True, stderr=subprocess.DEVNULL, timeout=5).strip()
+        if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", revision):
+            return "unknown"
+        dirty = subprocess.check_output(
+            ["git", "-C", PROJECT_ROOT, "status", "--porcelain", "--untracked-files=normal"],
+            text=True, stderr=subprocess.DEVNULL, timeout=5)
+        return revision[:12] + ("-dirty" if dirty.strip() else "")
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
 
 
 def main():
@@ -53,8 +71,13 @@ def main():
     core_version = env.get("CORE_VERSION", "2.11.0")
     app_version_name = env.get("APP_VERSION_NAME", "2.4.0")
     app_version_code = env.get("APP_VERSION_CODE", "16")
-    if is_kr_release:
-        app_version_name, app_version_code = "2.4.5-kr1", "19"
+    if is_dev or is_kr_release:
+        # One fork version for both KR editions and Dev. Legacy com.agy keeps
+        # its independent upstream profile; an installed stable KR is untouched.
+        app_version_name = env["KR_VERSION_NAME"]
+        app_version_code = env["KR_VERSION_CODE"]
+    if is_dev:
+        app_version_name += "-dev+" + source_revision()
     oauth_scheme = env.get("OAUTH_SCHEME", "antigravity")
     app_name = env.get("APP_NAME_DEV", "Antigravity Dev") if is_dev else env.get("APP_NAME", "Antigravity")
     if is_kr_release:
