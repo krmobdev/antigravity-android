@@ -1,3 +1,8 @@
+> RELEASE HOLD — 2026-10-27: repeated dictation exposed a microphone lifecycle
+> regression. The unsigned APKs listed here were built from 03b5cf6 and are
+> superseded by source fixes. Do not sign or publish them. New device acceptance
+> and freshly rebuilt candidates are required.
+
 # Changelog — v2.4.5-kr1
 
 Baseline: v2.4.1-kr1 / main 1cc88bd40667f60e819c5ca415dc7cd69294632d.
@@ -24,6 +29,10 @@ Stable main, tags, history and APKs remain unchanged.
   handoff.
 - feat(composer): block transient startup theme writes to Android native bars/
   preferences until compositor confirmation; preserve later theme changes.
+- fix(attachments): overlay-only dismissal preserves the current chat and real Picker delivery; uniform square tiles, compact type labels and 48px removal targets.
+- fix(notifications): enabled live launcher target, same-chat preservation, replacement navigation and in-flight duplicate/stale guards. Legacy direct entry remains an unresolved probe.
+- feat(composer): English app-owned UI/error/notification labels and regression policy.
+- test: genuine DocumentsUI multi-select/repeat/cancel/preview and computed card geometry; posted notification round-trip and one Back Home; strict Android-result parser.
 - Release preparation: com.krmobdev.antigravity, 2.4.5-kr1 / versionCode 19,
   unsigned aligned artifacts and owner-only interactive signing.
 - docs: current bilingual candidate notes, checksums and a requirement/evidence

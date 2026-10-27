@@ -49,5 +49,21 @@ are preserved. Audio attachment recording is a separate original mode.
   native limit and countdown. Final follow-up rerun recorded separately below.
 - Real hardware probe added: twelve immediate AudioRecord restart cycles,
   locally discarded PCM, no Core transmission or draft mutation.
-- Pending: install rebuilt Dev APK, run the real hardware probe, owner speech
-  recognition and repeated dictation acceptance. Compilation is not this proof.
+- Rebuilt and installed Dev APK through Shizuku, package com.agy.dev, from
+  source 1e83b60daf7b4e971b778de1aeb7ac1b8094406c. SHA-256:
+  a730d0a904de35a7f2d0430efb5f28d20b4503ff0349ed772d6b01ba6449195d.
+- Final five native/STT Python tests passed after the final-text gate adjustment,
+  including all eleven actual-hook cases with React effect cleanup.
+- Real device hardware probe PASSED: each of twelve immediate starts received
+  PCM and completed double Stop; all individual flags PASS,
+  INSTRUMENTATION_CODE: 0. Current v7 Web asset was verified on device.
+- Pending: owner speech recognition/repeated-dictation and visible countdown
+  acceptance in the updated Dev APK. Hardware lifecycle is not Core speech
+  recognition, nor a real 3:30 dictation end-to-end test.
+
+
+Source fixes were pushed separately: 09a60a2 (native release completion barrier)
+and 1e83b60 (client ownership, Core drain, 210-second cap and tests).
+The old unsigned APKs remain preserved, marked on hold in release documents
+and Download/DO-NOT-SIGN-v2.4.5-kr1.txt. No production package was installed or
+removed, no main/tag/release changed, and no release signing key was accessed.

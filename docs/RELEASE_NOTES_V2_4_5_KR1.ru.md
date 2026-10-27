@@ -1,6 +1,11 @@
+> RELEASE HOLD — 2026-10-27: repeated dictation exposed a microphone lifecycle
+> regression. The unsigned APKs listed here were built from 03b5cf6 and are
+> superseded by source fixes. Do not sign or publish them. New device acceptance
+> and freshly rebuilt candidates are required.
+
 # Antigravity Android v2.4.5-kr1
 
-> Release preparation paused: attachment-menu navigation/picker delivery, notification Activity reuse and English-only app UI require correction and device acceptance.
+> Свежие unsigned-кандидаты подготовлены для ручной подписи владельцем из dev 03b5cf6. Вложения, английский UI и текущий переход из шторки/Back проверены; отдельный legacy-тест старых уведомлений не пройден. Публикация требует отдельной команды владельца.
 Проект описания для будущего релиза после ручной приёмки и подписи владельцем.
 Этот документ сам по себе не означает публикацию или полное завершение приёмки.
 
@@ -28,6 +33,10 @@
 - Нативная заставка показывает реальные этапы запуска и Retry. Промежуточная
   тема Core при загрузке больше не перекрашивает системные панели Android.
 - Сохранено исправление плавной нативной прокрутки из v2.4.1-kr1.
+
+- Все собственные строки интерфейса — на английском; тексты бесед и имена файлов не изменяются.
+- Меню вложений и просмотр больше не меняют историю маршрутов чата; карточки фото и документов одинаковые, с отдельными кнопками удаления 48×48.
+- Текущее уведомление возвращает живую Activity/WebView и сохраняет черновик; Back не открывает второй экземпляр прежнего чата.
 
 Package ID: com.krmobdev.antigravity. VersionName: 2.4.5-kr1.
 VersionCode: 19, предыдущий стабильный — 18.

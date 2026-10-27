@@ -1,4 +1,13 @@
+> RELEASE HOLD — 2026-10-27: repeated dictation exposed a microphone lifecycle
+> regression. The unsigned APKs listed here were built from 03b5cf6 and are
+> superseded by source fixes. Do not sign or publish them. New device acceptance
+> and freshly rebuilt candidates are required.
+
 # v2.4.5-kr1 — передача владельцу
+
+Свежие APK от 2026-10-27 уже в Downloads. Исходники: dev 03b5cf6.
+Проверенные SHA: V2_4_5_KR1_SHA256SUMS.txt и файл SHA256SUMS-v2.4.5-kr1-unsigned.txt в Downloads.
+Полный отчёт: V2_4_5_KR1_VERIFICATION.json. Известные ограничения приёмки сохранены в V2_4_5_NAVIGATION_ENGLISH_QA.md.
 
 Кандидат для ручной приёмки. Package ID: `com.krmobdev.antigravity`,
 versionName `2.4.5-kr1`, versionCode `19` (стабильная версия: 18).
@@ -37,8 +46,9 @@ Helper сначала проверяет копии в Downloads, а при их
 затем из checkout выполняет на своём экране Termux:
 
 ```bash
-bash tools/sign_release_interactive.sh standard
-bash tools/sign_release_interactive.sh bypass
+cd ~/anima-workspace/antigravity-android
+bash tools/sign_release_interactive.sh standard /storage/emulated/0/Download/antigravity-kr-release.jks
+bash tools/sign_release_interactive.sh bypass /storage/emulated/0/Download/antigravity-kr-release.jks
 ```
 
 Пароли вводятся только в интерактивные запросы apksigner. Не передавать их в чат,

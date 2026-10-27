@@ -1,3 +1,8 @@
+> RELEASE HOLD — 2026-10-27: repeated dictation exposed a microphone lifecycle
+> regression. The unsigned APKs listed here were built from 03b5cf6 and are
+> superseded by source fixes. Do not sign or publish them. New device acceptance
+> and freshly rebuilt candidates are required.
+
 # v2.4.5-kr1: English UI, attachments and notification navigation
 
 Status: development checkpoint, **not release approval**.
@@ -90,9 +95,7 @@ as new device runs on the artifact above.
 | Agent notifications | Legacy entry, actual concurrent Core agents in background/screen off, cold start and terminal sound/DND acceptance; current shade entry/Back accepted by owner |
 | Attachments | Real sends to a model across advertised formats, unsupported-format failures, background return and visual acceptance |
 | Composer | Owner visual acceptance of uniform tiles; larger-font/TalkBack and long-chat checks |
-| Release artifacts | Rebuild both fresh unsigned KR editions after candidate acceptance; verify manifest/Core/APK content, hashes and signing instructions |
+| Release artifacts | Both fresh unsigned KR editions built/verified and copied to Downloads by owner request; owner signing and signed production-update acceptance remain |
 
 Pixel 7 testing is excluded by the owner's decision. Android 8/12 environments
-have not been exercised here. No fresh unsigned release APK is claimed ready,
-no release signing is performed, and no merge/tag/Release is authorized by this
-checkpoint.
+have not been exercised here. Fresh unsigned APKs were subsequently rebuilt from this source commit and placed in Downloads by owner request; see V2_4_5_KR1_STATUS.md and V2_4_5_KR1_VERIFICATION.json. No release signing was performed, and no merge/tag/Release is authorized.

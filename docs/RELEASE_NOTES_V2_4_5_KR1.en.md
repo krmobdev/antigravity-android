@@ -1,6 +1,11 @@
+> RELEASE HOLD — 2026-10-27: repeated dictation exposed a microphone lifecycle
+> regression. The unsigned APKs listed here were built from 03b5cf6 and are
+> superseded by source fixes. Do not sign or publish them. New device acceptance
+> and freshly rebuilt candidates are required.
+
 # Antigravity Android v2.4.5-kr1
 
-> Release preparation paused: attachment-menu navigation/picker delivery, notification Activity reuse and English-only app UI require correction and device acceptance.
+> Fresh unsigned owner-signing candidates were rebuilt from dev 03b5cf6. Attachments, English UI and current notification shade/Back entry are accepted; the separate legacy notification probe remains unresolved. Publication requires a separate owner instruction.
 Draft notes for a future release after owner acceptance and manual signing.
 This document does not mean the release has been published or fully accepted.
 
@@ -27,6 +32,10 @@ Changes since v2.4.1-kr1:
 - Native startup milestones and Retry; transient Core theme hydration no longer
   repaints Android system bars.
 - The v2.4.1-kr1 native scrolling correction is retained.
+
+- All app-owned UI labels are English; conversation text and file names remain unchanged.
+- Add/preview overlays retain chat history; photos and documents use equal square cards with separate 48px removal targets.
+- Current notifications reuse the live Activity/WebView and preserve drafts; Back does not expose a duplicate previous chat window.
 
 Package: com.krmobdev.antigravity. VersionName: 2.4.5-kr1.
 VersionCode: 19, up from stable versionCode 18.

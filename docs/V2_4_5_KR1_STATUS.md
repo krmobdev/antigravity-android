@@ -1,3 +1,50 @@
+> RELEASE HOLD — 2026-10-27: repeated dictation exposed a microphone lifecycle
+> regression. The unsigned APKs listed here were built from 03b5cf6 and are
+> superseded by source fixes. Do not sign or publish them. New device acceptance
+> and freshly rebuilt candidates are required.
+
+# v2.4.5-kr1 — актуальные unsigned APK для владельца
+
+Дата: 2026-10-27. Ветка сборки: dev.
+Исходники APK: 03b5cf6e619ce323e9abea24b1b8540cd1757ce8.
+Документационные коммиты после него не меняют собранный код.
+
+Обе редакции заново собраны последовательно на Realme GT 2 Pro в Termux,
+через Gradle-free pipeline, без облачных сборок и GitHub Actions.
+По команде владельца проверенные копии сохранены в Downloads.
+
+| Редакция | Файл в Downloads | SHA-256 |
+| --- | --- | --- |
+| Standard | Antigravity-Android-v2.4.5-kr1-unsigned.apk | 9cad6e5b6ef298b3ea42a0d7b40f1b1cd5d2e024f5ba1fe76859304eea9c2b90 |
+| Region-bypass | Antigravity-Android-v2.4.5-kr1-region-bypass-unsigned.apk | 2bae07e93aa58a49a9e0991be81382f99c5db067a500e05f10af0ce3644de274 |
+
+Рядом: SHA256SUMS-v2.4.5-kr1-unsigned.txt.
+
+Подтверждено для обеих APK:
+
+- com.krmobdev.antigravity, versionName 2.4.5-kr1, versionCode 19 > stable 18.
+- debuggable=false; APK не подписаны (нет v1 entries и APK signing block).
+- ZIP integrity и zipalign; ожидаемые размер/SHA/PTY-сигнатуры Core.
+- Редакции различаются только Core и его runtime manifest.
+- Текущие JS/CSS совпадают со свежим staging, включены единые карточки,
+  английские строки и исправление навигации уведомлений; scroll hooks сохранены.
+- Проверены имена файлов и распознаваемые credential patterns в исходниках/APK,
+  включая большой generated/main.js. Ключ владельца не открывался.
+- SHA-256 файлов в Downloads совпадают с результатами локальной сборки.
+
+Полный машиночитаемый отчёт: V2_4_5_KR1_VERIFICATION.json.
+Реальные тесты и оставшиеся ограничения: V2_4_5_NAVIGATION_ENGLISH_QA.md.
+Владелец принял реальный переход из шторки и Back на главный экран.
+Отдельная legacy-проверка старого прямого MainActivity уведомления не пройдена;
+подготовка unsigned файлов не означает закрытие всех пунктов ручной приёмки.
+
+Подпись выполняет только владелец интерактивно по HANDOFF_V2_4_5_KR1.md.
+Агент APK не подписывал и не устанавливал production-кандидат.
+Main, стабильная v2.4.1-kr1, теги и GitHub Release не изменялись.
+
+<details>
+<summary>Исторический отчёт: старые APK, SHA и рабочие ветки не относятся к текущей передаче</summary>
+
 > Historical report. The sole working branch is dev. See V2_4_5_KR1_INDEPENDENT_AUDIT.md for current verification; old APK hashes are not a current release handoff.
 
 # Antigravity v2.4.5-kr1 — подготовка кандидата
@@ -156,3 +203,13 @@ wireless connect service отсутствовали. Production не удаля�
 Релизный keystore/пароли агент не читал, не копировал и не использовал;
 новый релизный ключ не создавался. Неподписанные APK не публиковались.
 Merge main, release tags, GitHub Release и Actions не выполнялись.
+
+</details>
+
+## Microphone restart follow-up — 2026-10-27
+
+Source fixes 09a60a2 and 1e83b60 pushed to dev. Full analysis and verified
+results: [microphone retry audit](V2_4_5_MICROPHONE_RETRY_AUDIT.md).
+Twelve real AudioRecord restart cycles passed with instrumentation code 0.
+Updated Dev installed. Owner speech/countdown acceptance remains pending.
+Previous unsigned hashes are historical and excluded from release approval.
