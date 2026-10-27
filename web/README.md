@@ -351,3 +351,11 @@ open-state hint for Android's Escape fallback. Mobile stack handlers take priori
 The model pill is centered between the permission and microphone controls;
 its wrapper consumes the existing footer gap, keeping the neighboring controls
 and 48px targets in place. Voice transport/send logic is unchanged.
+
+
+Startup readiness requires complete document loading and
+visible content/editor when Core chrome is present (a settings button alone is
+insufficient). Auth/onboarding button-only pages retain their fallback. The same
+content node and header geometry/palette must survive the two paint frames;
+changed proof retries through the existing bounded observer instead of revealing
+an intermediate header. Native additionally waits for compositor acknowledgement.

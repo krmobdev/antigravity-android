@@ -5,8 +5,8 @@ import android.os.Build;
 import android.view.View;
 
 /**
- * API31+: intercept the system splash exit so the icon fades/scales out and
- * the 3-dot overlay fades in, instead of a hard cut to the first app frame.
+ * API31+: fade the system splash above the opaque native startup surface.
+ * The WebView stays covered until a committed usable UI frame is available.
  */
 public final class SplashExitInstaller {
 

@@ -89,3 +89,12 @@ Desktop acceptance taps General/Appearance and both switch directions via real
 Android MotionEvent injection after DOM hit testing and target-window focus/
 package checks. A blocked or covered control fails; JavaScript .click does not
 stand in for touch acceptance.
+
+
+Handoff mode: -e mode handoff. Requires a positively identified empty composer
+and no attachments, reloads UI only, and samples content/header geometry,
+document/font status, native readiness and splash opacity (never text or
+screenshots). It reports observed stability separately from probe completion;
+inspect HANDOFF_OBSERVED_STABLE as well as INSTRUMENTATION_CODE. Core generation
+must stay unchanged. Native startup fixtures additionally require an opaque
+startup view through the actual system-splash exit handler.

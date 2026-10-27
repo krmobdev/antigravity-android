@@ -241,3 +241,9 @@ Desktop-wide documents gate composer/interface mobile styles by viewport.
 Changing mode reloads freshly injected asset HTML, not the stale old document,
 and keeps the existing Core, auth and storage. Native Back sends a real Escape
 key to a visible desktop popup after mobile one-level handlers have declined.
+
+
+Startup reveal now waits for WebView.postVisualStateCallback after the DOM
+proof. Per-load sequence guards discard stale compositor callbacks and duplicate
+ready signals. The native startup surface remains opaque during system-splash
+exit; only the system layer fades. No Core/service lifecycle is changed.

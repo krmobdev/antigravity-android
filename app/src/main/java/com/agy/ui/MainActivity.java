@@ -110,6 +110,8 @@ public class MainActivity extends Activity
     public static final String EXTRA_AGENT_CONVERSATION_ID = "agy_conversation_id";
     private String pendingConversationId;
     private boolean webUiReady = false;
+    private boolean visualReadyPending;
+    private long uiLoadSequence;
     private int notificationRouteAttempts = 0;
     private static final int MAX_ROUTE_ATTEMPTS = 5;
 
@@ -165,12 +167,9 @@ public class MainActivity extends Activity
     }
 
     private void loadCoreUi(final int generation) {
-        uiDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
+        prepareUiLoad();
         appLoaded = true;
         loadedGeneration = generation;
-        webUiReady = false;
-        splash.clearFatal();
-        splash.showConnecting();
         webViewHost.loadApp();
 
     }
@@ -238,6 +237,8 @@ public class MainActivity extends Activity
             loadCoreUi(CoreRuntimeState.readyGeneration);
             return;
         }
+        uiLoadSequence++;
+        visualReadyPending = false;
         webUiReady = false;
         splash.clearFatal();
         appLoaded = false;
@@ -265,12 +266,36 @@ public class MainActivity extends Activity
         Log.i(TAG, "onPageFinished " + SensitiveDataRedactor.safeUrl(url));
     }
 
-    /** Signal from WebView that it has mounted its UI and client router. */
+    private void prepareUiLoad() {
+        uiLoadSequence++;
+        visualReadyPending = false;
+        webUiReady = false;
+        uiDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
+        splash.clearFatal();
+        splash.showConnecting();
+    }
+
+    /** JS proves a usable layout; the renderer must commit it before reveal. */
     public void onWebUiReady() {
-        if (!appLoaded || splash.isFatalShown() || isDestroyed() || isFinishing()) return;
-        webUiReady = true;
-        dismissSplash();
-        navigatePendingConversation();
+        if (!appLoaded || webUiReady || visualReadyPending || splash.isFatalShown()
+                || isDestroyed() || isFinishing() || webViewHost == null) return;
+        final long sequence = uiLoadSequence;
+        visualReadyPending = true;
+        try {
+            webViewHost.getWebView().postVisualStateCallback(sequence, new WebView.VisualStateCallback() {
+                @Override public void onComplete(long requestId) {
+                    if (sequence != uiLoadSequence || splash.isFatalShown()
+                            || isDestroyed() || isFinishing()) return;
+                    visualReadyPending = false;
+                    webUiReady = true;
+                    dismissSplash();
+                    navigatePendingConversation();
+                }
+            });
+        } catch (RuntimeException unavailable) {
+            visualReadyPending = false;
+            splash.showFatalError("ui_ready_timeout");
+        }
     }
 
     private void acceptNotificationIntent(Intent intent) {
@@ -330,10 +355,7 @@ public class MainActivity extends Activity
     public void setDesktopMode(boolean enabled) {
         if (webViewHost != null) {
             if (androidBridge != null) androidBridge.cancelNativeVoiceOnBackground();
-            webUiReady = false;
-            uiDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
-            splash.clearFatal();
-            splash.showConnecting();
+            prepareUiLoad();
             webViewHost.setDesktopMode(enabled);
         } else {
             DesktopModePrefs.setDesktopMode(this, enabled);

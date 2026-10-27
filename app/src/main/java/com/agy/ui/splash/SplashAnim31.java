@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.view.View;
 
 /**
- * Cross-fades the system splash icon out into the 3-dot overlay (API31+).
+ * Fades the system splash above an opaque native startup surface (API31+).
  *
  * The bundled android.jar exposes the Android 12 preview callback signature
  * (onSplashScreenExit(SplashScreenView)); production devices ship
@@ -74,9 +74,12 @@ public final class SplashAnim31 {
             } else {
                 reflectVoid(provider, "remove");
             }
-            if (dotSplash != null) {
-                dotSplash.setAlpha(0f);
-                dotSplash.animate().alpha(1f).setDuration(280).start();
+            // Keep the native surface opaque while Core/WebView are mounting.
+            // Only the system splash fades; otherwise partially rendered
+            // headers become visible underneath this startup surface.
+            if (dotSplash != null && dotSplash.getVisibility() == View.VISIBLE) {
+                dotSplash.animate().cancel();
+                dotSplash.setAlpha(1f);
             }
         } catch (Throwable ignored) {
         }

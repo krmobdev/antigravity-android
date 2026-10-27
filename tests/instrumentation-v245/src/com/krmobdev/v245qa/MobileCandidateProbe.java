@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
     private boolean desktopMode;
+    private boolean handoffMode;
     private boolean recoverMobileMode;
     private boolean capture;
     private boolean backMode;
@@ -238,6 +239,35 @@ public final class MobileCandidateProbe extends Instrumentation {
             SystemClock.sleep(700);
         }
     }
+
+    /** Observe only geometry/booleans: never log account, prompt or chat text. */
+    private void startupHandoff()throws Exception{
+        JSONObject safe=state("const e=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({empty:!!e&&!e.textContent.trim()&&!document.querySelector('.agy-attachment-card')});");
+        if(!safe.optBoolean("empty")){report("STARTUP_HANDOFF","PENDING_EXISTING_DRAFT_OR_NONCOMPOSER");return;}
+        Class<?> core=Class.forName("com.agy.core.CoreRuntimeState",true,target.getClassLoader());
+        int generation=(Integer)field(core,"readyGeneration");
+        Method load=Class.forName("com.agy.ui.MainActivity",true,target.getClassLoader()).getDeclaredMethod("loadCoreUi",int.class);load.setAccessible(true);
+        runOnMainSync(()->{try{load.invoke(activity,generation);}catch(Exception error){throw new RuntimeException(error);}});
+        long start=SystemClock.elapsedRealtime(),readyAt=0;boolean stable=true;int samples=0;
+        String previous="";
+        do{
+            JSONObject snap=state("const e=document.querySelector('.agy-composer [contenteditable=true]'),h=document.querySelector('[data-testid=mobile-open-settings]'),r=h?.getBoundingClientRect();return JSON.stringify({composer:!!e,buttons:document.querySelectorAll('#root button').length,fonts:document.fonts?.status||'unsupported',document:document.readyState,header:r?[Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)]:null,gate:!!window.__agStartupReady,now:Math.round(performance.now())});");
+            boolean ready=Boolean.TRUE.equals(field(activity,"webUiReady"));
+            View splash=(View)field(activity,"splash").getClass().getMethod("view").invoke(field(activity,"splash"));
+            snap.put("ready",ready);snap.put("splash",splash.getVisibility()==View.VISIBLE);snap.put("opaque",splash.getAlpha()==1f);
+            snap.put("elapsed",SystemClock.elapsedRealtime()-start);
+            if(!ready&&splash.getVisibility()==View.VISIBLE&&splash.getAlpha()!=1f)stable=false;
+            if(ready){if(readyAt==0)readyAt=SystemClock.elapsedRealtime();if(!snap.optBoolean("composer")||!"complete".equals(snap.optString("document"))||"loading".equals(snap.optString("fonts")))stable=false;}
+            String key=snap.optBoolean("composer")+":"+snap.optInt("buttons")+":"+snap.optString("fonts")+":"+snap.optString("document")+":"+snap.opt("header")+":"+ready;
+            if(!key.equals(previous)){report("HANDOFF_SAMPLE",snap.toString());previous=key;}
+            samples++;SystemClock.sleep(40);
+        }while(SystemClock.elapsedRealtime()-start<30000&&(readyAt==0||SystemClock.elapsedRealtime()-readyAt<1800));
+        require(readyAt>0,"HANDOFF_UI_READY");
+        require(generation==(Integer)field(core,"readyGeneration"),"HANDOFF_CORE_UNCHANGED");
+        report("HANDOFF_OBSERVED_STABLE",stable?"PASS":"FAIL_EARLY_OR_TRANSPARENT");
+        report("HANDOFF_SAMPLE_COUNT",samples);
+    }
+
     private void nativeStartup()throws Exception {
         JSONObject readyProof=state("return JSON.stringify({current:typeof window.__agStartupReady?.signal==='function'&&window.__agStartupReady.signal.toString().includes('hasRenderedUi')});");
         require(readyProof.optBoolean("current"),"STARTUP_REAL_READY_PROOF_LOADED");
@@ -272,6 +302,10 @@ public final class MobileCandidateProbe extends Instrumentation {
             }catch(Exception error){throw new RuntimeException(error);}
         });
         try{
+            Method systemExit=Class.forName("com.agy.ui.splash.SplashAnim31",true,target.getClassLoader()).getDeclaredMethod("animateExit",Object.class,View.class);
+            systemExit.setAccessible(true);
+            runOnMainSync(()->{try{systemExit.invoke(null,null,box.view);}catch(Exception error){throw new RuntimeException(error);}});
+            require(box.view.getAlpha()==1f,"STARTUP_SYSTEM_EXIT_NATIVE_OPAQUE");
             String[] labels={"Подготовка среды","Запуск ядра","Подключение интерфейса"};
             for(int stage=0;stage<3;stage++){
                 progressClass.getMethod("advance",long.class,int.class).invoke(model,attempt,stage);
@@ -307,7 +341,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         }finally{
             runOnMainSync(()->{try{box.controller.getClass().getMethod("destroy").invoke(box.controller);}catch(Exception ignored){}((ViewGroup)box.root.getParent()).removeView(box.root);});
         }
-        JSONObject draft=state("return JSON.stringify({empty:[...document.querySelectorAll('.agy-composer [contenteditable=true]')].every(e=>!e.textContent.trim())&&!document.querySelector('.agy-attachment-card')});");
+        JSONObject draft=state("return JSON.stringify({empty:!!document.querySelector('.agy-composer [contenteditable=true]')&&[...document.querySelectorAll('.agy-composer [contenteditable=true]')].every(e=>!e.textContent.trim())&&!document.querySelector('.agy-attachment-card')});");
         if(draft.optBoolean("empty")){
             runOnMainSync(()->{try{activity.getClass().getMethod("showFatalError",String.class).invoke(activity,"ui_ready_timeout");}catch(Exception error){throw new RuntimeException(error);}});
             require(liveView.getVisibility()==View.VISIBLE,"STARTUP_MAIN_ERROR_VISIBLE");
@@ -800,7 +834,7 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);handoffMode="handoff".equals(b.getString("mode"));desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
@@ -828,6 +862,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(handoffMode){startupHandoff();ok=true;return;}
             if(desktopMode){adaptiveDesktop();ok=true;return;}
             if(startupMode){nativeStartup();ok=true;return;}
             if(unifiedMode){unifiedInterface();ok=true;return;}

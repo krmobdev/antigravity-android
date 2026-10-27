@@ -51,8 +51,8 @@ and 48px touch targets are retained.
 
 A landscape screenshot was not obtained in the initial run because the target
 was not focused; it is not reported as visual acceptance. Functional native
-touch/Back assertions did pass. Pixel 7 / Android 17 and other Android versions,
-large text/TalkBack and owner visual acceptance remain pending. These checks do
+touch/Back assertions did pass. Pixel 7 acceptance was explicitly excluded by the owner on 2026-10-27. Other
+Android versions, large text/TalkBack and owner visual acceptance remain pending. These checks do
 not replace live voice, attachment-send, agent-background or PTY acceptance.
 
 ## Installed artifact
