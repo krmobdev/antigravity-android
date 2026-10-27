@@ -125,5 +125,52 @@
     "report": "docs/V2_4_5_VERSION_IDENTITY_QA.md",
     "owner_microphone_recording_check": "passed"
   },
-  "latest_dev_artifact": "version_identity_followup"
+  "latest_dev_artifact": "version_identity_followup",
+  "current_unsigned_handoff": {
+    "source_commit": "4002f2dcbe139a2f68661521ab54dbfa911c3abf",
+    "main_unchanged": "1cc88bd40667f60e819c5ca415dc7cd69294632d",
+    "artifacts": [
+      {
+        "file": "antigravity-v2.4.5-kr1-unsigned.apk",
+        "bytes": 103492834,
+        "sha256": "c39c2f4ae3a82ce7aaaa69da39b1983c91e73a540f1d7dc7cc28a453f619be92",
+        "core_sha256": "abf5881f9983fbad00c1cdf903c81f84cf36b8a21364b3476f6d19568b528527",
+        "package": "com.krmobdev.antigravity",
+        "versionName": "2.4.5-kr1",
+        "versionCode": 19,
+        "debuggable": false,
+        "unsigned": true,
+        "zip_integrity": true,
+        "zipalign": true,
+        "mobile_and_scroll_hooks": true,
+        "voice_delivery_v8": true,
+        "staging_assets_match": true,
+        "credential_filename_scan": true,
+        "credential_text_scan": true,
+        "large_generated_main_credential_scan": true,
+        "download_file": "Antigravity-Android-v2.4.5-kr1-unsigned.apk"
+      },
+      {
+        "file": "antigravity-v2.4.5-kr1-region-bypass-unsigned.apk",
+        "bytes": 103492878,
+        "sha256": "33300acc1971cb439e1142ba0854b54af68f9ec8d8c088d276a9ac9aaa11e199",
+        "core_sha256": "f25135e4b4a2c4a8e4cb319dc36b13eb98fa4718fa80aaae5a7819935370ff27",
+        "package": "com.krmobdev.antigravity",
+        "versionName": "2.4.5-kr1",
+        "versionCode": 19,
+        "debuggable": false,
+        "unsigned": true,
+        "zip_integrity": true,
+        "zipalign": true,
+        "mobile_and_scroll_hooks": true,
+        "voice_delivery_v8": true,
+        "staging_assets_match": true,
+        "credential_filename_scan": true,
+        "credential_text_scan": true,
+        "large_generated_main_credential_scan": true,
+        "download_file": "Antigravity-Android-v2.4.5-kr1-region-bypass-unsigned.apk"
+      }
+    ],
+    "github_release_created": false
+  }
 }

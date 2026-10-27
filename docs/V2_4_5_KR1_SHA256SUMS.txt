@@ -1,3 +1,2 @@
-# RELEASE HOLD: old 03b5cf6 APKs, do not sign or publish. Rebuild after microphone acceptance.
-9cad6e5b6ef298b3ea42a0d7b40f1b1cd5d2e024f5ba1fe76859304eea9c2b90  antigravity-v2.4.5-kr1-unsigned.apk
-2bae07e93aa58a49a9e0991be81382f99c5db067a500e05f10af0ce3644de274  antigravity-v2.4.5-kr1-region-bypass-unsigned.apk
+c39c2f4ae3a82ce7aaaa69da39b1983c91e73a540f1d7dc7cc28a453f619be92  antigravity-v2.4.5-kr1-unsigned.apk
+33300acc1971cb439e1142ba0854b54af68f9ec8d8c088d276a9ac9aaa11e199  antigravity-v2.4.5-kr1-region-bypass-unsigned.apk
