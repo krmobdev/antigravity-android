@@ -11,7 +11,7 @@ case "$edition" in
     name="Antigravity-Android-v2.4.5-kr1-region-bypass"
     ;;
   *)
-    echo "Usage: bash tools/sign_release_interactive.sh {standard|bypass}" >&2
+    echo "Usage: bash tools/sign_release_interactive.sh {standard|bypass} [keystore-path]" >&2
     exit 2
     ;;
 esac
@@ -28,7 +28,7 @@ if [ ! -s "$input" ]; then
     fi
 fi
 output="$downloads/$name.apk"
-keystore="$HOME/anima-workspace/.antigravity-release-identity/antigravity-kr-release.jks"
+keystore="${2:-$HOME/anima-workspace/.antigravity-release-identity/antigravity-kr-release.jks}"
 expected="23adac86423f7298b0a8ccd48758e6e19be7654d4fbdec184e184b7e16030d95"
 [ -s "$input" ] || { echo "Missing unsigned APK: $input" >&2; exit 1; }
 [ -s "$keystore" ] || { echo "Release keystore missing. Never generate a replacement." >&2; exit 1; }

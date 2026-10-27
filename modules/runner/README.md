@@ -270,3 +270,10 @@ real-Core PTY smoke: creation, interactive TTY/input, stream reconnect, close
 and recreation. It uses temporary runtime/home, a random port and packaged TLS
 trust. It never installs an APK or accesses production accounts. This is
 distinct from manual WebView terminal UI acceptance.
+
+
+Release PTY acceptance can exercise both cached Core editions locally:
+python modules/runner/test_pty_rpc.py and the same command with --region-bypass.
+Both use a temporary runtime/home, random loopback port and test-owned process
+group, with no installed-app/account access or model request. The checks cover
+TTY stdin/stdout, interactive read, stream reconnect and close/recreation.

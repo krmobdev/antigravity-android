@@ -1,18 +1,33 @@
 # Changelog — v2.4.5-kr1
 
-Baseline: v2.4.1-kr1 / main 1cc88bd. Stable main/tags/APKs remain untouched.
+Baseline: v2.4.1-kr1 / main 1cc88bd40667f60e819c5ca415dc7cd69294632d.
+Stable main, tags, history and APKs remain unchanged.
 
-- fix(pty): upstream-derived strict PTY patch, shell fallback and terminal environment.
-- test: real isolated Core PTY RPC lifecycle on Android.
-- feat(notifications): native per-task stage/outcome reducer and coalescing;
-  preserve completion FIFO, navigation and independent read/unread.
-- feat(attachments): fixed-size previews, safe text, explicit removal,
-  repeat/multiple picker handling, transient grants and resource cleanup.
-- feat(composer): mobile multiline layout and supported-action bottom sheet;
-  original model/reasoning/voice/send/stop logic retained.
-- build preparation: versionCode 19, new unsigned output names and isolated web
-  staging that preserves pre-existing checkout changes.
-- docs: bilingual candidate notes, SHA-256 handoff and owner-only signing steps.
+- fix(pty): strict upstream-derived shell patch, executable shell selection,
+  TERM/TERMINFO, verified Core cache and local Android build environment handling.
+- test: isolated real Core PTY create/stdin/stdout/read/reconnect/close/recreate;
+  both Standard and Region-bypass editions supported by the same test CLI.
+- feat(notifications): native Core stages per task, stale/duplicate protection,
+  quiet progress channel, separate terminal outcomes and existing completion FIFO.
+- feat(attachments): real Core cap <=5, preview cards, safe UTF-8 content,
+  distinct view/delete, repeat/multiple picker handling and lifecycle cleanup.
+- feat(composer): compact mobile Composer, adaptive Add menu, model/effort,
+  Core-backed permission shield, IME layout and retained Send/Stop/queue behavior.
+- feat(composer): one-level Back and backdrop/Escape behavior for nested sheets;
+  responsive portrait Desktop Mode and centered model control.
+- feat(composer): shared themed controls, readable settings switches, themed
+  selects, Light/Dark/custom presets and retained native scroll behavior.
+- feat(composer): original Core speech-to-text with native 16kHz PCM capture;
+  bounded native capture queue and ownership/error/background cleanup.
+- feat(composer): resource cache freshness after APK update without auth/storage
+  deletion; real native startup stages, healthy-Core UI Retry and painted-frame
+  handoff.
+- feat(composer): block transient startup theme writes to Android native bars/
+  preferences until compositor confirmation; preserve later theme changes.
+- Release preparation: com.krmobdev.antigravity, 2.4.5-kr1 / versionCode 19,
+  unsigned aligned artifacts and owner-only interactive signing.
+- docs: current bilingual candidate notes, checksums and a requirement/evidence
+  matrix. Unverified live/manual scenarios are not marked as passed.
 
-This changelog describes candidate source changes. Actual test results and
-unverified device scenarios are recorded separately in V2_4_5_KR1_STATUS.md.
+No new read/unread model, release signing, main integration, tag, GitHub Release
+or cloud CI execution is implied by this changelog.

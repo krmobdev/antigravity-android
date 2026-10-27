@@ -5,6 +5,7 @@ Creates a temporary runtime/home and random loopback port. Never installs an APK
 or reads production data. No model request is made. Only test-owned processes are
 stopped. The bundled Core TLS certificate is trusted; no trust-all fallback.
 """
+import argparse
 import base64
 import contextlib
 import http.client
@@ -113,6 +114,11 @@ class Output:
         self.thread.join(timeout=9)
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--region-bypass", action="store_true",
+                        help="Test the bypass Core in the same isolated runtime")
+    args = parser.parse_args()
+    print("Core PTY edition:", "region-bypass" if args.region_bypass else "standard")
     if not Path("/system/bin/sh").is_file():
         raise RuntimeError("This smoke requires Android")
     if Path("/bin///sh").resolve() != Path("/system/bin/sh").resolve():
@@ -121,7 +127,7 @@ def main():
         work = Path(temp)
         runtime = work / "runtime"
         with open(work / "prepare.log", "w") as log, contextlib.redirect_stdout(log):
-            if not prepare_runtime.prepare(str(runtime), no_bypass=True):
+            if not prepare_runtime.prepare(str(runtime), no_bypass=not args.region_bypass):
                 raise RuntimeError("Isolated runtime preparation failed")
         loader = runtime / "bin/libloader.so"
         if not loader.exists():

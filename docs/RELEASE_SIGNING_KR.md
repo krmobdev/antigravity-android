@@ -104,3 +104,23 @@ GitHub Actions remain disabled for unattended pushes and tags while the monthly 
 - **Never generate another key** for the same public fork package. Do not enable tag-triggered release publication before all checks pass.
 
 No secrets have been uploaded or configured on GitHub during this manual preparation.
+
+
+## v2.4.5-kr1 candidate — owner-provided Downloads key path
+
+Current development and build branch is dev. Earlier branch/main build examples
+above are historical and do not authorize main changes.
+
+The manual helper accepts an optional second argument for the existing keystore
+path. The owner requested the Downloads copy; only the owner executes:
+
+    cd ~/anima-workspace/antigravity-android
+    bash tools/sign_release_interactive.sh standard /storage/emulated/0/Download/antigravity-kr-release.jks
+    bash tools/sign_release_interactive.sh bypass /storage/emulated/0/Download/antigravity-kr-release.jks
+
+The helper checks unsigned input SHA/package/version before apksigner, refuses
+to replace signed output, and then checks signature v2, the fixed public
+certificate fingerprint and release metadata. Passwords are requested
+interactively by apksigner. The assistant must not execute this helper, inspect
+the key/passwords, or sign on behalf of the owner. Its syntax check does not run
+the signing code. Future publication remains a separate owner instruction.
