@@ -59,7 +59,7 @@
   "release_hold": {
     "active": true,
     "date": "2026-10-27",
-    "reason": "Repeated dictation start/stop lifecycle regression; source fix and new acceptance required",
+    "reason": "Old unsigned candidates predate dictation delivery fixes; updated human-speech acceptance and fresh unsigned builds still required",
     "superseded_unsigned_source": "03b5cf6e619ce323e9abea24b1b8540cd1757ce8"
   },
   "microphone_restart_followup": {
@@ -76,8 +76,32 @@
     "instrumentation_code": 0,
     "native_capture_limit_seconds": 210,
     "countdown_unit_behavior": "pass",
-    "owner_repeated_speech_acceptance": "pending",
+    "owner_repeated_speech_acceptance": "v7 failed: occasional empty transcription after Stop",
     "real_210_second_speech_acceptance": "pending",
     "report": "docs/V2_4_5_MICROPHONE_RETRY_AUDIT.md"
+  },
+  "dictation_delivery_followup": {
+    "source_commit": "40c1c3b118da903076bbca80838a057c10797d82",
+    "integration_test_commit": "7dd427a13c3676c3d40ead7a9ccac2d4b7ae5fa5",
+    "dev_apk": "dist/antigravity-v2.4.5-mic-delivery-v8-dev.apk",
+    "dev_apk_sha256": "6d61f7dbd3d18aae83d621c274d4404531a93410f556cec04b30ba8541f38bb8",
+    "package": "com.agy.dev",
+    "installed_via": "Shizuku",
+    "web_python_tests": 39,
+    "voice_behavior_cases": 23,
+    "java_regressions": "pass",
+    "web_selftest": "pass",
+    "real_core_synthetic_speech_cycles": 3,
+    "real_core_instrumentation_code": 0,
+    "real_editor_insertion": "pass",
+    "fixture_draft_restoration": "pass",
+    "fixture_guard_preflight": "pass",
+    "physical_pcm_restart_cycles": 12,
+    "hardware_instrumentation_code": 0,
+    "native_capture_limit_seconds": 210,
+    "post_stop_result_deadline_seconds": 30,
+    "owner_human_speech_v8_acceptance": "pending",
+    "full_210_second_speech_acceptance": "pending",
+    "new_unsigned_candidates_built": false
   }
 }

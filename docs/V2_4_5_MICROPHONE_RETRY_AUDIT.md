@@ -96,3 +96,36 @@ passed. The actual streaming hook plus delivery/decoder helpers pass 23 behavior
 cases. The six empty-result cases fail against unchanged v7 and pass against v8;
 browser worklet tail ordering was independently reproduced before its fix.
 Rebuilt device/real-transcription acceptance is still pending at this checkpoint.
+
+### v8 final device checkpoint
+
+Source fix: 40c1c3b118da903076bbca80838a057c10797d82.
+Real Core/editor fixture and strict draft-guard coverage:
+7dd427a13c3676c3d40ead7a9ccac2d4b7ae5fa5. Both pushed to dev.
+
+Installed Dev: dist/antigravity-v2.4.5-mic-delivery-v8-dev.apk
+(com.agy.dev, debug-signed; production package untouched).
+SHA-256: 6d61f7dbd3d18aae83d621c274d4404531a93410f556cec04b30ba8541f38bb8.
+The installed WebView's v8 marker was verified. QA fixture code is absent from
+the application APK and exists only in the separately installed QA package.
+
+- Three real Core transcriptions of an offline-generated public English phrase
+  reached the real Composer editor, with settled finalization between cycles.
+  Capture input alone was substituted; Core responses/editor handling were real.
+- That test restored the native bridge and deleted only its exact public fixture.
+  Final INSTRUMENTATION_CODE: 0; all three transcript and draft-restoration flags PASS.
+- Twelve physical AudioRecord start/frame/double-Stop/immediate-restart cycles
+  passed on the same v8 Dev; final INSTRUMENTATION_CODE: 0 and all individual flags PASS.
+- Initial Core fixture run recognized all three phrases but returned code 1 at
+  its immediate synthetic-delete cleanup check. Cleanup now uses the existing
+  native-key approach with a strict rechecked ownership guard. The subsequent
+  complete run passed code 0. This was test cleanup, not an ASR pass being hidden.
+- The QA preflight executes the actual JS draft guards against English/non-English
+  text, numbers, emoji, punctuation and exact public fixture cases.
+- 39 Web Python tests, 23 hook/delivery behavior cases, Java regressions and
+  generated Web selftest passed. All builds/tests executed locally in Termux.
+
+Pending: owner acceptance of repeated human speech in v8 and real 3:30 speech
+boundary testing. Short synthetic speech plus separate hardware lifecycle do not
+claim to cover every human utterance or the full 210-second end-to-end duration.
+No new unsigned candidates were built. Old unsigned APKs remain on hold.

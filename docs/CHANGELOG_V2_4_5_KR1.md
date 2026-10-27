@@ -40,3 +40,11 @@ Stable main, tags, history and APKs remain unchanged.
 
 No new read/unread model, release signing, main integration, tag, GitHub Release
 or cloud CI execution is implied by this changelog.
+
+### Исправление пропадающего результата диктовки
+
+Stop сохраняет короткую запись до готовности Core и ожидает доставку
+аудиофрагментов перед завершением сессии. Убран молчаливый обрыв ожидания
+через три секунды. Пустой ответ, сбой доставки и тайм-аут показываются
+явно на английском. Лимит записи остаётся 3:30. Добавлена проверка настоящего
+Core с появлением распознанной синтетической фразы в настоящем Composer.

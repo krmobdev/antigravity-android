@@ -213,3 +213,17 @@ results: [microphone retry audit](V2_4_5_MICROPHONE_RETRY_AUDIT.md).
 Twelve real AudioRecord restart cycles passed with instrumentation code 0.
 Updated Dev installed. Owner speech/countdown acceptance remains pending.
 Previous unsigned hashes are historical and excluded from release approval.
+
+## Empty dictation result follow-up — v8
+
+Source 40c1c3b and integration tests 7dd427a pushed to dev. Updated Dev installed.
+Stop now retains audio before ready, drains queued frames, waits for audio
+acknowledgements and the real Core result, and explicitly reports empty/error/
+timeout outcomes. The silent three-second cutoff is gone. Capture still stops
+at 210 seconds; post-Stop processing is bounded at 30 seconds.
+
+Verified on device: three actual Core-to-editor synthetic transcriptions and
+twelve physical PCM restart cycles, both instrumentation code 0. The public
+test draft and bridge were restored. Complete evidence/limits are in the
+[microphone audit](V2_4_5_MICROPHONE_RETRY_AUDIT.md). Human-speech acceptance of
+v8 remains pending. Old unsigned APKs are blocked, not release-ready artifacts.

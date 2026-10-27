@@ -49,3 +49,8 @@ PTY RPC and Android UI tests from remaining manual scenarios. Live agents with
 the screen off, different attachment sends to a model, terminal UI, accessibility/
 long chats and the signed production update still require separate confirmation.
 Google Pixel 7 testing was explicitly excluded by the owner.
+
+Dictation now preserves short recordings stopped before Core is ready and
+waits for pending audio delivery and the final transcription. Empty responses
+and processing failures show an explicit error. Capture remains limited to
+3:30 with a countdown; processing after Stop does not extend microphone capture.
