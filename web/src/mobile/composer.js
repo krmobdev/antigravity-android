@@ -173,7 +173,7 @@ function agySheetRequestChange(open,details,change,stepBack){
 }
 /* Compact mobile composer; all settings keep their original controllers. */
 function useAgyMobileLayout(){
-  const query="(max-width: 720px), (pointer: coarse)";
+  const query=window.__AG_MOBILE_LAYOUT_QUERY__||"(max-width: 720px), (pointer: coarse)";
   const [mobile,setMobile]=A.useState(()=>window.matchMedia(query).matches);
   A.useEffect(()=>{
     const mq=window.matchMedia(query),update=()=>setMobile(mq.matches);
@@ -267,3 +267,16 @@ function AgyMobileContextMenu(props){
     open&&A.createElement(AgyComposerSheet,{items:props.items,extraControls:props.extraControls,onClose:()=>change(false)}));
 }
 var zYb=AgyMobileContextMenu;
+
+
+// Desktop popups retain Core's own Escape behavior; Android dispatches the key.
+function agyDesktopOverlayOpen(){
+  if(window.__AG_DESKTOP_MODE__!==true||useAgyDesktopNarrow())return false;
+  return [...document.querySelectorAll('[role=menu],[role=listbox],[role=dialog],[role=alertdialog]')].some(node=>{
+    if(node.closest('[aria-hidden=true],[inert]'))return false;
+    const r=node.getBoundingClientRect(),style=getComputedStyle(node);
+    return r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&style.visibility!=="hidden"&&style.display!=="none"&&(Number(style.opacity)>0||node.hasAttribute("data-open"));
+  });
+}
+function useAgyDesktopNarrow(){return window.matchMedia("(max-width: 720px)").matches;}
+window.__AGY_DESKTOP_OVERLAY_OPEN__=agyDesktopOverlayOpen;

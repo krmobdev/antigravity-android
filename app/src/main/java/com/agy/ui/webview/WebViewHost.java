@@ -95,7 +95,7 @@ public final class WebViewHost {
             @Override
             public void run() {
                 WebSettingsFactory.applyDesktopMode(webView, enabled);
-                webView.reload();
+                WebViewHost.this.loadApp();
             }
         });
     }

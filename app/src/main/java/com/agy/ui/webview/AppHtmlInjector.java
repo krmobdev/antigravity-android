@@ -28,6 +28,8 @@ public final class AppHtmlInjector {
         String boot;
         try {
             JSONObject config = new JSONObject(bridge.getConfig());
+            boolean desktop = bridge.isDesktopMode();
+            html = DesktopLayoutPolicy.styles(html, desktop);
             JSONObject endpoints = new JSONObject();
             String base = bridge.getEngineBaseUrl();
             endpoints.put("core", base);
@@ -35,6 +37,8 @@ public final class AppHtmlInjector {
             endpoints.put("enginePort", bridge.getEnginePort());
             boot = "<meta http-equiv=\"Content-Security-Policy\" content=\"" + CSP + "\">"
                     + "<script>(function(){"
+                    + "window.__AG_DESKTOP_MODE__=" + desktop + ";"
+                    + "window.__AG_MOBILE_LAYOUT_QUERY__=" + JSONObject.quote(DesktopLayoutPolicy.mobileQuery(desktop)) + ";"
                     + "window.__APP_CONFIG__=" + config.toString() + ";"
                     + "window.__AG_ENDPOINTS__=" + endpoints.toString() + ";"
                     + "window.__AG_CSRF__=" + JSONObject.quote(bridge.getCsrfToken()) + ";"

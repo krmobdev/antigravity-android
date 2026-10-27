@@ -56,6 +56,7 @@ node "$ROOT/web/tests/sidebar_reconcile.behavior.cjs" \
     "$ROOT/web/src/patches/web_optimizations/agent-notifications.js"
 node "$ROOT/web/tests/mobile_attachments.behavior.cjs"
 node "$ROOT/web/tests/mobile_composer.behavior.cjs"
+node "$ROOT/web/tests/adaptive_desktop.behavior.cjs"
 node "$ROOT/web/tests/mobile_settings.behavior.cjs"
 node "$ROOT/web/tests/mobile_permissions.behavior.cjs"
 node "$ROOT/web/tests/mobile_back.behavior.cjs"

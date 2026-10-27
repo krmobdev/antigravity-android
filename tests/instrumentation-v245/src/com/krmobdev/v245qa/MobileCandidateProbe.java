@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 /** Dev-only, no model requests; outputs flags/counts, never account/chat content. */
 public final class MobileCandidateProbe extends Instrumentation {
     private static final String A="v245_probe_a", B="v245_probe_b";
+    private boolean desktopMode;
+    private boolean recoverMobileMode;
     private boolean capture;
     private boolean backMode;
     private boolean toolbarMode;
@@ -132,6 +134,82 @@ public final class MobileCandidateProbe extends Instrumentation {
     }
     // Stock drawer primitives keep DOM nodes mounted even when closed.
     // A nonzero rectangle alone must never be treated as an open sheet.
+    private void refreshDesktopHost()throws Exception{
+        Object current=field(Class.forName("com.agy.ui.MainActivity",true,target.getClassLoader()),"activeActivity");
+        if(current instanceof Activity)activity=(Activity)current;
+        runOnMainSync(()->web=find(activity.getWindow().getDecorView()));
+    }
+    private void awaitDesktopProfile(boolean desktop,boolean narrow)throws Exception{
+        long until=SystemClock.elapsedRealtime()+25000;boolean ready=false;
+        do{
+            refreshDesktopHost();
+            try{
+                if(web!=null&&Boolean.TRUE.equals(field(activity,"webUiReady"))){
+                    JSONObject info=state("return JSON.stringify({desktop:window.__AG_DESKTOP_MODE__,narrow:innerWidth<=720,mobile:!!document.querySelector('.agy-composer-model-control')});");
+                    ready=info.optBoolean("desktop")==desktop&&info.optBoolean("narrow")==narrow&&info.optBoolean("mobile")==narrow;
+                    if(ready)break;
+                }
+            }catch(Exception ignored){}
+            SystemClock.sleep(150);
+        }while(SystemClock.elapsedRealtime()<until);
+        require(ready,"DESKTOP_PROFILE_"+desktop+"_"+narrow);
+    }
+    private void setDesktopProfile(boolean value)throws Exception{
+        final Activity host=activity;
+        runOnMainSync(()->{try{host.getClass().getMethod("setDesktopMode",boolean.class).invoke(host,value);}catch(Exception error){throw new RuntimeException(error);}});
+    }
+    private void clickSettingsSection(String name)throws Exception{
+        JSONObject info=state("const e=[...document.querySelectorAll('[data-testid=\"settings-nav-item-"+name+"\"]')].find(e=>e.getBoundingClientRect().width>0&&!e.closest('[inert],[aria-hidden=true]'));e?.click();return JSON.stringify({clicked:!!e});");
+        require(info.optBoolean("clicked"),"DESKTOP_CLICK_"+name);SystemClock.sleep(550);
+    }
+    private void adaptiveDesktop()throws Exception{
+        JSONObject safe=state("const editor=document.querySelector('.agy-composer [contenteditable=true]');return JSON.stringify({empty:!!editor&&!editor.textContent.trim()&&!document.querySelector('.agy-attachment-card')});");
+        if(!safe.optBoolean("empty")){report("ANDROID_ADAPTIVE_DESKTOP","PENDING_DRAFT_PRESERVED");return;}
+        boolean original=(Boolean)activity.getClass().getMethod("isDesktopMode").invoke(activity);
+        int orientation=activity.getRequestedOrientation();
+        Class<?> core=Class.forName("com.agy.core.CoreRuntimeState",true,target.getClassLoader());
+        int generation=(Integer)field(core,"readyGeneration");
+        try{
+            runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+            SystemClock.sleep(700);refreshDesktopHost();
+            setDesktopProfile(true);awaitDesktopProfile(true,true);
+            openAppearance();sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+            clickSettingsSection("General");
+            require(stockSheets().optInt("visible")==1,"DESKTOP_PORTRAIT_GENERAL_MOBILE_PANEL");
+            runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
+            awaitDesktopProfile(true,false);SystemClock.sleep(650);
+            clickSettingsSection("Appearance");clickSettingsSection("General");
+            JSONObject popup=state("return JSON.stringify({open:window.__AGY_DESKTOP_OVERLAY_OPEN__?.()===true});");
+            require(popup.optBoolean("open"),"DESKTOP_LANDSCAPE_DIALOG_ACTIVE");
+            captureRegion(".agy-settings-page","DESKTOP_LANDSCAPE_GENERAL");
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(700);
+            popup=state("return JSON.stringify({closed:window.__AGY_DESKTOP_OVERLAY_OPEN__?.()===false});");
+            require(popup.optBoolean("closed"),"DESKTOP_LANDSCAPE_NATIVE_BACK_CLOSES_DIALOG");
+            runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+            awaitDesktopProfile(true,true);
+            openAppearance();sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+            clickSettingsSection("General");
+            sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);SystemClock.sleep(650);
+            JSONObject root=state("const b=[...document.querySelectorAll('[data-testid=\"settings-nav-item-General\"]')].find(e=>e.getBoundingClientRect().width>0&&!e.closest('[inert],[aria-hidden=true]'));return JSON.stringify({root:!!b});");
+            require(root.optBoolean("root")&&stockSheets().optInt("visible")==1,"DESKTOP_PORTRAIT_BACK_ONE_LEVEL");
+            clickSettingsSection("Appearance");
+            JSONObject toggle=state("const row=[...document.querySelectorAll('.agy-settings-row')].find(e=>e.querySelector('span')?.textContent==='Desktop Mode'),b=row?.querySelector('button[role=switch]');b?.click();return JSON.stringify({clicked:!!b});");
+            require(toggle.optBoolean("clicked"),"DESKTOP_REAL_TOGGLE_OFF_CLICKED");
+            awaitDesktopProfile(false,true);
+            require(!(Boolean)activity.getClass().getMethod("isDesktopMode").invoke(activity),"DESKTOP_NATIVE_PREFERENCE_OFF");
+            JSONObject centered=state("const m=document.querySelector('[data-testid=model-selector-trigger]')?.getBoundingClientRect(),s=document.querySelector('[data-testid=permissions-selector-trigger]')?.getBoundingClientRect(),v=document.querySelector('[data-tooltip-id=input-send-button-record-tooltip]')?.getBoundingClientRect();return JSON.stringify({centered:!!m&&!!s&&!!v&&Math.abs((m.left+m.width/2)-((s.left+s.width/2+v.left+v.width/2)/2))<=1,touch:!!m&&m.height>=48&&s.width>=48&&v.width>=48});");
+            require(centered.optBoolean("centered")&&centered.optBoolean("touch"),"MODEL_PILL_CENTERED_BETWEEN_SHIELD_AND_MIC");
+            captureRegion(".agy-composer-footer","CENTERED_MODEL");
+            require(generation==(Integer)field(core,"readyGeneration"),"DESKTOP_MODE_SWITCH_CORE_PRESERVED");
+            report("ANDROID_ADAPTIVE_DESKTOP","PASS_PORTRAIT_LANDSCAPE_BACK_REAL_TOGGLE_AND_CENTER");
+        }finally{
+            refreshDesktopHost();
+            boolean current=(Boolean)activity.getClass().getMethod("isDesktopMode").invoke(activity);
+            if(current!=original)setDesktopProfile(original);
+            runOnMainSync(()->activity.setRequestedOrientation(orientation));
+            SystemClock.sleep(700);
+        }
+    }
     private void nativeStartup()throws Exception {
         JSONObject readyProof=state("return JSON.stringify({current:typeof window.__agStartupReady?.signal==='function'&&window.__agStartupReady.signal.toString().includes('hasRenderedUi')});");
         require(readyProof.optBoolean("current"),"STARTUP_REAL_READY_PROOF_LOADED");
@@ -694,11 +772,16 @@ public final class MobileCandidateProbe extends Instrumentation {
         JSONObject synthetic=waitState("return JSON.stringify(window.__agySynth||{done:false})","done");
         report("VOICE_SYNTHETIC_RECORDER",synthetic.optString("result","PENDING"));
     }
-    @Override public void onCreate(Bundle b){super.onCreate(b);capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
+    @Override public void onCreate(Bundle b){super.onCreate(b);desktopMode="desktop".equals(b.getString("mode"));recoverMobileMode="recover-mobile".equals(b.getString("mode"));capture="yes".equals(b.getString("capture"));backMode="back".equals(b.getString("mode"));toolbarMode="toolbar".equals(b.getString("mode"));startupMode="startup".equals(b.getString("mode"));unifiedMode="unified".equals(b.getString("mode"));polishMode="polish".equals(b.getString("mode"));surfacesMode="surfaces".equals(b.getString("mode"));micMode="mic".equals(b.getString("mode"));micUiMode="mic-ui".equals(b.getString("mode"));micPcmUiMode="mic-pcm-ui".equals(b.getString("mode"));micVisualMode="mic-visual".equals(b.getString("mode"));start();}
     @Override public void onStart(){
         boolean ok=false;
         try{
             target=getTargetContext();require("com.agy.dev".equals(target.getPackageName()),"TARGET_DEV_ONLY");
+            if(recoverMobileMode){
+                require(target.getSharedPreferences("agy_prefs",Context.MODE_PRIVATE).edit().putBoolean("desktop_mode",false).commit(),"RECOVER_MOBILE_PREFERENCE");
+                report("RECOVER_MOBILE","PASS_ONLY_DESKTOP_PREF_CHANGED");
+                ok=true;return;
+            }
             Intent launch=target.getPackageManager().getLaunchIntentForPackage("com.agy.dev");launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity=startActivitySync(launch);
             // Dismiss first-launch settings/permission surfaces without granting broad storage access.
@@ -717,6 +800,7 @@ public final class MobileCandidateProbe extends Instrumentation {
                 SystemClock.sleep(250);
             }while(SystemClock.elapsedRealtime()<until);
             require(web!=null,"ANDROID_WEBVIEW_PRESENT");
+            if(desktopMode){adaptiveDesktop();ok=true;return;}
             if(startupMode){nativeStartup();ok=true;return;}
             if(unifiedMode){unifiedInterface();ok=true;return;}
             if(surfacesMode){greySurfaces();ok=true;return;}

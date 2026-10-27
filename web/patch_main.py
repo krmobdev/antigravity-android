@@ -75,7 +75,7 @@ def patch_main(file_path):
     orig_theme = theme_match.group(0)
     injected_theme = (
         orig_theme
-        + f',{react_id}.createElement({item_comp},{{label:"Desktop Mode",description:"Use desktop viewport and user agent for the workspace",'
+        + f',{react_id}.createElement({item_comp},{{label:"Desktop Mode",description:"Desktop layout on wide screens; adapts to portrait",'
         + f'rightElement:{react_id}.createElement({switch_comp},{{checked:isDesktop,onCheckedChange:onDesktopToggle}})}})'
     )
 

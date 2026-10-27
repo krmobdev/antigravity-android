@@ -14,6 +14,11 @@ def transform(source):
         if source.count(MARKER)!=1 or "var zYb=AgyMobileContextMenu;" not in source:
             raise ValueError("Incomplete composer integration")
         return source
+    source=once(source,'var rK=()=>Lj().get("mobileLayout")?.enabled===!0;',
+        'var rK=()=>{var agyFeatures=Lj(),agyResponsive=useAgyMobileLayout();return typeof window.__AG_DESKTOP_MODE__==="boolean"?agyResponsive:agyFeatures.get("mobileLayout")?.enabled===!0};')
+    for getter,count in [('Lj().get("mobileLayout")?.enabled===!0',4),('h.get("mobileLayout")?.enabled===!0',1),('c.get("mobileLayout")?.enabled===!0',2)]:
+        if source.count(getter)!=count:raise ValueError("Responsive layout flag anchor mismatch")
+        source=source.replace(getter,'rK()')
     source=once(source,'const BYa=A.createContext(0);',
                 'const BYa=A.createContext(0),agySheetBackContext=A.createContext(null);')
     source=once(source,'className:h,finalFocus:k}){var l=A.useRef(null),m=A.useContext(BYa);DC(a,()=>{b(!1)});',

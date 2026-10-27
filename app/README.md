@@ -230,3 +230,14 @@ deadline so background suspension is not mistaken for a failed UI paint.
 On resume, only an unfinished healthy UI is asked to rearm its DOM readiness
 observer, including after a long background pause. Ready pages remain visible
 without a new splash or reload.
+
+### Adaptive Desktop Mode
+
+The native boot document publishes one layout query. With Desktop Mode enabled,
+narrow windows use the mobile Core panels and wide windows use the original
+desktop UI. Normal mobile mode keeps its touch layout. Core's layout getters
+and our composer use the same responsive hook, including live rotation.
+Desktop-wide documents gate composer/interface mobile styles by viewport.
+Changing mode reloads freshly injected asset HTML, not the stale old document,
+and keeps the existing Core, auth and storage. Native Back sends a real Escape
+key to a visible desktop popup after mobile one-level handlers have declined.

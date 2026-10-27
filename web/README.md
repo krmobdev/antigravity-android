@@ -339,3 +339,15 @@ Native foreground resume rearms an unfinished readiness observer after its
 deadline cleanup. Rearming first clears old watchers and still requires the
 same visible-DOM/two-frame proof; a paused WebView cannot permanently lose its
 ready signal. Already-ready pages are untouched.
+
+### Responsive Desktop and centered model control
+
+All eight upstream mobileLayout consumers now use the same responsive hook as
+the composer under Android's explicit mode profile. Desktop Mode adapts narrow
+windows to mobile panels; wide windows retain desktop panels. Non-Android Core
+feature behavior is preserved. The native document provides the query, and mode
+changes regenerate that document. Desktop popups expose only a read-only
+open-state hint for Android's Escape fallback. Mobile stack handlers take priority.
+The model pill is centered between the permission and microphone controls;
+its wrapper consumes the existing footer gap, keeping the neighboring controls
+and 48px targets in place. Voice transport/send logic is unchanged.

@@ -42,3 +42,6 @@ java -cp "$OUT" com.agy.bridge.PcmCaptureSessionTest
 
 javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/core/CoreStartupProgress.java" "$ROOT/app/tests/CoreStartupProgressTest.java"
 java -cp "$OUT" CoreStartupProgressTest
+
+javac -d "$OUT" "$ROOT/app/src/main/java/com/agy/ui/webview/DesktopLayoutPolicy.java" "$ROOT/app/tests/DesktopLayoutPolicyTest.java"
+java -cp "$OUT" DesktopLayoutPolicyTest

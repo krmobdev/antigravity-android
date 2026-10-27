@@ -329,6 +329,11 @@ public class MainActivity extends Activity
 
     public void setDesktopMode(boolean enabled) {
         if (webViewHost != null) {
+            if (androidBridge != null) androidBridge.cancelNativeVoiceOnBackground();
+            webUiReady = false;
+            uiDeadline = android.os.SystemClock.elapsedRealtime() + SPLASH_TIMEOUT_MS;
+            splash.clearFatal();
+            splash.showConnecting();
             webViewHost.setDesktopMode(enabled);
         } else {
             DesktopModePrefs.setDesktopMode(this, enabled);
@@ -470,10 +475,15 @@ public class MainActivity extends Activity
         // A paused/broken renderer must never trap Android Back.
         handler.postDelayed(fallback, 300);
         try {
-            web.evaluateJavascript("(function(){try{return typeof window.__AGY_CLOSE_MOBILE_OVERLAY__==='function'&&window.__AGY_CLOSE_MOBILE_OVERLAY__()===true}catch(e){return false}})()", result -> {
+            web.evaluateJavascript("(function(){try{if(typeof window.__AGY_CLOSE_MOBILE_OVERLAY__==='function'&&window.__AGY_CLOSE_MOBILE_OVERLAY__()===true)return true;return typeof window.__AGY_DESKTOP_OVERLAY_OPEN__==='function'&&window.__AGY_DESKTOP_OVERLAY_OPEN__()===true?'escape':false}catch(e){return false}})()", result -> {
                 if (!decided.compareAndSet(false, true)) return;
                 handler.removeCallbacks(fallback);
                 backNavigationPending = false;
+                if ("\"escape\"".equals(result)) {
+                    web.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ESCAPE));
+                    web.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ESCAPE));
+                    return;
+                }
                 if (!"true".equals(result) && !isDestroyed() && !isFinishing()) navigateBackNormally(web);
             });
         } catch (RuntimeException unavailable) {

@@ -71,3 +71,16 @@ Startup mode ends with real Home/background and foreground intents, requiring
 a ready UI with hidden splash and unchanged Core generation. It reports whether
 Android retained the same Activity. Long unready/background expiration is covered
 by the DOM-gate behavior test; it is not asserted as a timed on-device scenario.
+
+Recovery mode: -e mode recover-mobile. Dev-only, synchronously sets the existing
+desktop_mode preference false before UI launch. No data/cache/auth reset, no
+requests or other settings changed. Launch the Dev app normally after the probe.
+
+Adaptive Desktop mode: -e mode desktop. With an empty real composer, switches
+Desktop on, opens General in portrait, rotates with Settings open, clicks
+Appearance/General in landscape, uses native Back, rotates back, checks one-level
+Back and clicks the actual Desktop switch off. It checks native preference,
+fresh boot profile, unchanged Core generation and model-pill midpoint with
+48px neighboring controls. Original mode/orientation are restored in finally.
+Captures crop settings-page/footer only. Existing drafts/attachments skip this
+state-changing test. No prompt, recording or model request is submitted.
